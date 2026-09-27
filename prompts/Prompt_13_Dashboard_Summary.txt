@@ -1,0 +1,37 @@
+PROMPT 13 — CUSTOMER DASHBOARD AND SUMMARIES
+
+Implement customer dashboard APIs:
+
+GET /api/v1/dashboard/today
+GET /api/v1/dashboard/week
+GET /api/v1/dashboard/month
+
+Backend must calculate:
+- calories consumed
+- protein
+- carbohydrates
+- fat
+- water intake
+- activity duration
+- calories burned
+- current weight
+- previous weight
+- weight trend
+- sleep duration
+- sleep quality
+- recent logs
+
+Do not calculate authoritative values in frontend.
+
+Create chart-ready API responses.
+
+Support date ranges and user timezone.
+
+Also support chatbot summary intents:
+GET_TODAY_SUMMARY
+GET_DAILY_SUMMARY
+GET_WEEKLY_SUMMARY
+GET_MONTHLY_SUMMARY
+
+Ensure summaries use the user's actual database data.
+Add tests for empty days, partial data and normal days.

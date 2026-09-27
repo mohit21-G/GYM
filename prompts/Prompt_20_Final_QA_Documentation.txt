@@ -1,0 +1,64 @@
+PROMPT 20 — FINAL QA, TESTING AND DOCUMENTATION
+
+Perform a complete production-readiness review.
+
+Test:
+1. Customer registration.
+2. Customer login/logout/refresh.
+3. Protected chatbot access.
+4. Admin login/logout/refresh.
+5. Role authorization.
+6. Customer data isolation.
+7. Food logging.
+8. Activity logging.
+9. Weight logging.
+10. Sleep logging.
+11. Hydration logging.
+12. Follow-up messages.
+13. Clarification flow.
+14. English input.
+15. Hindi input.
+16. Gujarati input.
+17. Hinglish.
+18. Gujlish.
+19. Roman Hindi.
+20. Roman Gujarati.
+21. Today/yesterday/date/time handling.
+22. Dashboard calculations.
+23. Admin customer management.
+24. Customer details.
+25. Admin master data.
+26. AI usage monitoring.
+27. Audit logs.
+28. Redis health.
+29. Database health.
+30. AI provider health.
+31. Docker build.
+32. Frontend production build.
+33. Backend production build.
+
+Run:
+- lint
+- type checking
+- unit tests
+- integration tests
+- build checks
+- Prisma validation
+- security review
+
+Verify all hard-coded ports and secrets are removed.
+
+Update:
+README.md
+docs/architecture.md
+docs/api.md
+docs/database.md
+docs/ai-providers.md
+docs/deployment.md
+docs/testing.md
+
+Final requirement:
+The system must allow switching AI providers only by changing .env values, without changing business logic.
+
+Do not leave TODO placeholders for core functionality.
+Fix all build, type, test and runtime errors you find.

@@ -1,0 +1,60 @@
+PROMPT 05 — AI PROVIDER ABSTRACTION
+
+Implement provider-agnostic AI architecture.
+
+Supported providers:
+1. OpenAI
+2. Mistral
+3. Google Gemini
+4. Cloudflare Workers AI
+
+Provider selection must be controlled by:
+AI_PROVIDER
+AI_MODEL
+
+Examples:
+AI_PROVIDER=openai
+AI_MODEL=gpt-5.6-luna
+
+AI_PROVIDER=mistral
+AI_MODEL=mistral-small-4
+
+AI_PROVIDER=gemini
+AI_MODEL=gemini-3.1-flash-lite
+
+AI_PROVIDER=cloudflare
+AI_MODEL=@cf/zai-org/glm-4.7-flash
+
+Architecture:
+ChatService
+→ AIService
+→ AIProviderFactory
+→ selected AIProvider
+→ normalized AIResponse
+→ validation
+→ IntentRouter
+→ business service
+→ Prisma
+
+Create:
+AIProvider interface
+OpenAIProvider
+MistralProvider
+GeminiProvider
+CloudflareProvider
+
+Interface:
+processMessage(request: AIRequest): Promise<AIResponse>
+
+Provider SDK/API code must exist only inside backend/src/ai/providers/.
+
+Business services must never import provider SDKs.
+
+Create normalized AIResponse:
+- intent
+- language
+- entities
+- requiresClarification
+- clarificationQuestion
+
+Add provider timeout, error handling and safe logging.

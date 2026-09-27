@@ -1,0 +1,44 @@
+PROMPT 16 — CUSTOMER FRONTEND
+
+Build a professional customer frontend using:
+- React
+- TypeScript
+- Vite
+- React Router
+- Zustand
+- Axios
+- Tailwind CSS
+
+Routes:
+ /login
+ /register
+ /chat
+ /dashboard
+ /logs
+ /profile
+
+Requirements:
+1. Customer must login before chatbot access.
+2. Protected routes.
+3. Login/register forms with validation.
+4. JWT/session handling.
+5. Logout.
+6. Professional health/fitness design.
+7. Responsive and mobile-friendly.
+8. Chat interface with message bubbles.
+9. Loading state.
+10. Typing/processing indicator.
+11. Clarification questions.
+12. Log result cards.
+13. Summary cards.
+14. Error states.
+15. Empty states.
+16. Dashboard charts/cards.
+17. Logs with filters.
+18. Profile management.
+19. Use backend API responses directly.
+20. Frontend must not contain AI/business logic.
+
+Use Tailwind CSS consistently.
+Create reusable UI components.
+Do not hard-code backend URL; use VITE_API_BASE_URL.

@@ -1,0 +1,67 @@
+PROMPT 15 — ADMIN MASTER DATA, AI USAGE AND AUDIT
+
+Implement admin management for:
+
+1. Food categories
+2. Foods
+3. Activity categories
+4. Activities
+5. AI usage
+6. Audit logs
+7. System statistics
+
+Food APIs:
+GET /api/v1/admin/foods
+POST /api/v1/admin/foods
+GET /api/v1/admin/foods/:id
+PATCH /api/v1/admin/foods/:id
+DELETE /api/v1/admin/foods/:id
+
+Activity APIs should provide equivalent CRUD.
+
+AI usage page/API should expose:
+- provider
+- model
+- requests
+- input tokens
+- output tokens
+- total tokens
+- latency
+- success/failure
+- estimated cost
+- date filters
+
+Audit logs:
+- admin
+- action
+- entity
+- entity ID
+- description
+- IP
+- user agent
+- timestamp
+
+Add search, filtering and pagination.
+
+Create:
+GET /api/v1/admin/dashboard
+
+Dashboard statistics:
+- total customers
+- active customers
+- inactive customers
+- suspended customers
+- new customers
+- food logs
+- activity logs
+- weight logs
+- sleep logs
+- hydration logs
+- chat messages
+- AI requests
+- AI failures
+- provider usage
+- recent registrations
+- recent activity
+
+Add chart-ready API data.

@@ -1,0 +1,47 @@
+PROMPT 10 — ACTIVITY LOGGING BUSINESS LOGIC
+
+Implement activity logging.
+
+Supported examples:
+Walking
+Running
+Cycling
+Swimming
+Strength Training
+Cardio
+Aerobic
+Yoga
+Stretching
+Hiking
+Dancing
+Sports
+Other
+
+Activity master is database-driven.
+
+Flow:
+AI extraction
+→ activity resolution
+→ category resolution
+→ time/duration normalization
+→ MET lookup
+→ backend calorie calculation
+→ activity log
+→ response
+
+Requirements:
+- AI must not calculate authoritative calories.
+- Backend owns calorie calculation.
+- Store activity, category, duration, intensity, distance and calories.
+- Support start/end times.
+- If duration is derivable from start/end, calculate it.
+- If required information is missing, ask clarification.
+- Support follow-ups.
+
+Example:
+Aaje 7:30 thi 9 sudhi gym ma strength training kari
+
+Example:
+Aaje gym ma 1 hour workout karyu. Add 20 min walk also.
+
+Create reusable calculation service and tests.
