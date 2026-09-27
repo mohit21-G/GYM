@@ -1,10 +1,10 @@
 {
   "project": "google-fitbit-ai-chatbot",
-  "currentPrompt": 1,
-  "currentPromptFile": "Prompt_01_Project_Foundation.txt",
+  "currentPrompt": 2,
+  "currentPromptFile": "Prompt_02_Database_Prism_Schema.txt",
   "status": "COMPLETED",
-  "completedPrompts": [1],
-  "nextPrompt": 2,
+  "completedPrompts": [1, 2],
+  "nextPrompt": 3,
   "lastSuccessfulVerification": {
     "typecheck": true,
     "lint": true,
@@ -12,5 +12,5 @@
     "build": true
   },
   "blockingIssue": null,
-  "lastUpdated": "2026-09-27T13:01:00+05:30"
+  "lastUpdated": "2026-09-27T13:05:00+05:30"
 }

@@ -10,7 +10,7 @@ export class HealthController {
   @Get()
   @ApiOperation({ summary: 'System Health Check' })
   @ApiResponse({ status: 200, description: 'Health check response' })
-  check() {
-    return this.healthService.getHealth();
+  async check() {
+    return await this.healthService.getHealth();
   }
 }
