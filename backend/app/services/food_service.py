@@ -18,6 +18,70 @@ class FoodTermsCache:
     term_to_food_id: Dict[str, str] = {}
     is_loaded: bool = False
 
+CANONICAL_INDIAN_FOOD_PROFILES: Dict[str, Dict[str, Any]] = {
+    "Roti": {"food_id": "canon_roti", "food_name": "Roti", "calories": 104.0, "protein_g": 3.1, "carbs_g": 20.0, "fat_g": 1.2, "fiber_g": 2.8, "unit": "piece"},
+    "Whole Wheat Bhakri": {"food_id": "canon_bhakri", "food_name": "Whole Wheat Bhakri", "calories": 130.0, "protein_g": 3.8, "carbs_g": 24.0, "fat_g": 2.2, "fiber_g": 3.0, "unit": "piece"},
+    "Khapli Wheat Rotli": {"food_id": "canon_khapli", "food_name": "Khapli Wheat Rotli", "calories": 85.0, "protein_g": 3.5, "carbs_g": 16.5, "fat_g": 0.8, "fiber_g": 3.2, "unit": "piece"},
+    "Bajra Roti": {"food_id": "canon_bajra_roti", "food_name": "Bajra Roti", "calories": 116.0, "protein_g": 3.2, "carbs_g": 22.0, "fat_g": 1.5, "fiber_g": 3.5, "unit": "piece"},
+    "Methi Thepla": {"food_id": "canon_thepla", "food_name": "Methi Thepla", "calories": 115.0, "protein_g": 3.0, "carbs_g": 18.0, "fat_g": 3.5, "fiber_g": 2.5, "unit": "piece"},
+    "Plain Paratha": {"food_id": "canon_paratha", "food_name": "Plain Paratha", "calories": 180.0, "protein_g": 4.0, "carbs_g": 28.0, "fat_g": 6.0, "fiber_g": 2.0, "unit": "piece"},
+    "Aloo Paratha": {"food_id": "canon_aloo_paratha", "food_name": "Aloo Paratha", "calories": 240.0, "protein_g": 5.0, "carbs_g": 36.0, "fat_g": 8.5, "fiber_g": 3.5, "unit": "piece"},
+    "Paneer Paratha": {"food_id": "canon_paneer_paratha", "food_name": "Paneer Paratha", "calories": 280.0, "protein_g": 11.0, "carbs_g": 32.0, "fat_g": 12.0, "fiber_g": 2.5, "unit": "piece"},
+    "Poori": {"food_id": "canon_poori", "food_name": "Poori", "calories": 125.0, "protein_g": 2.0, "carbs_g": 16.0, "fat_g": 6.0, "fiber_g": 1.0, "unit": "piece"},
+    "Butter Naan": {"food_id": "canon_butter_naan", "food_name": "Butter Naan", "calories": 260.0, "protein_g": 6.0, "carbs_g": 40.0, "fat_g": 8.0, "fiber_g": 2.0, "unit": "piece"},
+    "Cooked White Rice": {"food_id": "canon_rice", "food_name": "Cooked White Rice", "calories": 130.0, "protein_g": 2.7, "carbs_g": 28.0, "fat_g": 0.3, "fiber_g": 0.4, "unit": "bowl"},
+    "Moong Dal Khichdi": {"food_id": "canon_khichdi", "food_name": "Moong Dal Khichdi", "calories": 175.0, "protein_g": 6.0, "carbs_g": 32.0, "fat_g": 2.5, "fiber_g": 3.5, "unit": "bowl"},
+    "Poha": {"food_id": "canon_poha", "food_name": "Poha", "calories": 180.0, "protein_g": 3.5, "carbs_g": 33.0, "fat_g": 4.5, "fiber_g": 2.5, "unit": "plate"},
+    "Upma": {"food_id": "canon_upma", "food_name": "Upma", "calories": 190.0, "protein_g": 4.0, "carbs_g": 34.0, "fat_g": 4.5, "fiber_g": 2.5, "unit": "bowl"},
+    "Idli": {"food_id": "canon_idli", "food_name": "Idli", "calories": 58.0, "protein_g": 2.0, "carbs_g": 12.0, "fat_g": 0.2, "fiber_g": 1.0, "unit": "piece"},
+    "Plain Dosa": {"food_id": "canon_plain_dosa", "food_name": "Plain Dosa", "calories": 168.0, "protein_g": 3.8, "carbs_g": 29.0, "fat_g": 3.7, "fiber_g": 1.5, "unit": "piece"},
+    "Masala Dosa": {"food_id": "canon_masala_dosa", "food_name": "Masala Dosa", "calories": 250.0, "protein_g": 4.5, "carbs_g": 38.0, "fat_g": 9.0, "fiber_g": 2.5, "unit": "piece"},
+    "Onion Tomato Uttapam": {"food_id": "canon_uttapam", "food_name": "Onion Tomato Uttapam", "calories": 220.0, "protein_g": 5.0, "carbs_g": 35.0, "fat_g": 6.0, "fiber_g": 2.8, "unit": "piece"},
+    "Toor Dal": {"food_id": "canon_toor_dal", "food_name": "Toor Dal", "calories": 120.0, "protein_g": 7.0, "carbs_g": 18.0, "fat_g": 2.5, "fiber_g": 4.0, "unit": "bowl"},
+    "Yellow Moong Dal": {"food_id": "canon_moong_dal", "food_name": "Yellow Moong Dal", "calories": 115.0, "protein_g": 7.5, "carbs_g": 17.5, "fat_g": 2.0, "fiber_g": 4.2, "unit": "bowl"},
+    "Gujarati Kadhi": {"food_id": "canon_kadhi", "food_name": "Gujarati Kadhi", "calories": 120.0, "protein_g": 3.5, "carbs_g": 14.0, "fat_g": 5.5, "fiber_g": 1.0, "unit": "bowl"},
+    "Sambar": {"food_id": "canon_sambar", "food_name": "Sambar", "calories": 110.0, "protein_g": 4.5, "carbs_g": 17.0, "fat_g": 2.5, "fiber_g": 3.5, "unit": "bowl"},
+    "Chole Chana Masala": {"food_id": "canon_chole", "food_name": "Chole Chana Masala", "calories": 170.0, "protein_g": 7.0, "carbs_g": 25.0, "fat_g": 5.0, "fiber_g": 6.0, "unit": "bowl"},
+    "Rajma": {"food_id": "canon_rajma", "food_name": "Rajma", "calories": 140.0, "protein_g": 8.0, "carbs_g": 23.0, "fat_g": 2.5, "fiber_g": 6.5, "unit": "bowl"},
+    "Mixed Sprouts": {"food_id": "canon_sprouts", "food_name": "Mixed Sprouts", "calories": 110.0, "protein_g": 8.5, "carbs_g": 18.0, "fat_g": 1.0, "fiber_g": 5.0, "unit": "bowl"},
+    "Mixed Vegetable Sabzi": {"food_id": "canon_sabzi", "food_name": "Mixed Vegetable Sabzi", "calories": 110.0, "protein_g": 2.5, "carbs_g": 12.0, "fat_g": 6.0, "fiber_g": 3.5, "unit": "bowl"},
+    "Aloo Sabzi": {"food_id": "canon_aloo_sabzi", "food_name": "Aloo Sabzi", "calories": 135.0, "protein_g": 2.0, "carbs_g": 20.0, "fat_g": 5.5, "fiber_g": 2.5, "unit": "bowl"},
+    "Bhindi Masala": {"food_id": "canon_bhindi", "food_name": "Bhindi Masala", "calories": 130.0, "protein_g": 3.0, "carbs_g": 11.0, "fat_g": 8.0, "fiber_g": 4.0, "unit": "bowl"},
+    "Sev Tameta Nu Shaak": {"food_id": "canon_sev_tameta", "food_name": "Sev Tameta Nu Shaak", "calories": 180.0, "protein_g": 4.5, "carbs_g": 22.0, "fat_g": 8.5, "fiber_g": 3.0, "unit": "bowl"},
+    "Surti Undhiyu": {"food_id": "canon_undhiyu", "food_name": "Surti Undhiyu", "calories": 240.0, "protein_g": 6.0, "carbs_g": 28.0, "fat_g": 12.0, "fiber_g": 5.5, "unit": "bowl"},
+    "Gujarati Dal Dhokli": {"food_id": "canon_dal_dhokli", "food_name": "Gujarati Dal Dhokli", "calories": 220.0, "protein_g": 7.5, "carbs_g": 36.0, "fat_g": 5.5, "fiber_g": 4.5, "unit": "bowl"},
+    "Gujarati Handvo": {"food_id": "canon_handvo", "food_name": "Gujarati Handvo", "calories": 185.0, "protein_g": 5.5, "carbs_g": 26.0, "fat_g": 6.5, "fiber_g": 3.5, "unit": "piece"},
+    "Khaman Dhokla": {"food_id": "canon_khaman", "food_name": "Khaman Dhokla", "calories": 150.0, "protein_g": 5.0, "carbs_g": 24.0, "fat_g": 3.5, "fiber_g": 2.0, "unit": "piece"},
+    "Muthiya": {"food_id": "canon_muthiya", "food_name": "Muthiya", "calories": 150.0, "protein_g": 4.0, "carbs_g": 25.0, "fat_g": 4.0, "fiber_g": 3.0, "unit": "piece"},
+    "Patra": {"food_id": "canon_patra", "food_name": "Patra", "calories": 140.0, "protein_g": 3.5, "carbs_g": 22.0, "fat_g": 4.0, "fiber_g": 2.5, "unit": "piece"},
+    "Methi Khakhra": {"food_id": "canon_khakhra", "food_name": "Methi Khakhra", "calories": 95.0, "protein_g": 2.8, "carbs_g": 16.0, "fat_g": 2.2, "fiber_g": 2.5, "unit": "piece"},
+    "Fafda": {"food_id": "canon_fafda", "food_name": "Fafda", "calories": 175.0, "protein_g": 4.0, "carbs_g": 22.0, "fat_g": 8.0, "fiber_g": 2.0, "unit": "piece"},
+    "Jalebi": {"food_id": "canon_jalebi", "food_name": "Jalebi", "calories": 150.0, "protein_g": 1.0, "carbs_g": 35.0, "fat_g": 2.0, "fiber_g": 0.2, "unit": "piece"},
+    "Mohanthal": {"food_id": "canon_mohanthal", "food_name": "Mohanthal", "calories": 220.0, "protein_g": 4.0, "carbs_g": 28.0, "fat_g": 11.0, "fiber_g": 1.5, "unit": "piece"},
+    "Sukhdi": {"food_id": "canon_sukhdi", "food_name": "Sukhdi", "calories": 200.0, "protein_g": 3.0, "carbs_g": 26.0, "fat_g": 10.0, "fiber_g": 1.5, "unit": "piece"},
+    "Puran Poli": {"food_id": "canon_puran_poli", "food_name": "Puran Poli", "calories": 210.0, "protein_g": 4.5, "carbs_g": 38.0, "fat_g": 5.0, "fiber_g": 2.5, "unit": "piece"},
+    "Basundi": {"food_id": "canon_basundi", "food_name": "Basundi", "calories": 220.0, "protein_g": 5.5, "carbs_g": 26.0, "fat_g": 10.5, "fiber_g": 0.0, "unit": "bowl"},
+    "Shrikhand": {"food_id": "canon_shrikhand", "food_name": "Shrikhand", "calories": 230.0, "protein_g": 6.0, "carbs_g": 32.0, "fat_g": 9.0, "fiber_g": 0.0, "unit": "bowl"},
+    "Pav Bhaji": {"food_id": "canon_pav_bhaji", "food_name": "Pav Bhaji", "calories": 350.0, "protein_g": 8.0, "carbs_g": 50.0, "fat_g": 13.0, "fiber_g": 4.5, "unit": "plate"},
+    "Samosa": {"food_id": "canon_samosa", "food_name": "Samosa", "calories": 210.0, "protein_g": 3.5, "carbs_g": 25.0, "fat_g": 11.0, "fiber_g": 2.0, "unit": "piece"},
+    "Green Salad": {"food_id": "canon_salad", "food_name": "Green Salad", "calories": 35.0, "protein_g": 1.5, "carbs_g": 6.5, "fat_g": 0.5, "fiber_g": 2.5, "unit": "bowl"},
+    "Apple": {"food_id": "canon_apple", "food_name": "Apple", "calories": 95.0, "protein_g": 0.5, "carbs_g": 25.0, "fat_g": 0.3, "fiber_g": 4.4, "unit": "piece"},
+    "Banana": {"food_id": "canon_banana", "food_name": "Banana", "calories": 105.0, "protein_g": 1.3, "carbs_g": 27.0, "fat_g": 0.3, "fiber_g": 3.1, "unit": "piece"},
+    "Boiled Egg": {"food_id": "canon_boiled_egg", "food_name": "Boiled Egg", "calories": 78.0, "protein_g": 6.3, "carbs_g": 0.6, "fat_g": 5.3, "fiber_g": 0.0, "unit": "piece"},
+    "Egg Omelette": {"food_id": "canon_omelette", "food_name": "Egg Omelette", "calories": 154.0, "protein_g": 12.0, "carbs_g": 1.5, "fat_g": 11.0, "fiber_g": 0.0, "unit": "piece"},
+    "Chicken Breast": {"food_id": "canon_chicken_breast", "food_name": "Chicken Breast", "calories": 165.0, "protein_g": 31.0, "carbs_g": 0.0, "fat_g": 3.6, "fiber_g": 0.0, "unit": "piece"},
+    "Chicken Tikka": {"food_id": "canon_chicken_tikka", "food_name": "Chicken Tikka", "calories": 220.0, "protein_g": 28.0, "carbs_g": 4.0, "fat_g": 10.0, "fiber_g": 1.0, "unit": "serving"},
+    "Whey Protein Powder": {"food_id": "canon_whey", "food_name": "Whey Protein Powder", "calories": 120.0, "protein_g": 24.0, "carbs_g": 2.0, "fat_g": 1.5, "fiber_g": 0.0, "unit": "scoop"},
+    "Paneer": {"food_id": "canon_paneer", "food_name": "Paneer", "calories": 265.0, "protein_g": 18.0, "carbs_g": 3.5, "fat_g": 20.0, "fiber_g": 0.0, "unit": "serving"},
+    "Paneer Bhurji": {"food_id": "canon_paneer_bhurji", "food_name": "Paneer Bhurji", "calories": 220.0, "protein_g": 14.0, "carbs_g": 6.0, "fat_g": 16.0, "fiber_g": 1.5, "unit": "bowl"},
+    "Curd (Dahi)": {"food_id": "canon_curd", "food_name": "Curd (Dahi)", "calories": 98.0, "protein_g": 4.5, "carbs_g": 6.0, "fat_g": 6.5, "fiber_g": 0.0, "unit": "bowl"},
+    "Cow Milk (Toned)": {"food_id": "canon_milk", "food_name": "Cow Milk (Toned)", "calories": 120.0, "protein_g": 6.5, "carbs_g": 9.5, "fat_g": 6.0, "fiber_g": 0.0, "unit": "glass"},
+    "Spiced Buttermilk (Chaas)": {"food_id": "canon_chaas", "food_name": "Spiced Buttermilk (Chaas)", "calories": 40.0, "protein_g": 2.2, "carbs_g": 3.5, "fat_g": 1.5, "fiber_g": 0.0, "unit": "glass"},
+    "Tea With Milk": {"food_id": "canon_tea", "food_name": "Tea With Milk", "calories": 65.0, "protein_g": 2.0, "carbs_g": 9.0, "fat_g": 2.5, "fiber_g": 0.0, "unit": "cup"},
+    "Coffee With Milk": {"food_id": "canon_coffee", "food_name": "Coffee With Milk", "calories": 75.0, "protein_g": 2.2, "carbs_g": 10.0, "fat_g": 2.8, "fiber_g": 0.0, "unit": "cup"},
+    "Water": {"food_id": "canon_water", "food_name": "Water", "calories": 0.0, "protein_g": 0.0, "carbs_g": 0.0, "fat_g": 0.0, "fiber_g": 0.0, "unit": "glass"},
+}
+
 class FoodService:
     @staticmethod
     def resolve_food_icon(food_name: str, category: Optional[str] = None) -> str:
@@ -84,13 +148,13 @@ class FoodService:
         # Clean verbal baggage, time markers, postpositions and leading quantities
         clean_q = re.sub(
             r"\b(?:morning|afternoon|evening|night|breakfast|lunch|dinner|snack|savare|bapore|sanju|saanje|raate|subah|dopahar|shaam|sham|raat)\b"
-            r"|\b(?:ma|maa|me|mein|ko|ne|nu|na|ni|no|thi|par|pe|se)\b"
+            r"|\b(?:ma|maa|me|mein|ko|ne|nu|na|ni|no|thi|par|pe|se|of|for|in|at|on|with)\b"
             r"|\b(?:i|my|mine|me|maine|hamne|aaj|aaje|today)\b"
-            r"|\b(?:and|ane|aur|with|sathe|sath|along with)\b"
+            r"|\b(?:and|ane|aur|sathe|sath|along with)\b"
             r"|\b(?:ate|had|eaten|have|drank|drink|drinking|khadha|khadhi|khadhu|khaye|khaya|khayi|khalo|pidhi|pidhu|pidha|piya|piyi|peeli|peena|lidhi|lidhu|lidho|leedhi|leedhu|liya|li)\b"
             r"|\b(?:che|tha|thi|the|hata|hati|chho|chhe)\b"
-            r"|(?:મેં|ખાધી|ખાધું|ખાધા|લીધી|લીધું|પીધું|પીધી|છે|હતી|હતો|આજે|બપોરે|સવારે|રાત્રે|સાથે|નાસ્તો|વાળુ)"
-            r"|(?:मैंने|खाया|खाई|खाए|पिया|पी|लिया|ली|है|था|थी|आज|सुबह|दोपहर|रात|साथ|नाश्ता)",
+            r"|(?:મેં|ખાધી|ખાધું|ખાધા|લીધી|લીધું|પીધું|પીધી|છે|હતી|હતો|આજે|બપોરે|સવારે|રાત્રે|સાથે|નાસ્તો|વાળુ|માં|ના|ની|નો|નું|ને|થી|પર|માટે)"
+            r"|(?:मैंने|खाया|खाई|खाए|पिया|पी|लिया|ली|है|था|थी|आज|सुबह|दोपहर|रात|साथ|नाश्ता|में|का|की|के|को|से|पर|पे|ने|लिए)",
             " ",
             q,
             flags=re.I
@@ -104,17 +168,36 @@ class FoodService:
 
         # Step 1: Check known Indian dialect synonyms & slang map
         synonym_target = INDIAN_FOOD_SYNONYMS.get(clean_q) or INDIAN_FOOD_SYNONYMS.get(q)
+
+        # Multi-word phrase matching with word boundaries before single tokens
+        if not synonym_target:
+            for food_key in sorted(INDIAN_FOOD_SYNONYMS.keys(), key=len, reverse=True):
+                if " " in food_key or any(ord(c) > 127 for c in food_key):
+                    if len(food_key) >= 3 and (food_key in clean_q or re.search(rf"\b{re.escape(food_key)}\b", clean_q, flags=re.I)):
+                        synonym_target = INDIAN_FOOD_SYNONYMS[food_key]
+                        break
+
+        # Single tokens
         if not synonym_target:
             tokens = clean_q.split()
             for t in tokens:
                 if t in INDIAN_FOOD_SYNONYMS:
                     synonym_target = INDIAN_FOOD_SYNONYMS[t]
                     break
+
+        # Fallback substring
         if not synonym_target:
             for food_key in sorted(INDIAN_FOOD_SYNONYMS.keys(), key=len, reverse=True):
                 if len(food_key) >= 3 and food_key in clean_q:
                     synonym_target = INDIAN_FOOD_SYNONYMS[food_key]
                     break
+
+        # If canonical profile matches, return immediately with accurate macros and food name
+        if synonym_target and synonym_target in CANONICAL_INDIAN_FOOD_PROFILES:
+            return CANONICAL_INDIAN_FOOD_PROFILES[synonym_target]
+        for c_name, c_prof in CANONICAL_INDIAN_FOOD_PROFILES.items():
+            if c_name.lower() == clean_q or c_name.lower() == q:
+                return c_prof
 
         search_term = synonym_target.lower() if synonym_target else clean_q
 
@@ -138,11 +221,11 @@ class FoodService:
             if alias_doc and "food_id" in alias_doc:
                 doc = await db.foods.find_one({"food_id": alias_doc["food_id"]})
 
-        # Step 4: Substring / regex search
+        # Step 4: Substring / regex search with word boundaries
         if not doc and len(clean_q) >= 3:
-            doc = await db.foods.find_one({"food_name": {"$regex": escaped_clean, "$options": "i"}})
+            doc = await db.foods.find_one({"food_name": {"$regex": rf"\b{escaped_clean}\b", "$options": "i"}})
         if not doc and len(clean_q) >= 3:
-            doc = await db.foods.find_one({"food_name_display": {"$regex": escaped_clean, "$options": "i"}})
+            doc = await db.foods.find_one({"food_name_display": {"$regex": rf"\b{escaped_clean}\b", "$options": "i"}})
 
         # Step 5: High-speed in-memory Fuzzy Search (Levenshtein / difflib with strict 0.72 cutoff)
         if not doc:
@@ -325,8 +408,10 @@ class FoodService:
         total_meal_fib = 0.0
 
         for item in items:
+            if not item.quantity or item.quantity <= 0:
+                continue
             resolved = await FoodService.resolve_food(item.food)
-            qty = item.quantity if item.quantity and item.quantity > 0 else 1.0
+            qty = float(item.quantity)
             unit = item.unit or resolved.get("unit", "serving")
 
             item_cal = round(resolved["calories"] * qty, 1)
@@ -382,6 +467,22 @@ class FoodService:
             total_meal_fib += item_fib
 
         summary_result = await FoodService.get_daily_grouped_food_cards(user_id, target_date_str)
+
+        if not logged_items:
+            return FoodLoggingResult(
+                success=True,
+                requiresClarification=False,
+                replyText="No food items were logged because quantity was zero or missing.",
+                loggedItems=[],
+                groupedFoodCards=summary_result["groupedFoodCards"],
+                dailyNutritionSummary=summary_result["dailyNutritionSummary"],
+                mealTotals={"calories": 0.0, "proteinG": 0.0, "carbsG": 0.0, "fatG": 0.0, "fiberG": 0.0},
+                dailyProgress={
+                    "totalCaloriesLoggedToday": summary_result["dailyNutritionSummary"].totalCalories,
+                    "dailyCalorieTarget": summary_result["dailyNutritionSummary"].targetCalories,
+                    "remainingCalories": summary_result["dailyNutritionSummary"].remainingCalories,
+                },
+            )
 
         items_parts = []
         for inp_item, l in zip(items, logged_items):

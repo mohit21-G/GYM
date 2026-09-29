@@ -71,29 +71,6 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# CORS setup
-cors_origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "https://gym-zeta-five-47.vercel.app",
-]
-if settings.CORS_ORIGINS:
-    for origin in settings.CORS_ORIGINS.split(","):
-        origin = origin.strip()
-        if origin and origin not in cors_origins:
-            cors_origins.append(origin)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=cors_origins,
-    allow_origin_regex=r"^https:\/\/.*\.vercel\.app$",
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 # Response Envelope Middleware: wraps /api/v1 responses in { success: true, statusCode: 200, data: ... }
 class ResponseEnvelopeMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -130,6 +107,29 @@ class ResponseEnvelopeMiddleware(BaseHTTPMiddleware):
         return response
 
 app.add_middleware(ResponseEnvelopeMiddleware)
+
+# CORS setup - added outermost so preflight OPTIONS requests are handled immediately
+cors_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://gym-zeta-five-47.vercel.app",
+]
+if settings.CORS_ORIGINS:
+    for origin in settings.CORS_ORIGINS.split(","):
+        origin = origin.strip()
+        if origin and origin not in cors_origins:
+            cors_origins.append(origin)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins,
+    allow_origin_regex=r"^https:\/\/.*\.vercel\.app$",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Custom Exception Handlers for frontend / test compatibility
 @app.exception_handler(HTTPException)

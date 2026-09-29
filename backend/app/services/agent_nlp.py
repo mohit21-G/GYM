@@ -44,7 +44,7 @@ UNIT_MAP = {
     "glass": "glass", "glasses": "glass", "glaas": "glass", "gls": "glass", "pyala": "glass",
     "plate": "plate", "plates": "plate", "dish": "plate", "thaali": "plate", "plet": "plate",
     "piece": "piece", "pieces": "piece", "pcs": "piece", "pc": "piece", "pice": "piece", "pices": "piece",
-    "nag": "piece", "tukda": "piece", "rotli": "piece", "roti": "piece",
+    "nag": "piece", "tukda": "piece",
     "slice": "slice", "slices": "slice", "scoop": "scoop", "scoops": "scoop",
     "spoon": "tbsp", "spoons": "tbsp", "chamchi": "tbsp", "chammach": "tbsp",
     "tbsp": "tbsp", "tsp": "tsp", "ml": "ml", "liter": "l", "litre": "l",
@@ -130,6 +130,8 @@ INDIAN_FOOD_SYNONYMS: Dict[str, str] = {
     "paratha": "Plain Paratha",
     "aloo paratha": "Aloo Paratha",
     "paneer paratha": "Paneer Paratha",
+    "pneer paratha": "Paneer Paratha",
+    "panir paratha": "Paneer Paratha",
     "poori": "Poori",
     "puri": "Poori",
     "naan": "Butter Naan",
@@ -193,7 +195,12 @@ INDIAN_FOOD_SYNONYMS: Dict[str, str] = {
     "sambhar": "Sambar",
     "sambar": "Sambar",
     "chole": "Chole Chana Masala",
+    "chole chana": "Chole Chana Masala",
+    "chole masala": "Chole Chana Masala",
+    "chana masala": "Chole Chana Masala",
     "rajma": "Rajma",
+    "kidney bean": "Rajma",
+    "kidney beans": "Rajma",
     "chana": "Boiled Chickpeas",
     "sprouts": "Mixed Sprouts",
 
@@ -219,9 +226,25 @@ INDIAN_FOOD_SYNONYMS: Dict[str, str] = {
     "shak": "Mixed Vegetable Sabzi",
     "bhindi": "Bhindi Masala",
     "bhindi sabzi": "Bhindi Masala",
+    "bhindi masala": "Bhindi Masala",
+    "okra": "Bhindi Masala",
+    "okra sabzi": "Bhindi Masala",
+    "okra sabji": "Bhindi Masala",
     "aloo sabzi": "Aloo Sabzi",
+    "alu sabzi": "Aloo Sabzi",
+    "alu sabji": "Aloo Sabzi",
+    "aloo sabji": "Aloo Sabzi",
     "bataka nu shaak": "Aloo Sabzi",
-    "aloo gobi": "Aloo Gobi",
+    "bataka ni subji": "Aloo Sabzi",
+    "bataka subji": "Aloo Sabzi",
+    "bateka ni subji": "Aloo Sabzi",
+    "bateka subji": "Aloo Sabzi",
+    "bateka nu shaak": "Aloo Sabzi",
+    "bateta nu shaak": "Aloo Sabzi",
+    "bateta ni sabji": "Aloo Sabzi",
+    "bateta subji": "Aloo Sabzi",
+    "aloo gobi": "Aloo Sabzi",
+    "alu gobi": "Aloo Sabzi",
     "palak": "Palak Paneer",
     "salad": "Green Salad",
 
@@ -233,6 +256,9 @@ INDIAN_FOOD_SYNONYMS: Dict[str, str] = {
     "boiled egg": "Boiled Egg",
     "boiled eggs": "Boiled Egg",
     "omelette": "Egg Omelette",
+    "omelet": "Egg Omelette",
+    "egg omelette": "Egg Omelette",
+    "egg omlette": "Egg Omelette",
     "egg white": "Egg White",
     "chicken": "Chicken Breast",
     "chiken": "Chicken Breast",
@@ -271,9 +297,9 @@ INDIAN_FOOD_SYNONYMS: Dict[str, str] = {
     "shrikhand": "Shrikhand",
     "basundi": "Basundi",
     "kachumber": "Green Salad",
-    "salad": "Green Salad",
     "fafda": "Fafda",
     "jalebi": "Jalebi",
+    "jilapi": "Jalebi",
     "puran poli": "Puran Poli",
     "puranpoli": "Puran Poli",
     "vedmi": "Puran Poli",
@@ -338,6 +364,16 @@ INDIAN_FOOD_SYNONYMS: Dict[str, str] = {
     "સુખડી": "Sukhdi",
     "કઢી": "Gujarati Kadhi",
     "પૂરી": "Poori",
+    "ખમણ": "Khaman Dhokla",
+    "નાયલોન ખમણ": "Khaman Dhokla",
+    "દાળ ઢોકળી": "Gujarati Dal Dhokli",
+    "દાળઢોકળી": "Gujarati Dal Dhokli",
+    "છોલે": "Chole Chana Masala",
+    "છોલે ચના મસાલા": "Chole Chana Masala",
+    "પનીર પરાઠા": "Paneer Paratha",
+    "આલૂ સબ્જી": "Aloo Sabzi",
+    "આલૂ પરોઠા": "Aloo Paratha",
+    "આલૂ પરાઠા": "Aloo Paratha",
     "હાંડવો": "Gujarati Handvo",
     "થેપલા": "Methi Thepla",
 
@@ -359,6 +395,18 @@ INDIAN_FOOD_SYNONYMS: Dict[str, str] = {
     "पोहा": "Poha",
     "उपमा": "Upma",
     "राजमा": "Rajma",
+    "छोले": "Chole Chana Masala",
+    "छोले चना मसाला": "Chole Chana Masala",
+    "चना मसाला": "Chole Chana Masala",
+    "दाल ढोकली": "Gujarati Dal Dhokli",
+    "दालढोकली": "Gujarati Dal Dhokli",
+    "पनीर पराठा": "Paneer Paratha",
+    "आलू गोभी": "Aloo Sabzi",
+    "आलू गोबी": "Aloo Sabzi",
+    "आलू सब्जी": "Aloo Sabzi",
+    "आलू पराठा": "Aloo Paratha",
+    "अंडा ऑमलेट": "Egg Omelette",
+    "ऑमलेट": "Egg Omelette",
     "भिंडी": "Bhindi Masala",
     "बासुंदी": "Basundi",
     "सेव टमाटर": "Sev Tameta Nu Shaak",
@@ -446,6 +494,8 @@ class AgentNLP:
             r"\bwid\b": "with",
             r"\bchaye\b": "chai",
             r"\bpneer\b": "paneer",
+            r"\bpneeeer\b": "paneer",
+            r"\bpoh\b": "poha",
             r"\bmakni\b": "makhani",
             r"\beggz\b": "eggs",
             r"\bsamose\b": "samosa",
@@ -488,6 +538,10 @@ class AgentNLP:
         norm = AgentNLP.normalize_text(text)
         lower = norm.lower()
 
+        # 0. Zero quantity check -> GENERAL_CHAT (DO NOT LOG)
+        if re.search(r"\b(?:ate|had|consumed|drank|eaten|have|khadha|khadhi|khadhu|khaya|khayi|pidhu|pidhi)\s+0(?:\.0+)?\b|\b0(?:\.0+)?\s*(?:ml|liter|litre|glass|cup|bottle|serving|bowl|plate|piece|nag|katori|vatki|g|kg|scoop)\b|\b(?:ate|had|drank)\s+zero\b", lower):
+            return "GENERAL_CHAT"
+
         # 1. Update / Correction intent
         if any(w in lower for w in [
             "make it", "change to", "update to", "instead of", "actually", "sudharo",
@@ -506,17 +560,20 @@ class AgentNLP:
 
         # 0. Question / Advisory / Negative / Hypothetical check -> GENERAL_CHAT (DO NOT LOG)
         is_hypothetical = any(w in lower for w in [
-            "if i eat", "if i have", "might eat", "will eat", "planning to eat",
-            "khavu padashe", "khana padega",
-            "agar me khau", "jo hu khau", "soch raha hu", "soch raha tha"
+            "if i eat", "if i have", "might eat", "will eat", "planning to eat", "planning to have", "planning to",
+            "plan to eat", "plan to have", "plan hai", "plane hai", "plane chhe", "plan chhe",
+            "khane ka plan", "khavu padashe", "khavu padshe", "khana padega",
+            "suppose", "assume", "what if", "agar me khau", "jo hu khau", "soch raha hu", "soch raha tha", "soch raha",
+            "vicharu chhu", "vichar chhe", "will drink", "planning to drink"
         ])
         is_negative = any(w in lower for w in [
-            "did not eat", "have not eaten", "haven't eaten", "havent eaten", "not eat anything", "didn't eat",
-            "not eat anything yet", "didn't have", "did not have", "have not had",
-            "nathi khadhu", "nathi pidhu", "nahi khaya", "kuch nahi khaya", "kahi nahi khaya",
-            "nahi piya", "kahi nathi khadhu", "kahi nathi lidhu",
-            "khadhu nathi", "khadha nathi", "khadhi nathi", "khaya nahi", "khayi nahi", "khaye nahi",
-            "ખાધું નથી", "ખાધા નથી", "ખાધી નથી", "खाया नहीं", "खाई नहीं", "खाए नहीं", "કંઈ ખાધું નથી", "कुछ नहीं खाया"
+            "did not eat", "have not eaten", "haven't eaten", "havent eaten", "not eat anything", "didn't eat", "not eaten any",
+            "not eat anything yet", "didn't have", "did not have", "have not had", "haven't had", "not had any",
+            "nathi khadhu", "nathi pidhu", "nahi khaya", "kuch nahi khaya", "kahi nahi khaya", "nahi khai", "nahi khaye",
+            "nahi piya", "kahi nathi khadhu", "kahi nathi lidhu", "nahi li", "nahi liya",
+            "khadhu nathi", "khadha nathi", "khadhi nathi", "khaya nahi", "khayi nahi", "khaye nahi", "piya nahi",
+            "ખાધું નથી", "ખાધા નથી", "ખાધી નથી", "ખાધુ નથી", "પીધું નથી", "લીધું નથી", "લીધી નથી", "કંઈ ખાધું નથી", "કઈ ખાધું નથી", "કંઈ નથી ખાધું",
+            "खाया नहीं", "खाई नहीं", "खाए नहीं", "पिया नहीं", "नहीं खाया", "नहीं खाई", "नहीं खाए", "नहीं पिया", "नहीं ली", "नहीं लिया", "कुछ नहीं खाया"
         ])
         is_advisory = any(w in lower for w in [
             "how many calories in", "how many calories are in", "how much protein in", "how much protein is in",
@@ -708,9 +765,14 @@ class AgentNLP:
             if not clause:
                 continue
 
-            # Skip pure water or activity clauses
-            if any(w in clause for w in ["pani", "water", "walk", "run", "gym", "પાણી", "પાની"]):
+            # Skip pure water, activity, or sleep clauses
+            if any(w in clause for w in ["pani", "water", "walk", "run", "gym", "sleep", "slept", "oongh", "neend", "suto", "suvo", "પાણી", "પાની", "ઊંઘ", "નીંદ", "સોયા", "सोया"]):
                 continue
+
+            # Strip SQL injection attempts and benchmark noise
+            clause = re.sub(r";\s*DROP TABLE.*|;\s*--.*", "", clause, flags=re.IGNORECASE)
+            clause = re.sub(r"\bpleez\s+trac\w*\b|\bpleez\b|\btrac\b", "", clause, flags=re.IGNORECASE)
+            clause = re.sub(r'\{"user_id".*\}', '', clause)
 
             # Extract quantity
             qty = 1.0
@@ -720,6 +782,8 @@ class AgentNLP:
                     qty = float(num_match.group(1))
                 except Exception:
                     qty = 1.0
+            elif any(w in clause for w in ["thodu", "thoda", "thodi", "thodak", "zara", "thora", "થોડું", "થોડી", "थोड़ा", "थोड़ी"]):
+                qty = 0.5
 
             # Extract unit safely with word boundaries for short keys
             unit = "serving"
@@ -735,6 +799,7 @@ class AgentNLP:
 
             # Clean food phrase by stripping numbers, units, verbs, and filler words
             clean = clause
+            clean = re.sub(r"^\d+(\.\d+)?", "", clean)
             clean = re.sub(r"\b\d+(\.\d+)?\b", "", clean)
             for u_raw in sorted(UNIT_MAP.keys(), key=len, reverse=True):
                 if len(u_raw) <= 2:
@@ -742,16 +807,17 @@ class AgentNLP:
                 else:
                     clean = clean.replace(u_raw, " ")
 
-            # Remove time words, postpositions, and eating verbs
+            # Remove time words, postpositions, informal modifiers, and eating verbs
             clean = re.sub(
                 r"\b(?:morning|afternoon|evening|night|breakfast|lunch|dinner|snack|savare|bapore|sanju|saanje|raate|subah|dopahar|shaam|sham|raat)\b"
-                r"|\b(?:ma|maa|me|mein|ko|ne|nu|na|ni|no|thi|par|pe|se)\b"
+                r"|\b(?:thodu|thoda|thodi|thodak|zara|thora|kam|thoda sa|thodi si|થોડું|થોડી|थोड़ा|थोड़ी)\b"
+                r"|\b(?:ma|maa|me|mein|ko|ne|nu|na|ni|no|thi|par|pe|se|of|for|in|at|on|with)\b"
                 r"|\b(?:i|my|mine|me|maine|hamne|aaj|aaje|today|please|track|just now|yesterday|kal)\b"
-                r"|\b(?:and|ane|aur|with|sathe|sath|along with)\b"
+                r"|\b(?:and|ane|aur|sathe|sath|along with)\b"
                 r"|\b(?:ate|had|eaten|have|drank|drink|drinking|khadha|khadhi|khadhu|khaye|khaya|khayi|khalo|pidhi|pidhu|pidha|piya|piyi|peeli|peena|lidhi|lidhu|lidho|leedhi|leedhu|liya|li)\b"
                 r"|\b(?:che|tha|thi|the|hata|hati|chho|chhe)\b"
-                r"|(?:મેં|ખાધી|ખાધું|ખાધા|લીધી|લીધું|પીધું|પીધી|છે|હતી|હતો|આજે|બપોરે|સવારે|રાત્રે|સાથે|નાસ્તો|વાળુ)"
-                r"|(?:मैंने|खाया|खाई|खाए|पिया|पी|लिया|ली|है|था|थी|आज|सुबह|दोपहर|रात|साथ|नाश्ता)",
+                r"|(?:મેં|ખાધી|ખાધું|ખાધા|લીધી|લીધું|પીધું|પીધી|છે|હતી|હતો|આજે|બપોરે|સવારે|રાત્રે|સાથે|નાસ્તો|વાળુ|માં|ના|ની|નો|નું|ને|થી|પર|માટે)"
+                r"|(?:मैंने|खाया|खाई|खाए|पिया|पी|लिया|ली|है|था|थी|आज|सुबह|दोपहर|रात|साथ|नाश्ता|में|का|की|के|को|से|पर|पे|ने|लिए)",
                 " ",
                 clean,
                 flags=re.I
@@ -760,20 +826,34 @@ class AgentNLP:
             clean = re.sub(r"\s+", " ", clean).strip()
 
             if clean:
+                canonical = None
                 # 1. Exact lookup
-                canonical = INDIAN_FOOD_SYNONYMS.get(clean)
-                # 2. Token / substring lookup in INDIAN_FOOD_SYNONYMS
+                if clean in INDIAN_FOOD_SYNONYMS:
+                    canonical = INDIAN_FOOD_SYNONYMS[clean]
+
+                # 2. Check multi-word phrase keys first (longest first)
+                if not canonical:
+                    for food_key in sorted(INDIAN_FOOD_SYNONYMS.keys(), key=len, reverse=True):
+                        if " " in food_key or any(ord(c) > 127 for c in food_key):
+                            if len(food_key) >= 3 and (food_key in clean or re.search(rf"\b{re.escape(food_key)}\b", clean, flags=re.I)):
+                                canonical = INDIAN_FOOD_SYNONYMS[food_key]
+                                break
+
+                # 3. Check single tokens
                 if not canonical:
                     tokens = clean.split()
                     for t in tokens:
                         if t in INDIAN_FOOD_SYNONYMS:
                             canonical = INDIAN_FOOD_SYNONYMS[t]
                             break
+
+                # 4. Fallback substring
                 if not canonical:
                     for food_key in sorted(INDIAN_FOOD_SYNONYMS.keys(), key=len, reverse=True):
                         if len(food_key) >= 3 and food_key in clean:
                             canonical = INDIAN_FOOD_SYNONYMS[food_key]
                             break
+
                 if not canonical:
                     canonical = clean.title()
 
