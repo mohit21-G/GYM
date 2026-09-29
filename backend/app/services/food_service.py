@@ -22,10 +22,11 @@ CANONICAL_INDIAN_FOOD_PROFILES: Dict[str, Dict[str, Any]] = {
     "Roti": {"food_id": "canon_roti", "food_name": "Roti", "calories": 104.0, "protein_g": 3.1, "carbs_g": 20.0, "fat_g": 1.2, "fiber_g": 2.8, "unit": "piece"},
     "Bhakri": {"food_id": "canon_bhakri", "food_name": "Bhakri", "calories": 130.0, "protein_g": 3.8, "carbs_g": 24.0, "fat_g": 2.2, "fiber_g": 3.0, "unit": "piece"},
     "Whole Wheat Bhakri": {"food_id": "canon_bhakri", "food_name": "Bhakri", "calories": 130.0, "protein_g": 3.8, "carbs_g": 24.0, "fat_g": 2.2, "fiber_g": 3.0, "unit": "piece"},
-    "Rotlo": {"food_id": "canon_bajra_roti", "food_name": "Rotlo (Bajra Roti)", "calories": 116.0, "protein_g": 3.2, "carbs_g": 22.0, "fat_g": 1.5, "fiber_g": 3.5, "unit": "piece"},
-    "Rotla": {"food_id": "canon_bajra_roti", "food_name": "Rotlo (Bajra Roti)", "calories": 116.0, "protein_g": 3.2, "carbs_g": 22.0, "fat_g": 1.5, "fiber_g": 3.5, "unit": "piece"},
-    "Bajra Roti": {"food_id": "canon_bajra_roti", "food_name": "Rotlo (Bajra Roti)", "calories": 116.0, "protein_g": 3.2, "carbs_g": 22.0, "fat_g": 1.5, "fiber_g": 3.5, "unit": "piece"},
-    "Bajri Rotla": {"food_id": "canon_bajra_roti", "food_name": "Rotlo (Bajra Roti)", "calories": 116.0, "protein_g": 3.2, "carbs_g": 22.0, "fat_g": 1.5, "fiber_g": 3.5, "unit": "piece"},
+    "Rotlo": {"food_id": "canon_bajra_roti", "food_name": "Rotlo", "calories": 116.0, "protein_g": 3.2, "carbs_g": 22.0, "fat_g": 1.5, "fiber_g": 3.5, "unit": "piece"},
+    "Rotla": {"food_id": "canon_bajra_roti", "food_name": "Rotlo", "calories": 116.0, "protein_g": 3.2, "carbs_g": 22.0, "fat_g": 1.5, "fiber_g": 3.5, "unit": "piece"},
+    "Rotlo (Bajra Roti)": {"food_id": "canon_bajra_roti", "food_name": "Rotlo", "calories": 116.0, "protein_g": 3.2, "carbs_g": 22.0, "fat_g": 1.5, "fiber_g": 3.5, "unit": "piece"},
+    "Bajra Roti": {"food_id": "canon_bajra_roti", "food_name": "Rotlo", "calories": 116.0, "protein_g": 3.2, "carbs_g": 22.0, "fat_g": 1.5, "fiber_g": 3.5, "unit": "piece"},
+    "Bajri Rotla": {"food_id": "canon_bajra_roti", "food_name": "Rotlo", "calories": 116.0, "protein_g": 3.2, "carbs_g": 22.0, "fat_g": 1.5, "fiber_g": 3.5, "unit": "piece"},
     "Baingan Bharta": {"food_id": "canon_bharta", "food_name": "Baingan Bharta", "calories": 120.0, "protein_g": 2.5, "carbs_g": 14.0, "fat_g": 6.0, "fiber_g": 4.5, "unit": "bowl"},
     "Bhadthu": {"food_id": "canon_bharta", "food_name": "Baingan Bharta", "calories": 120.0, "protein_g": 2.5, "carbs_g": 14.0, "fat_g": 6.0, "fiber_g": 4.5, "unit": "bowl"},
     "Methi Thepla": {"food_id": "canon_thepla", "food_name": "Methi Thepla", "calories": 115.0, "protein_g": 3.0, "carbs_g": 18.0, "fat_g": 3.5, "fiber_g": 2.5, "unit": "piece"},
@@ -172,8 +173,12 @@ class FoodService:
             clean_q = q
 
         # Step 0: Check CANONICAL_INDIAN_FOOD_PROFILES directly first (exact match on clean_q or q)
+        clean_norm = re.sub(r"[^\w\s]", " ", q).strip()
+        clean_norm = re.sub(r"\s+", " ", clean_norm)
         for c_name, c_prof in CANONICAL_INDIAN_FOOD_PROFILES.items():
-            if c_name.lower() == clean_q or c_name.lower() == q:
+            c_norm = re.sub(r"[^\w\s]", " ", c_name.lower()).strip()
+            c_norm = re.sub(r"\s+", " ", c_norm)
+            if c_name.lower() in (clean_q, q) or c_norm in (clean_q, clean_norm):
                 return c_prof
 
         # Step 1: Check known Indian dialect synonyms & slang map
@@ -281,8 +286,20 @@ class FoodService:
                     "fiber_g": 0.0,
                     "unit": "cup",
                 }
+            # Rotlo / Bajra
+            if any(w in search_term for w in ["rotlo", "rotla", "rotlu", "bajra", "bajri"]):
+                return {
+                    "food_id": "canon_bajra_roti",
+                    "food_name": "Rotlo",
+                    "calories": 116.0,
+                    "protein_g": 3.2,
+                    "carbs_g": 22.0,
+                    "fat_g": 1.5,
+                    "fiber_g": 3.5,
+                    "unit": "piece",
+                }
             # Roti / Breads
-            if any(w in search_term for w in ["roti", "rotli", "rotlo", "chapati", "khapli", "phulka"]):
+            if any(w in search_term for w in ["roti", "rotli", "chapati", "khapli", "phulka"]):
                 return {
                     "food_id": "smart_khapli_roti",
                     "food_name": "Khapli Wheat Rotli",
