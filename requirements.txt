@@ -16,6 +16,7 @@ python-dotenv>=1.0.1
 # Security & Authentication
 python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4
+PyJWT>=2.8.0
 bcrypt>=4.1.2
 
 # HTTP Clients
@@ -24,3 +25,4 @@ aiohttp>=3.9.3
 
 # Data Processing & Benchmarking
 numpy>=1.24.0
+

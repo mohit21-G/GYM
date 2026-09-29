@@ -384,7 +384,7 @@ class FoodService:
         summary_result = await FoodService.get_daily_grouped_food_cards(user_id, target_date_str)
 
         items_parts = []
-        for inp_item, l in zip(food_items, logged_items):
+        for inp_item, l in zip(items, logged_items):
             qty_val = int(l['quantity_amount']) if l['quantity_amount'].is_integer() else l['quantity_amount']
             raw_q = (inp_item.food or "").strip()
             if raw_q and raw_q.lower() != l['food_name'].lower() and raw_q.lower() not in l['food_name'].lower():
