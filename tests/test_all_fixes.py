@@ -110,12 +110,20 @@ def test_sleep_intent_and_duration():
         ent = AgentNLP.extract_sleep_entity(text)
         assert ent["durationMinutes"] == exp_mins, f"Expected {exp_mins} mins for '{text}', got {ent.get('durationMinutes')}"
 
-def test_savare_bhakri_breakfast_and_macros():
-    text = "me savare bhakri and chai pidhi"
-    extracted = AgentNLP.extract_food_entities_heuristically(text)
-    assert len(extracted) == 2, f"Expected 2 items, got {extracted}"
-    assert extracted[0]["food"] == "Bhakri", f"Expected 'Bhakri', got '{extracted[0]['food']}'"
-    assert extracted[0]["mealType"] == "BREAKFAST", f"Expected 'BREAKFAST', got '{extracted[0]['mealType']}'"
-    assert extracted[1]["food"] == "Tea With Milk", f"Expected 'Tea With Milk', got '{extracted[1]['food']}'"
-    assert extracted[1]["mealType"] == "BREAKFAST", f"Expected 'BREAKFAST', got '{extracted[1]['mealType']}'"
+def test_savar_and_sanje_rotlo_bhadthu():
+    # Case 1: "aaje me savar ma  bhakri khadhi"
+    t1 = "aaje me savar ma  bhakri khadhi"
+    ext1 = AgentNLP.extract_food_entities_heuristically(t1)
+    assert len(ext1) == 1
+    assert ext1[0]["food"] == "Bhakri"
+    assert ext1[0]["mealType"] == "BREAKFAST"
+
+    # Case 2: "sanje me bhadthu and rotlo khadho"
+    t2 = "sanje me bhadthu and rotlo khadho"
+    ext2 = AgentNLP.extract_food_entities_heuristically(t2)
+    assert len(ext2) == 2
+    assert ext2[0]["food"] == "Baingan Bharta"
+    assert ext2[0]["mealType"] == "DINNER"
+    assert "Rotlo" in ext2[1]["food"]
+    assert ext2[1]["mealType"] == "DINNER"
 

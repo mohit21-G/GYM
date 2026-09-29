@@ -120,9 +120,19 @@ INDIAN_FOOD_SYNONYMS: Dict[str, str] = {
     "roti": "Roti",
     "chapati": "Roti",
     "chapatis": "Roti",
-    "phulka": "Roti",
-    "rotlo": "Bajra Roti",
-    "bajri no rotlo": "Bajra Roti",
+    "rotlo": "Rotlo (Bajra Roti)",
+    "rotla": "Rotlo (Bajra Roti)",
+    "rotlu": "Rotlo (Bajra Roti)",
+    "bajra rotlo": "Rotlo (Bajra Roti)",
+    "bajri rotla": "Rotlo (Bajra Roti)",
+    "bajri no rotlo": "Rotlo (Bajra Roti)",
+    "bajra roti": "Rotlo (Bajra Roti)",
+    "bajre ki roti": "Rotlo (Bajra Roti)",
+    "bhadthu": "Baingan Bharta",
+    "bharthu": "Baingan Bharta",
+    "olo": "Baingan Bharta",
+    "ringna no olo": "Baingan Bharta",
+    "baingan bharta": "Baingan Bharta",
     "bhakri": "Bhakri",
     "bhakhri": "Bhakri",
     "bakhri": "Bhakri",
@@ -318,7 +328,13 @@ INDIAN_FOOD_SYNONYMS: Dict[str, str] = {
 
     # Native Gujarati Script
     "રોટલી": "Roti",
-    "રોટલો": "Bajra Roti",
+    "રોટલો": "Rotlo (Bajra Roti)",
+    "રોટલા": "Rotlo (Bajra Roti)",
+    "બાજરીનો રોટલો": "Rotlo (Bajra Roti)",
+    "ભડથું": "Baingan Bharta",
+    "ભરથું": "Baingan Bharta",
+    "ઓળો": "Baingan Bharta",
+    "રીંગણાનો ઓળો": "Baingan Bharta",
     "ભાખરી": "Bhakri",
     "ભાખરીઓ": "Bhakri",
     "દાળ": "Toor Dal",
@@ -757,9 +773,15 @@ class AgentNLP:
 
         # Guess meal type from sentence
         meal_type = "LUNCH"
-        if any(w in lower for w in ["morning", "breakfast", "savare", "subah", "nasto", "nashta", "સવારે", "નાસ્તો", "सुबह", "नाश्ता"]):
+        if any(w in lower for w in [
+            "morning", "breakfast", "savar", "savare", "saware", "sawar", "savaar", 
+            "subah", "subha", "nasto", "nashta", "સવાર", "સવારે", "નાસ્તો", "सुबह", "नाश्ता"
+        ]):
             meal_type = "BREAKFAST"
-        elif any(w in lower for w in ["dinner", "raat", "raate", "valoo", "sham", "sanju", "સાંજે", "રાત્રે", "વાળુ", "रात", "शाम"]):
+        elif any(w in lower for w in [
+            "dinner", "sanj", "sanje", "saanj", "saanje", "sanju", "shaam", "sham", 
+            "raat", "raate", "raatri", "valoo", "valo", "vaalu", "વાળુ", "વાળું", "સાંજ", "સાંજે", "રાત", "રાત્રે", "रात", "शाम"
+        ]):
             meal_type = "DINNER"
         elif any(w in lower for w in ["snack", "snacks", "chaai", "tea", "ચા"]):
             meal_type = "SNACK"
@@ -813,14 +835,14 @@ class AgentNLP:
 
             # Remove time words, postpositions, informal modifiers, and eating verbs
             clean = re.sub(
-                r"\b(?:morning|afternoon|evening|night|breakfast|lunch|dinner|snack|savare|bapore|sanju|saanje|raate|subah|dopahar|shaam|sham|raat)\b"
+                r"\b(?:morning|afternoon|evening|night|breakfast|lunch|dinner|snack|savar|savare|saware|sawar|savaar|bapor|bapore|sanj|sanje|saanj|saanje|sanju|raat|raate|subah|subha|dopahar|shaam|sham|shami)\b"
                 r"|\b(?:thodu|thoda|thodi|thodak|zara|thora|kam|thoda sa|thodi si|થોડું|થોડી|थोड़ा|थोड़ी)\b"
                 r"|\b(?:ma|maa|me|mein|ko|ne|nu|na|ni|no|thi|par|pe|se|of|for|in|at|on|with)\b"
                 r"|\b(?:i|my|mine|me|maine|hamne|aaj|aaje|today|please|track|just now|yesterday|kal)\b"
                 r"|\b(?:and|ane|aur|sathe|sath|along with)\b"
-                r"|\b(?:ate|had|eaten|have|drank|drink|drinking|khadha|khadhi|khadhu|khaye|khaya|khayi|khalo|pidhi|pidhu|pidha|piya|piyi|peeli|peena|lidhi|lidhu|lidho|leedhi|leedhu|liya|li)\b"
+                r"|\b(?:ate|had|eaten|have|drank|drink|drinking|khadha|khadhi|khadhu|khadho|khado|khaye|khaya|khayi|khalo|pidhi|pidhu|pidha|pidho|pido|piya|piyi|peeli|peena|lidhi|lidhu|lidho|lido|leedhi|leedhu|liya|li)\b"
                 r"|\b(?:che|tha|thi|the|hata|hati|chho|chhe)\b"
-                r"|(?:મેં|ખાધી|ખાધું|ખાધા|લીધી|લીધું|પીધું|પીધી|છે|હતી|હતો|આજે|બપોરે|સવારે|રાત્રે|સાથે|નાસ્તો|વાળુ|માં|ના|ની|નો|નું|ને|થી|પર|માટે)"
+                r"|(?:મેં|ખાધો|ખાધી|ખાધું|ખાધા|લીધો|લીધી|લીધું|લીધા|પીધો|પીધું|પીધી|પીધા|છે|હતી|હતો|હતા|આજે|બપોરે|બપોર|સવાર|સવારે|સાંજ|સાંજે|રાત્રે|રાત|સાથે|નાસ્તો|વાળુ|વાળું|માં|ના|ની|નો|નું|ને|થી|પર|માટે)"
                 r"|(?:मैंने|खाया|खाई|खाए|पिया|पी|लिया|ली|है|था|थी|आज|सुबह|दोपहर|रात|साथ|नाश्ता|में|का|की|के|को|से|पर|पे|ने|लिए)",
                 " ",
                 clean,

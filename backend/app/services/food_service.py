@@ -22,8 +22,12 @@ CANONICAL_INDIAN_FOOD_PROFILES: Dict[str, Dict[str, Any]] = {
     "Roti": {"food_id": "canon_roti", "food_name": "Roti", "calories": 104.0, "protein_g": 3.1, "carbs_g": 20.0, "fat_g": 1.2, "fiber_g": 2.8, "unit": "piece"},
     "Bhakri": {"food_id": "canon_bhakri", "food_name": "Bhakri", "calories": 130.0, "protein_g": 3.8, "carbs_g": 24.0, "fat_g": 2.2, "fiber_g": 3.0, "unit": "piece"},
     "Whole Wheat Bhakri": {"food_id": "canon_bhakri", "food_name": "Bhakri", "calories": 130.0, "protein_g": 3.8, "carbs_g": 24.0, "fat_g": 2.2, "fiber_g": 3.0, "unit": "piece"},
-    "Khapli Wheat Rotli": {"food_id": "canon_khapli", "food_name": "Khapli Wheat Rotli", "calories": 85.0, "protein_g": 3.5, "carbs_g": 16.5, "fat_g": 0.8, "fiber_g": 3.2, "unit": "piece"},
-    "Bajra Roti": {"food_id": "canon_bajra_roti", "food_name": "Bajra Roti", "calories": 116.0, "protein_g": 3.2, "carbs_g": 22.0, "fat_g": 1.5, "fiber_g": 3.5, "unit": "piece"},
+    "Rotlo": {"food_id": "canon_bajra_roti", "food_name": "Rotlo (Bajra Roti)", "calories": 116.0, "protein_g": 3.2, "carbs_g": 22.0, "fat_g": 1.5, "fiber_g": 3.5, "unit": "piece"},
+    "Rotla": {"food_id": "canon_bajra_roti", "food_name": "Rotlo (Bajra Roti)", "calories": 116.0, "protein_g": 3.2, "carbs_g": 22.0, "fat_g": 1.5, "fiber_g": 3.5, "unit": "piece"},
+    "Bajra Roti": {"food_id": "canon_bajra_roti", "food_name": "Rotlo (Bajra Roti)", "calories": 116.0, "protein_g": 3.2, "carbs_g": 22.0, "fat_g": 1.5, "fiber_g": 3.5, "unit": "piece"},
+    "Bajri Rotla": {"food_id": "canon_bajra_roti", "food_name": "Rotlo (Bajra Roti)", "calories": 116.0, "protein_g": 3.2, "carbs_g": 22.0, "fat_g": 1.5, "fiber_g": 3.5, "unit": "piece"},
+    "Baingan Bharta": {"food_id": "canon_bharta", "food_name": "Baingan Bharta", "calories": 120.0, "protein_g": 2.5, "carbs_g": 14.0, "fat_g": 6.0, "fiber_g": 4.5, "unit": "bowl"},
+    "Bhadthu": {"food_id": "canon_bharta", "food_name": "Baingan Bharta", "calories": 120.0, "protein_g": 2.5, "carbs_g": 14.0, "fat_g": 6.0, "fiber_g": 4.5, "unit": "bowl"},
     "Methi Thepla": {"food_id": "canon_thepla", "food_name": "Methi Thepla", "calories": 115.0, "protein_g": 3.0, "carbs_g": 18.0, "fat_g": 3.5, "fiber_g": 2.5, "unit": "piece"},
     "Plain Paratha": {"food_id": "canon_paratha", "food_name": "Plain Paratha", "calories": 180.0, "protein_g": 4.0, "carbs_g": 28.0, "fat_g": 6.0, "fiber_g": 2.0, "unit": "piece"},
     "Aloo Paratha": {"food_id": "canon_aloo_paratha", "food_name": "Aloo Paratha", "calories": 240.0, "protein_g": 5.0, "carbs_g": 36.0, "fat_g": 8.5, "fiber_g": 3.5, "unit": "piece"},
@@ -148,13 +152,13 @@ class FoodService:
         q = food_query.lower().strip()
         # Clean verbal baggage, time markers, postpositions and leading quantities
         clean_q = re.sub(
-            r"\b(?:morning|afternoon|evening|night|breakfast|lunch|dinner|snack|savare|bapore|sanju|saanje|raate|subah|dopahar|shaam|sham|raat)\b"
+            r"\b(?:morning|afternoon|evening|night|breakfast|lunch|dinner|snack|savar|savare|saware|sawar|savaar|bapor|bapore|sanj|sanje|saanj|saanje|sanju|raat|raate|subah|subha|dopahar|shaam|sham|shami)\b"
             r"|\b(?:ma|maa|me|mein|ko|ne|nu|na|ni|no|thi|par|pe|se|of|for|in|at|on|with)\b"
             r"|\b(?:i|my|mine|me|maine|hamne|aaj|aaje|today)\b"
             r"|\b(?:and|ane|aur|sathe|sath|along with)\b"
-            r"|\b(?:ate|had|eaten|have|drank|drink|drinking|khadha|khadhi|khadhu|khaye|khaya|khayi|khalo|pidhi|pidhu|pidha|piya|piyi|peeli|peena|lidhi|lidhu|lidho|leedhi|leedhu|liya|li)\b"
+            r"|\b(?:ate|had|eaten|have|drank|drink|drinking|khadha|khadhi|khadhu|khadho|khado|khaye|khaya|khayi|khalo|pidhi|pidhu|pidha|pidho|pido|piya|piyi|peeli|peena|lidhi|lidhu|lidho|lido|leedhi|leedhu|liya|li)\b"
             r"|\b(?:che|tha|thi|the|hata|hati|chho|chhe)\b"
-            r"|(?:મેં|ખાધી|ખાધું|ખાધા|લીધી|લીધું|પીધું|પીધી|છે|હતી|હતો|આજે|બપોરે|સવારે|રાત્રે|સાથે|નાસ્તો|વાળુ|માં|ના|ની|નો|નું|ને|થી|પર|માટે)"
+            r"|(?:મેં|ખાધો|ખાધી|ખાધું|ખાધા|લીધો|લીધી|લીધું|લીધા|પીધો|પીધું|પીધી|પીધા|છે|હતી|હતો|હતા|આજે|બપોરે|બપોર|સવાર|સવારે|સાંજ|સાંજે|રાત્રે|રાત|સાથે|નાસ્તો|વાળુ|વાળું|માં|ના|ની|નો|નું|ને|થી|પર|માટે)"
             r"|(?:मैंने|खाया|खाई|खाए|पिया|पी|लिया|ली|है|था|थी|आज|सुबह|दोपहर|रात|साथ|नाश्ता|में|का|की|के|को|से|पर|पे|ने|लिए)",
             " ",
             q,
@@ -167,6 +171,11 @@ class FoodService:
         if not clean_q:
             clean_q = q
 
+        # Step 0: Check CANONICAL_INDIAN_FOOD_PROFILES directly first (exact match on clean_q or q)
+        for c_name, c_prof in CANONICAL_INDIAN_FOOD_PROFILES.items():
+            if c_name.lower() == clean_q or c_name.lower() == q:
+                return c_prof
+
         # Step 1: Check known Indian dialect synonyms & slang map
         synonym_target = INDIAN_FOOD_SYNONYMS.get(clean_q) or INDIAN_FOOD_SYNONYMS.get(q)
 
@@ -177,6 +186,10 @@ class FoodService:
                     if len(food_key) >= 3 and (food_key in clean_q or re.search(rf"\b{re.escape(food_key)}\b", clean_q, flags=re.I)):
                         synonym_target = INDIAN_FOOD_SYNONYMS[food_key]
                         break
+
+        # Check if synonym_target matches a canonical profile before token splitting
+        if synonym_target and synonym_target in CANONICAL_INDIAN_FOOD_PROFILES:
+            return CANONICAL_INDIAN_FOOD_PROFILES[synonym_target]
 
         # Single tokens
         if not synonym_target:

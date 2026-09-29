@@ -63,7 +63,7 @@ class ChatService:
         intent = ai_res.get("intent", "GENERAL_CHAT")
         entities = ai_res.get("entities", {})
 
-        result_payload = await ChatService.route_intent(user_id, session_id, intent, entities, ai_res)
+        result_payload = await ChatService.route_intent(user_id, session_id, intent, entities, ai_res, user_message=message)
 
         # 4. Save Assistant Message with structured cards for session reload
         assistant_msg_id = str(uuid.uuid4())
@@ -103,10 +103,23 @@ class ChatService:
         intent: str,
         entities: Dict[str, Any],
         ai_res: Dict[str, Any],
+        user_message: str = "",
     ) -> Dict[str, Any]:
         db = get_db()
         now = datetime.now(timezone.utc)
         today_str = now.strftime("%Y-%m-%d")
+
+        # Infer meal type from user message explicitly if present
+        msg_lower = (user_message or "").lower()
+        inferred_meal = None
+        if any(w in msg_lower for w in ["morning", "breakfast", "savar", "savare", "saware", "sawar", "savaar", "subah", "subha", "nasto", "nashta", "સવાર", "સવારે", "નાસ્તો", "सुबह", "नाश्ता"]):
+            inferred_meal = "BREAKFAST"
+        elif any(w in msg_lower for w in ["dinner", "sanj", "sanje", "saanj", "saanje", "sanju", "shaam", "sham", "raat", "raate", "raatri", "valoo", "valo", "vaalu", "વાળુ", "વાળું", "સાંજ", "સાંજે", "રાત", "રાત્રે", "रात", "शाम"]):
+            inferred_meal = "DINNER"
+        elif any(w in msg_lower for w in ["snack", "snacks", "chaai", "tea", "ચા"]):
+            inferred_meal = "SNACK"
+        elif any(w in msg_lower for w in ["lunch", "bapor", "bapore", "dopahar", "બપોર", "બપોરે"]):
+            inferred_meal = "LUNCH"
 
         # Multi-log routing (foods + workouts or hydration)
         has_food = bool(entities.get("foodItems") or entities.get("food"))
@@ -114,7 +127,7 @@ class ChatService:
         has_water = bool(entities.get("waterAmount") or entities.get("hydration"))
 
         if intent == "CREATE_MULTI_LOG" or (has_food and has_act):
-            return await ChatService.handle_multi_log(user_id, session_id, entities, ai_res)
+            return await ChatService.handle_multi_log(user_id, session_id, entities, ai_res, user_message=user_message, inferred_meal=inferred_meal)
 
         # 1. CREATE_FOOD_LOG
         if intent == "CREATE_FOOD_LOG":
@@ -124,7 +137,7 @@ class ChatService:
                     "food": entities.get("food"),
                     "quantity": entities.get("quantity", 1),
                     "unit": entities.get("unit", "serving"),
-                    "mealType": entities.get("mealType", "LUNCH")
+                    "mealType": inferred_meal or entities.get("mealType") or entities.get("meal_type") or "LUNCH"
                 }]
 
             items = [
@@ -132,18 +145,19 @@ class ChatService:
                     food=f.get("food") or f.get("name", "Food"),
                     quantity=f.get("quantity", 1),
                     unit=f.get("unit", "serving"),
-                    mealType=f.get("mealType", "LUNCH")
+                    mealType=inferred_meal or f.get("mealType") or entities.get("mealType") or entities.get("meal_type") or "LUNCH"
                 )
                 for f in raw_foods
             ]
-            detected_meal = None
-            for it in items:
-                m = getattr(it, "mealType", None)
-                if m and m != "LUNCH":
-                    detected_meal = m
-                    break
+            detected_meal = inferred_meal
+            if not detected_meal:
+                for it in items:
+                    m = getattr(it, "mealType", None)
+                    if m and m != "LUNCH":
+                        detected_meal = m
+                        break
             if not detected_meal and items:
-                detected_meal = getattr(items[0], "mealType", None)
+                detected_meal = getattr(items[0], "mealType", None) or "LUNCH"
 
             food_result = await FoodService.process_and_log_food(
                 user_id, items, meal_type_override=detected_meal, log_date_str=today_str
@@ -375,7 +389,14 @@ class ChatService:
         }
 
     @staticmethod
-    async def handle_multi_log(user_id: str, session_id: str, entities: Dict[str, Any], ai_res: Dict[str, Any]) -> Dict[str, Any]:
+    async def handle_multi_log(
+        user_id: str,
+        session_id: str,
+        entities: Dict[str, Any],
+        ai_res: Dict[str, Any],
+        user_message: str = "",
+        inferred_meal: Optional[str] = None,
+    ) -> Dict[str, Any]:
         now = datetime.now(timezone.utc)
         today_str = now.strftime("%Y-%m-%d")
         cards = []
@@ -391,18 +412,19 @@ class ChatService:
                     food=f.get("food") or f.get("name"),
                     quantity=f.get("quantity", 1),
                     unit=f.get("unit", "serving"),
-                    mealType=f.get("mealType", "LUNCH")
+                    mealType=inferred_meal or f.get("mealType") or "LUNCH"
                 )
                 for f in food_items_to_log
             ]
-            detected_meal = None
-            for it in items:
-                m = getattr(it, "mealType", None)
-                if m and m != "LUNCH":
-                    detected_meal = m
-                    break
+            detected_meal = inferred_meal
+            if not detected_meal:
+                for it in items:
+                    m = getattr(it, "mealType", None)
+                    if m and m != "LUNCH":
+                        detected_meal = m
+                        break
             if not detected_meal and items:
-                detected_meal = getattr(items[0], "mealType", None)
+                detected_meal = getattr(items[0], "mealType", None) or "LUNCH"
 
             food_result = await FoodService.process_and_log_food(
                 user_id, items, meal_type_override=detected_meal, log_date_str=today_str
