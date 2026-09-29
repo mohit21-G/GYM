@@ -147,7 +147,7 @@ export const ChatPage: React.FC = () => {
               dailyNutritionSummary: resPayload.ui.dailyNutritionSummary,
               cards: resPayload.ui?.cards,
             }
-          : resPayload.ui?.cards || resPayload.data || res.data?.cardData,
+          : resPayload.ui?.data || resPayload.ui?.cards || resPayload.data || res.data?.cardData,
       };
 
       setMessages((prev) => [...prev, botMsg]);

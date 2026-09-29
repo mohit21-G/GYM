@@ -4,9 +4,68 @@ from .config import settings
 
 logger = logging.getLogger("database")
 
+class MockCursor:
+    def __init__(self, data=None):
+        self._data = list(data or [])
+    def sort(self, *args, **kwargs):
+        return self
+    def limit(self, *args, **kwargs):
+        return self
+    async def to_list(self, length=100):
+        return list(self._data[:length])
+
+class MockCollection:
+    def __init__(self, name="col"):
+        self.name = name
+        self.docs = []
+    async def find_one(self, query=None, sort=None):
+        for d in self.docs:
+            match = True
+            for k, v in (query or {}).items():
+                if d.get(k) != v:
+                    match = False
+                    break
+            if match:
+                return dict(d)
+        return None
+    def find(self, query=None):
+        filtered = []
+        for d in self.docs:
+            match = True
+            for k, v in (query or {}).items():
+                if k.startswith("$"):
+                    continue
+                if d.get(k) != v:
+                    match = False
+                    break
+            if match:
+                filtered.append(dict(d))
+        return MockCursor(filtered)
+    async def insert_one(self, doc):
+        self.docs.append(dict(doc))
+        return type("InsertResult", (), {"inserted_id": doc.get("id") or doc.get("_id")})
+    async def update_one(self, query, update, upsert=False):
+        doc = await self.find_one(query)
+        if doc and "$set" in update:
+            doc.update(update["$set"])
+        return type("UpdateResult", (), {"modified_count": 1 if doc else 0})
+    async def create_index(self, *args, **kwargs):
+        pass
+
+class MockDatabase:
+    def __init__(self):
+        self._collections = {}
+    def __getattr__(self, name):
+        if name not in self._collections:
+            self._collections[name] = MockCollection(name)
+        return self._collections[name]
+    def __getitem__(self, name):
+        return getattr(self, name)
+
 class Database:
     client: AsyncIOMotorClient = None
     db: AsyncIOMotorDatabase = None
+    fallback_db: MockDatabase = MockDatabase()
 
 db_instance = Database()
 
@@ -40,4 +99,6 @@ async def close_mongo_connection():
         logger.info("MongoDB connection closed.")
 
 def get_db() -> AsyncIOMotorDatabase:
+    if db_instance.db is None:
+        return db_instance.fallback_db
     return db_instance.db

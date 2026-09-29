@@ -15,7 +15,7 @@ INDIC_DIGITS = {
 # Number words to float values
 NUMBER_WORDS = {
     # English
-    "one": 1.0, "a": 1.0, "an": 1.0, "two": 2.0, "three": 3.0, "four": 4.0,
+    "one": 1.0, "two": 2.0, "three": 3.0, "four": 4.0,
     "five": 5.0, "six": 6.0, "seven": 7.0, "eight": 8.0, "nine": 9.0, "ten": 10.0,
     "half": 0.5, "quarter": 0.25,
     # Hindi / Urdu
@@ -534,11 +534,19 @@ class AgentNLP:
 
     @staticmethod
     def parse_number_tokens(text: str) -> str:
-        """Replaces written number words (e.g. 'two', 'be', 'do', 'aadha') with numeric strings."""
+        """Replaces written number words (e.g. 'two', 'be', 'ek', 'aadha') with numeric strings."""
         tokens = text.split()
         out = []
-        for t in tokens:
+        for i, t in enumerate(tokens):
             cleaned = re.sub(r"[^\w\.]", "", t.lower())
+            prev_token = re.sub(r"[^\w\.]", "", tokens[i-1].lower()) if i > 0 else ""
+            next_token = re.sub(r"[^\w\.]", "", tokens[i+1].lower()) if i + 1 < len(tokens) else ""
+            
+            # Guard English verb "do" (e.g. "what did i do today", "how do i", "what to do")
+            if cleaned == "do" and (prev_token in ["i", "you", "we", "they", "to", "did", "how", "what", "can", "will", "would", "could", "should"] or next_token in ["i", "you", "today", "it", "not", "so", "exercise", "workout"]):
+                out.append(t)
+                continue
+
             if cleaned in NUMBER_WORDS:
                 val = NUMBER_WORDS[cleaned]
                 out.append(str(int(val) if val.is_integer() else val))
@@ -579,6 +587,75 @@ class AgentNLP:
         ]):
             return "DELETE_FOOD_LOG"
 
+        # 3. Water Intake Query intent (e.g. "Aaj ketlu pani pidhu?", "How much water did I drink today?", "Aaj kitna pani piya?")
+        is_water_query = any(w in lower for w in [
+            "ketlu pani pidhu", "ketlu pani", "pani ketlu", "aaj ketlu pani", "ketla glass pani",
+            "kitna pani piya", "kitna paani piya", "pani kitna piya", "kitna pani", "kitna paani",
+            "how much water did i drink", "how much water today", "how much water have i drank",
+            "water intake today", "did i drink enough water", "water status", "how much water is left",
+            "how much water left", "water goal reached", "water target", "how many glasses of water",
+            "ketlu pani baki", "pani baki chhe", "pani baki hai",
+            "કેટલું પાણી પીધું", "કેટલું પાણી", "પાણી કેટલું", "કેટલા ગ્લાસ પાણી",
+            "कितना पानी पिया", "पानी कितना पिया", "कितना पानी बाकी"
+        ]) or (
+            ("water" in lower or "pani" in lower or "paani" in lower or "પાણી" in lower or "पानी" in lower) and
+            any(w in lower for w in ["how much", "status", "goal", "target", "ketlu", "kitna", "baki", "left", "reach", "did i", "ketla"])
+        )
+        if is_water_query:
+            return "QUERY_HYDRATION_LOG"
+
+        # 4. Daily Overall Summary intent (e.g. "Aaj ni summary aap", "What did I do today?", "Aaj ka summary batao", "Today's summary")
+        is_daily_summary = any(w in lower for w in [
+            "aaj ni summary", "aaj nu summary", "aaj no summary", "aaj summary", "summary aap", "summary aapo",
+            "aaj ka summary", "aaj ki summary", "aaj ka hisab", "summary batao", "summary do",
+            "what did i do today", "what i did today", "what have i done today", "what did i do",
+            "aaje su karyu", "aaj su karyu", "aaje ketlu karyu", "aaj maine kya kiya", "aaj kya kiya",
+            "today's summary", "todays summary", "daily summary", "my summary today", "give me today's summary",
+            "give me daily summary", "show my summary", "show daily summary", "show today's summary",
+            "health summary", "fitness summary", "how was my day", "daily fitness summary", "daily report",
+            "aaj no report", "aaj ni report", "aaj ki report",
+            "આજની સમરી", "આજનું સમરી", "આજનો હિસાબ", "આજે મેં શું કર્યું", "આજે શું કર્યું", "સમરી આપો", "સમરી આપ",
+            "आज का सारांश", "आज की समरी", "आज मैंने क्या किया", "आज क्या किया", "सारांश बताओ", "समरी बताओ", "आज का हिसाब"
+        ])
+        if is_daily_summary:
+            return "DAILY_SUMMARY"
+
+        # 5. Food Suggestions intent (e.g. "What should I eat for dinner?", "Suggest healthy food", "Su khavu joiye?", "Kya khana chahiye?")
+        is_food_suggestion = any(w in lower for w in [
+            "what should i eat", "what to eat", "what can i eat", "what do i eat",
+            "suggest food", "suggest healthy food", "suggest meal", "suggest dinner", "suggest lunch",
+            "suggest breakfast", "suggest snack", "food suggestion", "meal suggestion", "food suggestions",
+            "meal suggestions", "healthy food suggestion", "healthy meal ideas", "healthy dinner ideas",
+            "healthy breakfast ideas", "healthy lunch ideas", "what to have for dinner", "what to have for breakfast",
+            "what to have for lunch", "what should i have for dinner", "what should i have for lunch",
+            "what should i have for breakfast", "healthy snacks to eat", "what healthy food",
+            "su khavu joiye", "shu khavu joiye", "su khavu", "shu khavu", "su khau", "shu khau", "aaj su khavu",
+            "lunch ma su khau", "dinner ma su khau", "dinner ma su banavu", "savare su khavu", "nasta ma su levu",
+            "khavanu suggest karo", "healthy khavanu suggest karo", "su jamvu", "bapor na su khavu",
+            "kya khana chahiye", "kya khau", "kya khaye", "kya khayein", "lunch me kya khau", "dinner me kya khau",
+            "dinner me kya banau", "khana suggest karo", "kuch healthy batao khane", "nashte me kya khau",
+            "kya khana accha", "healthy khana suggest",
+            "શું ખાવું જોઈએ", "શું ખાવું", "શું ખાઉં", "ડિનરમાં શું બનાવવું", "લંચમાં શું ખાવું", "નાસ્તામાં શું લેવું", "સ્વસ્થ ખોરાક", "શું જમવું",
+            "क्या खाना चाहिए", "क्या खाऊं", "क्या खाएं", "डिनर में क्या बनाऊं", "लंच में क्या खाऊं", "नाश्ते में क्या लें", "हेल्दी खाना"
+        ])
+        if is_food_suggestion:
+            return "FOOD_SUGGESTION"
+
+        # 6. Workout Suggestions intent (e.g. "Suggest an exercise", "What workout should I do today?", "Aaje kai kasrat karu?", "Koi exercise batao")
+        is_workout_suggestion = any(w in lower for w in [
+            "suggest exercise", "suggest workout", "suggest an exercise", "suggest a workout",
+            "what exercise should i do", "what workout should i do", "exercise suggestions",
+            "workout suggestions", "give me exercise", "give me workout", "recommend exercise",
+            "recommend workout", "which exercise should i do", "exercise suggest karo",
+            "workout suggest karo", "kai exercise karu", "kai kasrat karu", "kasrat suggest karo",
+            "koi exercise batao", "koi workout batao", "aaj kaunsa workout", "aaje kai kasrat",
+            "kai exercise karvi joiye", "kai kasrat karvi joiye", "suggest workout for",
+            "કઈ કસરત કરું", "કસરત સજેસ્ટ", "વર્કઆઉટ સજેસ્ટ", "કોઈ કસરત બતાવો",
+            "कौन सी एक्सरसाइज करूं", "एक्सरसाइज सजेस्ट करो", "वर्कआउट सजेस्ट करो", "कोई एक्सरसाइज बताओ"
+        ])
+        if is_workout_suggestion:
+            return "WORKOUT_SUGGESTION"
+
         # 0. Question / Advisory / Negative / Hypothetical check -> GENERAL_CHAT (DO NOT LOG)
         is_hypothetical = any(w in lower for w in [
             "if i eat", "if i have", "might eat", "will eat", "planning to eat", "planning to have", "planning to",
@@ -598,7 +675,7 @@ class AgentNLP:
         ])
         is_advisory = any(w in lower for w in [
             "how many calories in", "how many calories are in", "how much protein in", "how much protein is in",
-            "is it healthy", "is roti healthy", "is healthy", "should i eat", "what should i eat",
+            "is it healthy", "is roti healthy", "is healthy", "should i eat",
             "can i replace", "can i eat", "tell me about", "guide me", "how to lose", "how to gain",
             "ketli calories hoy", "ketlu protein hoy", "kitni calories", "kitna protein",
             "tell me about sleep tracking", "how does water tracking work", "can i drink more water",
@@ -613,7 +690,7 @@ class AgentNLP:
         # Fitness & Workout Question / Recommendation Check -> FITNESS_ADVISORY (DO NOT LOG)
         has_q_word = bool(re.search(r"\b(?:what|how|which|why|give me|suggest|batao|aapo|kya|kaise|kaunse|shu|kem|kaya|kai)\b", lower)) or "?" in lower or any(ch in lower for ch in ["કયા", "શું", "કેમ", "કેવી રીતે", "ફાયદા", "ફાયદો", "क्या", "कैसे", "कौनसे", "फायदे"])
         is_fitness_advisory = any(w in lower for w in [
-            "benefits of", "benefit of", "fayda", "fayde", "faida", "faide", "લાભ", "ફાયદા", "ફાયદો", "फायदे", "लाभ",
+            "benefits of", "benefit of", "fayda", "fayde", "faida", "faide", "લાભ", "ફાયદા", "ફાયદો", "ફायदे", "लाभ",
             "workout plan", "routine plan", "exercise plan", "beginner workout", "beginner plan", "workout for beginner",
             "stamina", "endurance", "સ્ટેમિના", "स्टैमिना", "दम", "improve my stamina", "improve stamina", "increase stamina",
             "stamina kem", "stamina kaise", "badhaye", "vadharvu", "target the legs", "target legs", "leg exercise", "leg workout",
@@ -630,16 +707,16 @@ class AgentNLP:
         if is_hypothetical or is_negative or is_advisory or is_question:
             return "GENERAL_CHAT"
 
-        # 3. Query / Summary intent
+        # 7. Query Food Log
         if any(w in lower for w in [
             "what did i eat", "show my food", "today's calories", "todays calories", "remaining",
             "how many calories did i eat", "how many calories today", "how many calories left", "how many calories do i have",
             "how much protein did i eat", "protein did i eat", "how much protein today", "protein today",
-            "ketli calories", "ketlu khadhu", "aaj nu summary", "forgot what i ate",
-            "aaj ka summary", "show logs", "show summary", "kya khaya", "batao",
+            "ketli calories", "ketlu khadhu", "forgot what i ate",
+            "show logs", "show food", "kya khaya",
             "my lunch calories", "remaining calories", "baki calories", "ketli calories thai", "calories thai",
             "daily food summary",
-            "શું ખાધું", "કેટલી કેલરી", "આજનું સમરી", "સમરી", "क्या खाया", "कितनी कैलोरी", "आज का सारांश"
+            "શું ખાધું", "કેટલી કેલરી", "क्या खाया", "कितनी कैलोरी"
         ]):
             return "QUERY_FOOD_LOG"
 

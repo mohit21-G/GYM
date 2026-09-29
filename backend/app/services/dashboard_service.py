@@ -57,6 +57,12 @@ class DashboardService:
                 "net": net_cal,
                 "target": target_cal,
                 "remaining": round(remaining_cal),
+                "percentTarget": min(100, int((cal_consumed / target_cal) * 100)) if target_cal > 0 else 0,
+            },
+            "activity": {
+                "caloriesBurned": round(cal_burned),
+                "durationMinutes": round(sum(float(l.get("duration_minutes", 0.0)) for l in act_logs)),
+                "exercisesCount": len(act_logs),
             },
             "macros": {
                 "proteinG": round(p_total, 1),
@@ -65,9 +71,13 @@ class DashboardService:
                 "fiberG": round(fib_total, 1),
             },
             "hydration": {
+                "amountMl": round(water_total),
                 "consumedMl": round(water_total),
                 "targetMl": target_water,
                 "percent": min(100, int((water_total / target_water) * 100)) if target_water > 0 else 0,
+                "percentTarget": min(100, int((water_total / target_water) * 100)) if target_water > 0 else 0,
+                "remainingMl": max(0, round(target_water - water_total)),
+                "targetMet": water_total >= target_water,
             },
             "sleep": {
                 "totalMinutes": round(sleep_total),

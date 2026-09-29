@@ -330,6 +330,27 @@ export const StructuredCard: React.FC<CardProps> = ({
             </div>
           </div>
         )}
+
+        {/* Hydration progress if present */}
+        {data.hydration && (
+          <div className="mt-3 pt-3 border-t border-slate-800/80">
+            <div className="flex items-center justify-between text-xs mb-1.5">
+              <span className="text-cyan-400 font-semibold flex items-center space-x-1">
+                <Droplets className="w-3.5 h-3.5" />
+                <span>Water Intake</span>
+              </span>
+              <span className="text-slate-300 font-medium">
+                {data.hydration.amountMl ?? data.hydration.consumedMl ?? 0} / {data.hydration.targetMl ?? 2500} ml ({data.hydration.percentTarget ?? data.hydration.percent ?? 0}%)
+              </span>
+            </div>
+            <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+              <div
+                className="bg-cyan-400 h-1.5 rounded-full transition-all duration-500"
+                style={{ width: `${Math.min(100, data.hydration.percentTarget ?? data.hydration.percent ?? 0)}%` }}
+              />
+            </div>
+          </div>
+        )}
       </div>
     );
   }

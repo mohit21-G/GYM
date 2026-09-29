@@ -235,3 +235,101 @@ class FitnessAdvisoryService:
             "* Fuel your workouts with adequate protein, hydration, and 7–8 hours of restorative sleep.\n\n"
             "Tell me your specific fitness goal (weight loss, muscle gain, stamina, or home workouts) and I can tailor a custom plan for you!"
         )
+
+    @staticmethod
+    def is_workout_suggestion_query(text: str) -> bool:
+        lower = text.lower()
+        triggers = [
+            "suggest exercise", "suggest workout", "suggest an exercise", "suggest a workout",
+            "what exercise should i do", "what workout should i do", "exercise suggestions",
+            "workout suggestions", "give me exercise", "give me workout", "recommend exercise",
+            "recommend workout", "which exercise should i do", "exercise suggest karo",
+            "workout suggest karo", "kai exercise karu", "kai kasrat karu", "kasrat suggest karo",
+            "koi exercise batao", "koi workout batao", "aaj kaunsa workout", "aaje kai kasrat",
+            "કઈ કસરત કરું", "કસરત સજેસ્ટ", "વર્કઆઉટ સજેસ્ટ", "કોઈ કસરત બતાવો",
+            "कौन सी एक्सरसाइज करूं", "एक्सरसाइज सजेस्ट करो", "वर्कआउट सजेस्ट करो", "कोई एक्सरसाइज बताओ"
+        ]
+        return any(t in lower for t in triggers)
+
+    @staticmethod
+    def generate_workout_suggestion_response(
+        text: str,
+        lang: str = "en",
+        logged_activities_summary: Optional[str] = None
+    ) -> str:
+        lower = text.lower()
+        has_guj = any('\u0A80' <= ch <= '\u0AFF' for ch in text) or bool(re.search(r"\b(?:shu|kem|chhe|mate|aapo|kaya|kasrat|karyu|aaje)\b", lower))
+        has_hi = any('\u0900' <= ch <= '\u097F' for ch in text) or bool(re.search(r"\b(?:kya|kaise|hai|hain|ke\s+liye|batao|kaunse|karein|aaj)\b", lower))
+        is_guj = (lang in ["gu", "gu-Latn"] or has_guj) and not (lang == "en" and not has_guj)
+        is_hi = (lang in ["hi", "hi-Latn"] or has_hi) and not (lang == "en" and not has_hi)
+
+        context_note_guj = f"\n* આજની સ્થિતિ: {logged_activities_summary}\n" if logged_activities_summary else ""
+        context_note_hi = f"\n* आज की स्थिति: {logged_activities_summary}\n" if logged_activities_summary else ""
+        context_note_en = f"\n* Today's Logged Activity: {logged_activities_summary}\n" if logged_activities_summary else ""
+
+        if is_guj:
+            return (
+                "🏃 **તમારા માટે ઉત્તમ કસરત વિકલ્પો (Exercise Suggestions)**:"
+                f"{context_note_guj}\n"
+                "* **1. બ્રિસ્ક વૉકિંગ (Brisk Walking)**\n"
+                "  * સૂચવેલ સમય: **30 મિનિટ**\n"
+                "  * અંદાજિત કેલરી બર્ન: ~**120–150 kcal**\n"
+                "  * લાભ: હૃદય માટે સુરક્ષિત, સાંધા પર દબાણ વગર કેલરી બર્ન કરે છે.\n\n"
+                "* **2. બોડીવેઇટ સ્ક્વોટ્સ & લંજીસ (Squats & Lunges)**\n"
+                "  * સૂચવેલ સેટ્સ: **3 સેટ × 12–15 રેપ્સ** (~15 મિનિટ)\n"
+                "  * અંદાજિત કેલરી બર્ન: ~**70–90 kcal**\n"
+                "  * લાભ: પગ અને હિપ્સના સ્નાયુઓ મજબૂત થાય છે, મેટાબોલિઝમ ઝડપી બને છે.\n\n"
+                "* **3. લાઇટ કાર્ડિયો / જમ્પિંગ જેક્સ & સ્કીપિંગ (Jumping Jacks)**\n"
+                "  * સૂચવેલ સમય: **15 મિનિટ**\n"
+                "  * અંદાજિત કેલરી બર્ન: ~**100–120 kcal**\n"
+                "  * લાભ: ઝડપથી સ્ટેમિના અને હાર્ટ રેટ વધારે છે.\n\n"
+                "* **4. સૂર્ય નમસ્કાર / યોગાસન (Surya Namaskar)**\n"
+                "  * સૂચવેલ રાઉન્ડ્સ: **10–12 રાઉન્ડ** (~20 મિનિટ)\n"
+                "  * અંદાજિત કેલરી બર્ન: ~**80–100 kcal**\n"
+                "  * લાભ: સંપૂર્ણ શરીરનું સ્ટ્રેચિંગ, ફ્લેક્સિબિલિટી અને માનસિક શાંતિ.\n\n"
+                "⚠️ *નોંધ: દર્શાવેલ બર્ન થયેલી કેલરી અંદાજિત (estimates) છે. વાસ્તવિક કેલરી તમારા શરીરના વજન, ઝડપ અને પ્રયાસ પર આધાર રાખે છે.*"
+            )
+        elif is_hi:
+            return (
+                "🏃 **आपके लिए बेहतरीन एक्सरसाइज सुझाव (Exercise Suggestions)**:"
+                f"{context_note_hi}\n"
+                "* **1. तेज चलना / ब्रिस्क वॉक (Brisk Walking)**\n"
+                "  * सुझाई गई अवधि: **30 मिनट**\n"
+                "  * अनुमानित कैलोरी बर्न: ~**120–150 kcal**\n"
+                "  * लाभ: दिल के लिए सुरक्षित, जोड़ों पर दबाव डाले बिना फैट बर्न करता है।\n\n"
+                "* **2. बॉडीवेट स्क्वैट्स और लंजेस (Squats & Lunges)**\n"
+                "  * सुझाई गई मात्रा: **3 सेट × 12–15 रेप्स** (~15 मिनट)\n"
+                "  * अनुमानित कैलोरी बर्न: ~**70–90 kcal**\n"
+                "  * लाभ: पैरों और कोर की मांसपेशियों को मजबूती देता है, मेटाबॉलिज्म बढ़ाता है।\n\n"
+                "* **3. जंपिंग जैक्स और स्किपिंग (Jumping Jacks / Skip Rope)**\n"
+                "  * सुझाई गई अवधि: **15 मिनट**\n"
+                "  * अनुमानित कैलोरी बर्न: ~**100–120 kcal**\n"
+                "  * लाभ: स्टैमिना बढ़ाता है और कम समय में अधिक कैलोरी खर्च करता है।\n\n"
+                "* **4. सूर्य नमस्कार और योग (Surya Namaskar & Yoga)**\n"
+                "  * सुझाई गई मात्रा: **10–12 राउंड** (~20 मिनट)\n"
+                "  * अनुमानित कैलोरी बर्न: ~**80–100 kcal**\n"
+                "  * लाभ: पूरे शरीर का लचीलापन, रीढ़ की मजबूती और मानसिक शांति।\n\n"
+                "⚠️ *नोट: दी गई कैलोरी बर्न संख्या अनुमानित (estimates) है। वास्तविक कैलोरी आपके वजन, इंटेंसिटी और गति पर निर्भर करती है।* "
+            )
+        else:
+            return (
+                "🏃 **Recommended Workout & Exercise Suggestions**:"
+                f"{context_note_en}\n"
+                "* **1. Brisk Walking / Moderate Cardio**\n"
+                "  * Suggested Duration: **30 minutes**\n"
+                "  * Estimated Calorie Burn: ~**120–150 kcal**\n"
+                "  * Benefits: Low-impact aerobic baseline that boosts cardiovascular health without joint strain.\n\n"
+                "* **2. Bodyweight Squats & Reverse Lunges**\n"
+                "  * Suggested Volume: **3 sets × 12–15 reps** (~15 minutes)\n"
+                "  * Estimated Calorie Burn: ~**70–90 kcal**\n"
+                "  * Benefits: Activates major lower-body muscle groups and stimulates metabolic rate.\n\n"
+                "* **3. High-Intensity Interval Cardio (Jumping Jacks / Jump Rope)**\n"
+                "  * Suggested Duration: **15 minutes** (work:rest ratio 30s:30s)\n"
+                "  * Estimated Calorie Burn: ~**100–120 kcal**\n"
+                "  * Benefits: Rapid stamina development and efficient calorie expenditure in short time.\n\n"
+                "* **4. Surya Namaskar (Sun Salutations) / Flow Yoga**\n"
+                "  * Suggested Volume: **10–12 rounds** (~20 minutes)\n"
+                "  * Estimated Calorie Burn: ~**80–100 kcal**\n"
+                "  * Benefits: Full-body mobility, core stabilization, and active recovery.\n\n"
+                "⚠️ *Note: Calorie expenditure values are estimates based on standard MET averages. Individual results vary with body weight, pace, and intensity.*"
+            )

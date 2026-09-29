@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     CF_API_TOKEN: str = os.getenv("CF_API_TOKEN", "")
     CF_MODEL: str = os.getenv("CF_MODEL", "@cf/meta/llama-3.1-8b-instruct")
     SARVAM_API_KEY: str = os.getenv("SARVAM_API_KEY", "")
+    AI_PROVIDER: str = os.getenv("AI_PROVIDER", "auto")  # options: auto, groq, cloudflare, rule_based
     
     ADMIN_EMAIL: str = os.getenv("ADMIN_EMAIL", "admin@Fitness-ai.com")
     ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "Admin@123456")

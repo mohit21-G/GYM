@@ -118,6 +118,15 @@ class AIService:
         lang = AgentNLP.detect_language(message)
 
         # 1. Non-logging or Query intents: Handle immediately with zero latency and 100% precision
+        if detected_intent == "WORKOUT_SUGGESTION" or FitnessAdvisoryService.is_workout_suggestion_query(message):
+            sugg_text = FitnessAdvisoryService.generate_workout_suggestion_response(message, lang)
+            return {
+                "intent": "WORKOUT_SUGGESTION",
+                "language": lang,
+                "entities": {},
+                "replyText": sugg_text,
+            }
+
         if detected_intent == "FITNESS_ADVISORY" or (detected_intent == "GENERAL_CHAT" and FitnessAdvisoryService.is_fitness_query(message)):
             advisory_text = FitnessAdvisoryService.generate_advisory_response(message, lang)
             return {
@@ -125,6 +134,30 @@ class AIService:
                 "language": lang,
                 "entities": {},
                 "replyText": advisory_text,
+            }
+
+        if detected_intent == "FOOD_SUGGESTION":
+            return {
+                "intent": "FOOD_SUGGESTION",
+                "language": lang,
+                "entities": {},
+                "replyText": "Here are some healthy food suggestions tailored to your day.",
+            }
+
+        if detected_intent == "DAILY_SUMMARY":
+            return {
+                "intent": "DAILY_SUMMARY",
+                "language": lang,
+                "entities": {},
+                "replyText": "Here is your personalized daily health and fitness summary.",
+            }
+
+        if detected_intent == "QUERY_HYDRATION_LOG":
+            return {
+                "intent": "QUERY_HYDRATION_LOG",
+                "language": lang,
+                "entities": {},
+                "replyText": "Here is your hydration progress for today.",
             }
 
         if detected_intent == "GENERAL_CHAT":
@@ -210,25 +243,43 @@ class AIService:
                     "replyText": f"Logged {len(foods)} food item(s)."
                 }
 
-        # 4. For Ambiguous messages or Updates/Deletes: Call Cloudflare Workers AI / Groq LLM
+        # 4. For Ambiguous messages or Updates/Deletes: Call configured AI provider (Groq / Cloudflare / rule-based)
         pre_processed = AgentNLP.normalize_text(message)
         result: Optional[Dict[str, Any]] = None
+        provider = (settings.AI_PROVIDER or "auto").lower()
 
-        if settings.CF_ACCOUNT_ID and settings.CF_API_TOKEN:
-            try:
-                res = await AIService._call_cloudflare(pre_processed, conversation_history)
-                if res and res.get("intent"):
-                    result = res
-            except Exception as e:
-                logger.warning(f"Cloudflare AI failed: {e}. Falling back to Groq...")
-
-        if not result and settings.GROQ_API_KEY:
+        if provider == "groq" and settings.GROQ_API_KEY:
             try:
                 res = await AIService._call_groq(pre_processed, conversation_history)
                 if res and res.get("intent"):
                     result = res
             except Exception as e:
                 logger.warning(f"Groq AI failed: {e}")
+        elif provider == "cloudflare" and settings.CF_ACCOUNT_ID and settings.CF_API_TOKEN:
+            try:
+                res = await AIService._call_cloudflare(pre_processed, conversation_history)
+                if res and res.get("intent"):
+                    result = res
+            except Exception as e:
+                logger.warning(f"Cloudflare AI failed: {e}")
+        elif provider == "rule_based":
+            result = AIService._rule_based_fallback(message, pre_processed)
+        else:  # "auto" (default)
+            if settings.CF_ACCOUNT_ID and settings.CF_API_TOKEN:
+                try:
+                    res = await AIService._call_cloudflare(pre_processed, conversation_history)
+                    if res and res.get("intent"):
+                        result = res
+                except Exception as e:
+                    logger.warning(f"Cloudflare AI failed: {e}. Falling back to Groq...")
+
+            if not result and settings.GROQ_API_KEY:
+                try:
+                    res = await AIService._call_groq(pre_processed, conversation_history)
+                    if res and res.get("intent"):
+                        result = res
+                except Exception as e:
+                    logger.warning(f"Groq AI failed: {e}")
 
         if not result or not result.get("intent"):
             result = AIService._rule_based_fallback(message, pre_processed)
