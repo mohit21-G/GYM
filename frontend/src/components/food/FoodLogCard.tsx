@@ -225,17 +225,17 @@ export const FoodLogCard: React.FC<FoodLogCardProps> = ({
             {card.macros && (
               <div className="flex items-center space-x-2 text-[11px]">
                 <span className="bg-slate-800/70 border border-slate-700/50 px-2 py-0.5 rounded text-slate-300">
-                  P: <span className="text-blue-400 font-semibold">{card.macros.proteinG}g</span>
+                  P: <span className="text-blue-400 font-semibold">{card.macros.proteinG ?? (card.macros as any)?.protein ?? 0}g</span>
                 </span>
                 <span className="bg-slate-800/70 border border-slate-700/50 px-2 py-0.5 rounded text-slate-300">
-                  C: <span className="text-amber-400 font-semibold">{card.macros.carbsG}g</span>
+                  C: <span className="text-amber-400 font-semibold">{card.macros.carbsG ?? (card.macros as any)?.carbs ?? 0}g</span>
                 </span>
                 <span className="bg-slate-800/70 border border-slate-700/50 px-2 py-0.5 rounded text-slate-300">
-                  F: <span className="text-rose-400 font-semibold">{card.macros.fatG}g</span>
+                  F: <span className="text-rose-400 font-semibold">{card.macros.fatG ?? (card.macros as any)?.fat ?? 0}g</span>
                 </span>
-                {card.macros.fiberG > 0 && (
+                {(card.macros.fiberG > 0 || (card.macros as any)?.fiber > 0) && (
                   <span className="bg-slate-800/70 border border-slate-700/50 px-2 py-0.5 rounded text-slate-300">
-                    Fib: <span className="text-emerald-400 font-semibold">{card.macros.fiberG}g</span>
+                    Fib: <span className="text-emerald-400 font-semibold">{card.macros.fiberG ?? (card.macros as any)?.fiber ?? 0}g</span>
                   </span>
                 )}
               </div>

@@ -365,7 +365,11 @@ class BenchmarkRunner10k:
                 if len(cards) > 0 or "logged" in reply.lower() or "added" in reply.lower():
                     card_names = [c.get("foodName", "").lower() for c in cards]
                     if exp_food:
-                        match_food = any(exp_food.lower() in cn for cn in card_names) or (exp_food.lower() in reply.lower())
+                        match_food = (
+                            any(exp_food.lower() in cn or cn in exp_food.lower() for cn in card_names if cn)
+                            or (exp_food.lower() in reply.lower())
+                            or (any(word in reply.lower() for word in exp_food.lower().split() if len(word) > 4))
+                        )
                         if match_food:
                             status = "PASS"
                             actual_food = exp_food

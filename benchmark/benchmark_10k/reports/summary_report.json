@@ -1,9 +1,9 @@
 {
-  "run_id": "run_10k_1790666130",
+  "run_id": "run_10k_1790670741",
   "benchmark_name": "Fitness AI Master 10,000-Test Benchmark Suite",
   "version": "3.1.0",
-  "suite_started_at": "2026-09-29T07:15:30.663985+00:00",
-  "suite_completed_at": "2026-09-29T07:15:51.234546+00:00",
+  "suite_started_at": "2026-09-29T08:32:21.271393+00:00",
+  "suite_completed_at": "2026-09-29T08:32:45.088564+00:00",
   "total_cases": 100,
   "status_accounting": {
     "strict_pass_count": 100,
@@ -23,12 +23,12 @@
     "user_isolation_failures": 0
   },
   "latency_metrics_ms": {
-    "p50": 1124.5,
-    "p95": 2052.3,
-    "p99": 2219.4,
-    "mean": 1457.2,
-    "min": 963.0,
-    "max": 12247.9,
+    "p50": 1147.5,
+    "p95": 1975.0,
+    "p99": 2072.7,
+    "mean": 1375.6,
+    "min": 941.2,
+    "max": 2101.8,
     "valid_latency_samples_count": 100
   },
   "error_classification": {},

@@ -136,7 +136,18 @@ class ChatService:
                 )
                 for f in raw_foods
             ]
-            food_result = await FoodService.process_and_log_food(user_id, items, log_date_str=today_str)
+            detected_meal = None
+            for it in items:
+                m = getattr(it, "mealType", None)
+                if m and m != "LUNCH":
+                    detected_meal = m
+                    break
+            if not detected_meal and items:
+                detected_meal = getattr(items[0], "mealType", None)
+
+            food_result = await FoodService.process_and_log_food(
+                user_id, items, meal_type_override=detected_meal, log_date_str=today_str
+            )
 
             cards = [
                 {
@@ -384,7 +395,18 @@ class ChatService:
                 )
                 for f in food_items_to_log
             ]
-            food_result = await FoodService.process_and_log_food(user_id, items, log_date_str=today_str)
+            detected_meal = None
+            for it in items:
+                m = getattr(it, "mealType", None)
+                if m and m != "LUNCH":
+                    detected_meal = m
+                    break
+            if not detected_meal and items:
+                detected_meal = getattr(items[0], "mealType", None)
+
+            food_result = await FoodService.process_and_log_food(
+                user_id, items, meal_type_override=detected_meal, log_date_str=today_str
+            )
             latest_food_result = food_result
 
             for item in food_result.loggedItems:

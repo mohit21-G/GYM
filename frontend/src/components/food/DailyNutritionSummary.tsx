@@ -85,28 +85,28 @@ export const DailyNutritionSummary: React.FC<DailyNutritionSummaryProps> = ({
         <div className="bg-slate-800/60 rounded-xl p-2 border border-slate-700/40">
           <div className="text-[10px] text-slate-400 font-medium">Protein</div>
           <div className="text-blue-400 font-bold mt-0.5">
-            {summary.macros?.proteinG ?? 0}g
+            {summary.macros?.proteinG ?? (summary.macros as any)?.protein ?? (summary as any)?.totalProteinG ?? 0}g
           </div>
         </div>
 
         <div className="bg-slate-800/60 rounded-xl p-2 border border-slate-700/40">
           <div className="text-[10px] text-slate-400 font-medium">Carbs</div>
           <div className="text-amber-400 font-bold mt-0.5">
-            {summary.macros?.carbsG ?? 0}g
+            {summary.macros?.carbsG ?? (summary.macros as any)?.carbs ?? (summary as any)?.totalCarbsG ?? 0}g
           </div>
         </div>
 
         <div className="bg-slate-800/60 rounded-xl p-2 border border-slate-700/40">
           <div className="text-[10px] text-slate-400 font-medium">Fat</div>
           <div className="text-rose-400 font-bold mt-0.5">
-            {summary.macros?.fatG ?? 0}g
+            {summary.macros?.fatG ?? (summary.macros as any)?.fat ?? (summary as any)?.totalFatG ?? 0}g
           </div>
         </div>
 
         <div className="bg-slate-800/60 rounded-xl p-2 border border-slate-700/40">
           <div className="text-[10px] text-slate-400 font-medium">Fiber</div>
           <div className="text-emerald-400 font-bold mt-0.5">
-            {summary.macros?.fiberG ?? 0}g
+            {summary.macros?.fiberG ?? (summary.macros as any)?.fiber ?? (summary as any)?.totalFiberG ?? 0}g
           </div>
         </div>
       </div>

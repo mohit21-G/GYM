@@ -109,3 +109,13 @@ def test_sleep_intent_and_duration():
         assert intent == "CREATE_SLEEP_LOG", f"Expected CREATE_SLEEP_LOG for '{text}', got '{intent}'"
         ent = AgentNLP.extract_sleep_entity(text)
         assert ent["durationMinutes"] == exp_mins, f"Expected {exp_mins} mins for '{text}', got {ent.get('durationMinutes')}"
+
+def test_savare_bhakri_breakfast_and_macros():
+    text = "me savare bhakri and chai pidhi"
+    extracted = AgentNLP.extract_food_entities_heuristically(text)
+    assert len(extracted) == 2, f"Expected 2 items, got {extracted}"
+    assert extracted[0]["food"] == "Bhakri", f"Expected 'Bhakri', got '{extracted[0]['food']}'"
+    assert extracted[0]["mealType"] == "BREAKFAST", f"Expected 'BREAKFAST', got '{extracted[0]['mealType']}'"
+    assert extracted[1]["food"] == "Tea With Milk", f"Expected 'Tea With Milk', got '{extracted[1]['food']}'"
+    assert extracted[1]["mealType"] == "BREAKFAST", f"Expected 'BREAKFAST', got '{extracted[1]['mealType']}'"
+

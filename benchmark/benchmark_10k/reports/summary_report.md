@@ -1,7 +1,7 @@
 # Fitness AI Chatbot — 10,000-Test Benchmark Summary Report
 
-**Run ID**: `run_10k_1790666130`  
-**Suite Execution Time**: `2026-09-29T07:15:30.663985+00:00` to `2026-09-29T07:15:51.234546+00:00`  
+**Run ID**: `run_10k_1790670741`  
+**Suite Execution Time**: `2026-09-29T08:32:21.271393+00:00` to `2026-09-29T08:32:45.088564+00:00`  
 **Model Identifier**: `@cf/meta/llama-3.1-8b-instruct`  
 **Environment**: FastAPI + Python 3.14 + MongoDB Atlas  
 
@@ -16,9 +16,9 @@
 - **Skipped Cases**: 0
 - **False-Positive Logging Count**: 0
 - **User Isolation Failures**: 0 (100% Isolated)
-- **p50 Latency**: 1124.5 ms
-- **p95 Latency**: 2052.3 ms
-- **p99 Latency**: 2219.4 ms
+- **p50 Latency**: 1147.5 ms
+- **p95 Latency**: 1975.0 ms
+- **p99 Latency**: 2072.7 ms
 
 ## Status Accounting Reconciliation
 

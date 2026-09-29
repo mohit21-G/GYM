@@ -20,7 +20,8 @@ class FoodTermsCache:
 
 CANONICAL_INDIAN_FOOD_PROFILES: Dict[str, Dict[str, Any]] = {
     "Roti": {"food_id": "canon_roti", "food_name": "Roti", "calories": 104.0, "protein_g": 3.1, "carbs_g": 20.0, "fat_g": 1.2, "fiber_g": 2.8, "unit": "piece"},
-    "Whole Wheat Bhakri": {"food_id": "canon_bhakri", "food_name": "Whole Wheat Bhakri", "calories": 130.0, "protein_g": 3.8, "carbs_g": 24.0, "fat_g": 2.2, "fiber_g": 3.0, "unit": "piece"},
+    "Bhakri": {"food_id": "canon_bhakri", "food_name": "Bhakri", "calories": 130.0, "protein_g": 3.8, "carbs_g": 24.0, "fat_g": 2.2, "fiber_g": 3.0, "unit": "piece"},
+    "Whole Wheat Bhakri": {"food_id": "canon_bhakri", "food_name": "Bhakri", "calories": 130.0, "protein_g": 3.8, "carbs_g": 24.0, "fat_g": 2.2, "fiber_g": 3.0, "unit": "piece"},
     "Khapli Wheat Rotli": {"food_id": "canon_khapli", "food_name": "Khapli Wheat Rotli", "calories": 85.0, "protein_g": 3.5, "carbs_g": 16.5, "fat_g": 0.8, "fiber_g": 3.2, "unit": "piece"},
     "Bajra Roti": {"food_id": "canon_bajra_roti", "food_name": "Bajra Roti", "calories": 116.0, "protein_g": 3.2, "carbs_g": 22.0, "fat_g": 1.5, "fiber_g": 3.5, "unit": "piece"},
     "Methi Thepla": {"food_id": "canon_thepla", "food_name": "Methi Thepla", "calories": 115.0, "protein_g": 3.0, "carbs_g": 18.0, "fat_g": 3.5, "fiber_g": 2.5, "unit": "piece"},
@@ -398,7 +399,17 @@ class FoodService:
         db = get_db()
         now = datetime.now(timezone.utc)
         target_date_str = log_date_str or now.strftime("%Y-%m-%d")
-        meal_type = meal_type_override or "LUNCH"
+        
+        detected_meal = None
+        for it in items:
+            m = getattr(it, "mealType", None)
+            if m and m != "LUNCH":
+                detected_meal = m
+                break
+        if not detected_meal and items:
+            detected_meal = getattr(items[0], "mealType", None)
+
+        meal_type = meal_type_override or detected_meal or "LUNCH"
 
         logged_items = []
         total_meal_cal = 0.0
@@ -413,6 +424,7 @@ class FoodService:
             resolved = await FoodService.resolve_food(item.food)
             qty = float(item.quantity)
             unit = item.unit or resolved.get("unit", "serving")
+            item_meal_type = getattr(item, "mealType", None) or meal_type
 
             item_cal = round(resolved["calories"] * qty, 1)
             item_p = round(resolved["protein_g"] * qty, 1)
@@ -438,7 +450,7 @@ class FoodService:
                     "user_id": user_id,
                     "food_id": resolved["food_id"],
                     "food_name": resolved["food_name"],
-                    "meal_type": meal_type,
+                    "meal_type": item_meal_type,
                     "quantity_amount": qty,
                     "quantity_unit": unit,
                     "calories": item_cal,
@@ -742,6 +754,10 @@ class FoodService:
                 "carbs": round(total_c, 1),
                 "fat": round(total_f, 1),
                 "fiber": round(total_fib, 1),
+                "proteinG": round(total_p, 1),
+                "carbsG": round(total_c, 1),
+                "fatG": round(total_f, 1),
+                "fiberG": round(total_fib, 1),
             },
             totalProteinG=round(total_p, 1),
             totalCarbsG=round(total_c, 1),
