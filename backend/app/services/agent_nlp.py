@@ -46,22 +46,27 @@ UNIT_MAP = {
     "piece": "piece", "pieces": "piece", "pcs": "piece", "pc": "piece", "pice": "piece", "pices": "piece",
     "nag": "piece", "tukda": "piece",
     "slice": "slice", "slices": "slice", "scoop": "scoop", "scoops": "scoop",
-    "spoon": "tbsp", "spoons": "tbsp", "chamchi": "tbsp", "chammach": "tbsp",
+    "spoon": "tbsp", "spoons": "tbsp", "spoonful": "tbsp",
+    "chamach": "tbsp", "chamacha": "tbsp", "chamchi": "tbsp", "chammach": "tbsp", "chamcho": "tbsp",
+    "tablespoon": "tbsp", "tablespoons": "tbsp", "teaspoon": "tsp", "teaspoons": "tsp",
     "tbsp": "tbsp", "tsp": "tsp", "ml": "ml", "liter": "l", "litre": "l",
     "l": "l", "ltr": "l", "gram": "g", "grams": "g", "g": "g", "kg": "kg",
     "bottle": "bottle", "bottles": "bottle", "botle": "bottle",
     "serving": "serving", "servings": "serving",
     # Gujarati script units
     "વાટકી": "bowl", "કટોરી": "bowl", "ગ્લાસ": "glass", "કપ": "cup", "પ્લેટ": "plate", "ડીશ": "plate", "નંગ": "piece", "ટુકડો": "piece",
+    "ચમચી": "tbsp", "ચમચો": "tbsp", "સ્કૂપ": "scoop",
     # Hindi / Devanagari script units
     "कटोरी": "bowl", "कटोरा": "bowl", "ग्लास": "glass", "कप": "cup", "प्लेट": "plate", "टुकड़ा": "piece",
+    "चम्मच": "tbsp", "चमच": "tbsp", "स्कूप": "scoop",
 }
 
 FOOD_NOUNS = [
-    "roti", "rotli", "khapli", "apple", "banana", "kela", "milk", "doodh", "dudh",
+    "roti", "rotli", "rotis", "rotlis", "chapati", "chapatis", "phulka", "phulkas", "khapli", "apple", "banana", "kela", "milk", "doodh", "dudh",
     "dal", "daal", "rice", "chawal", "poha", "upma", "egg", "anda", "bread",
-    "salad", "sabzi", "shaak", "shak", "thepla", "paratha", "chaas", "chhas", "chach", "dahi", "bhakri", "bhakhri",
-    "chai", "chay", "tea", "coffee", "lassi", "paneer", "pneer", "pneeeer", "almonds", "whey", "protein powder",
+    "salad", "sabzi", "shaak", "shak", "thepla", "theplas", "paratha", "chaas", "chhas", "chach", "dahi", "bhakri", "bhakhri",
+    "chai", "chay", "tea", "coffee", "lassi", "paneer", "pneer", "pneeeer", "almonds",
+    "whey", "protein powder", "protein shake", "protein", "whey protein", "shake", "protein drink",
     "dosa", "tikka", "pulao", "uttapam", "payasam", "sandesh", "curd", "biryani",
     "chicken", "momo", "idli", "vada", "samosa", "pakora", "khichdi", "chole", "bhature",
     "kulche", "mutton", "fish", "halwa", "puri", "poori", "toast", "curry", "sprouts", "chana",
@@ -77,11 +82,13 @@ FOOD_NOUNS = [
     "મોહનથાળ", "ખાખરા", "સમોસા", "શ્રીખંડ", "ફણગાવેલા મગ", "મગ", "ઈંડા", "ઈંડું", "વેડમી", "ઉપમા",
     "પૌંઆ", "પોહા", "સફરજન", "પનીર", "રાજમા", "ચણા", "ઢોંસા", "ઢોસા", "ઇડલી", "ઉત્તપમ", "ઉત્તપા",
     "નાન", "પાઉંભાજી", "પાંવભાજી", "પાઉં ભાજી", "જલેબી", "ફાફડા", "સુખડી", "લાડવા", "દહીંવડા", "દહીં", "કઢી", "પૂરી",
+    "પ્રોટીન શેક", "પ્રોટીન પાવડર", "પ્રોટીન", "શેક",
     # Devanagari script food nouns
     "रोटी", "दाल", "चावल", "दूध", "छाछ", "केला", "सब्जी", "खीचड़ी", "पनीर", "समोसा", "इडली", "डोसा",
     "पोहा", "उपमा", "राजमा", "भिंडी", "बासुंदी", "सेव टमाटर", "पराठा", "अंडा", "अंडे", "कढ़ी", "कढ़ी",
     "खाखरा", "पाव भाजी", "पावभाजी", "नान", "छोले", "रायता", "सेब", "उत्पम", "उत्तपम", "मुठिया",
     "पात्रा", "श्रीखंड", "मोहनथाल", "फाफड़ा", "जलेबी", "दही", "पूरी",
+    "प्रोटीन शेक", "प्रोटीन पाउडर", "प्रोटीन",
     # Urdu script
     "بھنڈی"
 ]
@@ -118,10 +125,17 @@ INDIAN_FOOD_SYNONYMS: Dict[str, str] = {
     "khapli rotli": "Khapli Wheat Rotli",
     "khapli": "Khapli Wheat Rotli",
     "rotli": "Roti",
+    "rotlis": "Roti",
     "roti": "Roti",
-    "chapati": "Roti",
-    "chapatis": "Roti",
-    "rotlo": "Rotlo",
+    "rotis": "Roti",
+    "rotliyo": "Roti",
+    "chapati": "Chapati",
+    "chapatis": "Chapati",
+    "phulka": "Phulka",
+    "phulke": "Phulka",
+    "phulkas": "Phulka",
+    "theplas": "Methi Thepla",
+    "theple": "Methi Thepla",
     "rotla": "Rotlo",
     "rotlu": "Rotlo",
     "bajra rotlo": "Rotlo",
@@ -279,7 +293,25 @@ INDIAN_FOOD_SYNONYMS: Dict[str, str] = {
     "chicken tikka": "Chicken Tikka",
     "fish": "Grilled Fish",
     "whey": "Whey Protein Powder",
-    "protein shake": "Whey Protein Shake",
+    "whey protein": "Whey Protein Powder",
+    "whey protein powder": "Whey Protein Powder",
+    "protein powder": "Whey Protein Powder",
+    "protin powder": "Whey Protein Powder",
+    "protien powder": "Whey Protein Powder",
+    "protein shake": "Protein Shake",
+    "protein shakes": "Protein Shake",
+    "protin shake": "Protein Shake",
+    "protien shake": "Protein Shake",
+    "shake": "Protein Shake",
+    "shakes": "Protein Shake",
+    "whey shake": "Protein Shake",
+    "whey protein shake": "Protein Shake",
+    "protein drink": "Protein Shake",
+    "whey powder": "Whey Protein Powder",
+    "protein powders": "Whey Protein Powder",
+    "plant protein": "Plant Protein Powder",
+    "plant protein powder": "Plant Protein Powder",
+    "protein": "Protein Shake",
 
     # Snacks & Regional
     "biscuit": "Digestive Biscuit",
@@ -397,9 +429,24 @@ INDIAN_FOOD_SYNONYMS: Dict[str, str] = {
     "આલૂ પરાઠા": "Aloo Paratha",
     "હાંડવો": "Gujarati Handvo",
     "થેપલા": "Methi Thepla",
+    "થેપલાં": "Methi Thepla",
+    "ચપાતી": "Chapati",
+    "ફૂલકા": "Phulka",
+    "પ્રોટીન શેક": "Protein Shake",
+    "પ્રોટીન પાવડર": "Whey Protein Powder",
+    "પ્રોટીન": "Protein Shake",
+    "પ્રોટિન શેક": "Protein Shake",
+    "પ્રોટિન પાવડર": "Whey Protein Powder",
+    "પ્રોટિન": "Protein Shake",
+    "શેક": "Protein Shake",
 
     # Native Devanagari Script
     "रोटी": "Roti",
+    "रोटियां": "Roti",
+    "रोटियाँ": "Roti",
+    "चपाती": "Chapati",
+    "फुलका": "Phulka",
+    "थेपले": "Methi Thepla",
     "दाल": "Toor Dal",
     "चावल": "Cooked White Rice",
     "खिचड़ी": "Moong Dal Khichdi",
@@ -450,6 +497,10 @@ INDIAN_FOOD_SYNONYMS: Dict[str, str] = {
     "फाफड़ा": "Fafda",
     "जलेबी": "Jalebi",
     "पूरी": "Poori",
+    "प्रोटीन शेक": "Protein Shake",
+    "प्रोटीन पाउडर": "Whey Protein Powder",
+    "प्रोटीन": "Protein Shake",
+    "व्हे प्रोटीन": "Whey Protein Powder",
 
     # Urdu Script
     "بھنڈی": "Bhindi Masala",
@@ -1026,37 +1077,57 @@ class AgentNLP:
             clause = re.sub(r'\{"user_id".*\}', '', clause)
 
             # Extract quantity
+            has_explicit_qty = False
             qty = 1.0
             num_match = re.search(r"\b(\d+(?:\.\d+)?)\b", clause)
             if num_match:
                 try:
                     qty = float(num_match.group(1))
+                    has_explicit_qty = True
                 except Exception:
                     qty = 1.0
-            elif any(w in clause for w in ["thodu", "thoda", "thodi", "thodak", "zara", "thora", "થોડું", "થોડી", "थोड़ा", "थोड़ी"]):
-                qty = 0.5
+            else:
+                for nw_word, nw_val in NUMBER_WORDS.items():
+                    if any(ord(c) > 127 for c in nw_word):
+                        if re.search(rf"(?<![\u0A80-\u0AFF\u0900-\u097F]){re.escape(nw_word)}(?![\u0A80-\u0AFF\u0900-\u097F])", clause):
+                            qty = nw_val
+                            has_explicit_qty = True
+                            break
+                    else:
+                        if re.search(rf"\b{re.escape(nw_word)}\b", clause, flags=re.I):
+                            qty = nw_val
+                            has_explicit_qty = True
+                            break
+                if not has_explicit_qty and any(w in clause for w in ["thodu", "thoda", "thodi", "thodak", "zara", "thora", "થોડું", "થોડી", "थोड़ा", "थोड़ी"]):
+                    qty = 0.5
+                    has_explicit_qty = True
 
             # Extract unit safely with word boundaries for short keys
             unit = "serving"
-            for u_raw, u_norm in UNIT_MAP.items():
-                if len(u_raw) <= 2:
-                    if re.search(rf"\b{re.escape(u_raw)}\b", clause):
-                        unit = u_norm
+            for u_raw in sorted(UNIT_MAP.keys(), key=len, reverse=True):
+                if any(ord(c) > 127 for c in u_raw):
+                    if re.search(rf"(?<![\u0A80-\u0AFF\u0900-\u097F]){re.escape(u_raw)}(?![\u0A80-\u0AFF\u0900-\u097F])", clause):
+                        unit = UNIT_MAP[u_raw]
                         break
                 else:
-                    if u_raw in clause:
-                        unit = u_norm
+                    if re.search(rf"\b{re.escape(u_raw)}\b", clause, flags=re.I):
+                        unit = UNIT_MAP[u_raw]
                         break
 
             # Clean food phrase by stripping numbers, units, verbs, and filler words
             clean = clause
             clean = re.sub(r"^\d+(\.\d+)?", "", clean)
             clean = re.sub(r"\b\d+(\.\d+)?\b", "", clean)
-            for u_raw in sorted(UNIT_MAP.keys(), key=len, reverse=True):
-                if len(u_raw) <= 2:
-                    clean = re.sub(rf"\b{re.escape(u_raw)}\b", " ", clean)
+            for nw_word in sorted(NUMBER_WORDS.keys(), key=len, reverse=True):
+                if any(ord(c) > 127 for c in nw_word):
+                    clean = re.sub(rf"(?<![\u0A80-\u0AFF\u0900-\u097F]){re.escape(nw_word)}(?![\u0A80-\u0AFF\u0900-\u097F])", " ", clean)
                 else:
-                    clean = clean.replace(u_raw, " ")
+                    clean = re.sub(rf"\b{re.escape(nw_word)}\b", " ", clean, flags=re.I)
+            for u_raw in sorted(UNIT_MAP.keys(), key=len, reverse=True):
+                if any(ord(c) > 127 for c in u_raw):
+                    clean = re.sub(rf"(?<![\u0A80-\u0AFF\u0900-\u097F]){re.escape(u_raw)}(?![\u0A80-\u0AFF\u0900-\u097F])", " ", clean)
+                else:
+                    clean = re.sub(rf"\b{re.escape(u_raw)}\b", " ", clean, flags=re.I)
 
             # Remove time words, postpositions, informal modifiers, and eating verbs
             clean = re.sub(
@@ -1078,16 +1149,25 @@ class AgentNLP:
 
             if clean:
                 canonical = None
+                is_recognized = False
+
                 # 1. Exact lookup
                 if clean in INDIAN_FOOD_SYNONYMS:
                     canonical = INDIAN_FOOD_SYNONYMS[clean]
+                    is_recognized = True
 
-                # 2. Check multi-word phrase keys first (longest first)
+                # 2. Check multi-word phrase keys first (longest first) with strict boundaries
                 if not canonical:
                     for food_key in sorted(INDIAN_FOOD_SYNONYMS.keys(), key=len, reverse=True):
-                        if " " in food_key or any(ord(c) > 127 for c in food_key):
-                            if len(food_key) >= 3 and (food_key in clean or re.search(rf"\b{re.escape(food_key)}\b", clean, flags=re.I)):
+                        if any(ord(c) > 127 for c in food_key):
+                            if food_key == clean or food_key in clean.split() or f" {food_key} " in f" {clean} ":
                                 canonical = INDIAN_FOOD_SYNONYMS[food_key]
+                                is_recognized = True
+                                break
+                        else:
+                            if re.search(rf"\b{re.escape(food_key)}\b", clean, flags=re.I):
+                                canonical = INDIAN_FOOD_SYNONYMS[food_key]
+                                is_recognized = True
                                 break
 
                 # 3. Check single tokens
@@ -1096,26 +1176,54 @@ class AgentNLP:
                     for t in tokens:
                         if t in INDIAN_FOOD_SYNONYMS:
                             canonical = INDIAN_FOOD_SYNONYMS[t]
+                            is_recognized = True
                             break
 
-                # 4. Fallback substring
+                # 4. Check known FOOD_NOUNS with strict boundaries
                 if not canonical:
-                    for food_key in sorted(INDIAN_FOOD_SYNONYMS.keys(), key=len, reverse=True):
-                        if len(food_key) >= 3 and food_key in clean:
-                            canonical = INDIAN_FOOD_SYNONYMS[food_key]
-                            break
+                    for noun in sorted(FOOD_NOUNS, key=len, reverse=True):
+                        if any(ord(c) > 127 for c in noun):
+                            if noun == clean or noun in clean.split() or f" {noun} " in f" {clean} ":
+                                canonical = noun.title()
+                                is_recognized = True
+                                break
+                        else:
+                            if re.search(rf"\b{re.escape(noun)}\b", clean, flags=re.I):
+                                canonical = noun.title()
+                                is_recognized = True
+                                break
 
+                # If unrecognized, preserve user's exact food name; do NOT invent or guess random foods
                 if not canonical:
                     canonical = clean.title()
 
-                if unit == "serving" and any(w in canonical.lower() for w in ["roti", "rotli", "bhakri", "banana", "egg", "thepla", "apple"]):
-                    unit = "piece"
+                confidence = 0.95 if is_recognized else 0.3
+                requires_clarification = (not is_recognized) or (not has_explicit_qty)
+                clarification_reason = "UNKNOWN_FOOD" if not is_recognized else ("AMBIGUOUS_QUANTITY" if not has_explicit_qty else None)
+
+                # Context-aware default unit when unit was not specified
+                if unit == "serving":
+                    c_lower = canonical.lower()
+                    if any(w in c_lower for w in ["powder", "whey"]):
+                        unit = "scoop"
+                    elif any(w in c_lower for w in ["shake", "smoothie"]):
+                        unit = "glass"
+                    elif any(w in c_lower for w in ["roti", "rotli", "bhakri", "thepla", "egg", "banana", "apple", "chapati", "phulka", "naan", "paratha", "poori"]):
+                        unit = "piece"
+                    elif any(w in c_lower for w in ["dal", "daal", "rice", "chawal", "khichdi", "sabzi", "shaak", "curd", "dahi", "salad"]):
+                        unit = "bowl"
 
                 results.append({
                     "food": canonical,
+                    "food_name": canonical,
                     "quantity": qty,
                     "unit": unit,
                     "mealType": meal_type,
+                    "confidence": confidence,
+                    "is_recognized": is_recognized,
+                    "has_explicit_quantity": has_explicit_qty,
+                    "requires_clarification": requires_clarification,
+                    "clarification_reason": clarification_reason,
                 })
 
         return results

@@ -20,6 +20,8 @@ class FoodTermsCache:
 
 CANONICAL_INDIAN_FOOD_PROFILES: Dict[str, Dict[str, Any]] = {
     "Roti": {"food_id": "canon_roti", "food_name": "Roti", "calories": 104.0, "protein_g": 3.1, "carbs_g": 20.0, "fat_g": 1.2, "fiber_g": 2.8, "unit": "piece"},
+    "Chapati": {"food_id": "canon_chapati", "food_name": "Chapati", "calories": 85.0, "protein_g": 3.0, "carbs_g": 17.0, "fat_g": 0.8, "fiber_g": 2.5, "unit": "piece"},
+    "Phulka": {"food_id": "canon_phulka", "food_name": "Phulka", "calories": 70.0, "protein_g": 2.8, "carbs_g": 15.0, "fat_g": 0.4, "fiber_g": 2.4, "unit": "piece"},
     "Bhakri": {"food_id": "canon_bhakri", "food_name": "Bhakri", "calories": 130.0, "protein_g": 3.8, "carbs_g": 24.0, "fat_g": 2.2, "fiber_g": 3.0, "unit": "piece"},
     "Whole Wheat Bhakri": {"food_id": "canon_bhakri", "food_name": "Bhakri", "calories": 130.0, "protein_g": 3.8, "carbs_g": 24.0, "fat_g": 2.2, "fiber_g": 3.0, "unit": "piece"},
     "Rotlo": {"food_id": "canon_bajra_roti", "food_name": "Rotlo", "calories": 116.0, "protein_g": 3.2, "carbs_g": 22.0, "fat_g": 1.5, "fiber_g": 3.5, "unit": "piece"},
@@ -76,8 +78,12 @@ CANONICAL_INDIAN_FOOD_PROFILES: Dict[str, Dict[str, Any]] = {
     "Boiled Egg": {"food_id": "canon_boiled_egg", "food_name": "Boiled Egg", "calories": 78.0, "protein_g": 6.3, "carbs_g": 0.6, "fat_g": 5.3, "fiber_g": 0.0, "unit": "piece"},
     "Egg Omelette": {"food_id": "canon_omelette", "food_name": "Egg Omelette", "calories": 154.0, "protein_g": 12.0, "carbs_g": 1.5, "fat_g": 11.0, "fiber_g": 0.0, "unit": "piece"},
     "Chicken Breast": {"food_id": "canon_chicken_breast", "food_name": "Chicken Breast", "calories": 165.0, "protein_g": 31.0, "carbs_g": 0.0, "fat_g": 3.6, "fiber_g": 0.0, "unit": "piece"},
-    "Chicken Tikka": {"food_id": "canon_chicken_tikka", "food_name": "Chicken Tikka", "calories": 220.0, "protein_g": 28.0, "carbs_g": 4.0, "fat_g": 10.0, "fiber_g": 1.0, "unit": "serving"},
     "Whey Protein Powder": {"food_id": "canon_whey", "food_name": "Whey Protein Powder", "calories": 120.0, "protein_g": 24.0, "carbs_g": 2.0, "fat_g": 1.5, "fiber_g": 0.0, "unit": "scoop"},
+    "Protein Powder": {"food_id": "canon_whey", "food_name": "Whey Protein Powder", "calories": 120.0, "protein_g": 24.0, "carbs_g": 2.0, "fat_g": 1.5, "fiber_g": 0.0, "unit": "scoop"},
+    "Protein Shake": {"food_id": "canon_protein_shake", "food_name": "Protein Shake", "calories": 160.0, "protein_g": 25.0, "carbs_g": 8.0, "fat_g": 3.0, "fiber_g": 1.0, "unit": "glass"},
+    "Whey Protein Shake": {"food_id": "canon_protein_shake", "food_name": "Protein Shake", "calories": 160.0, "protein_g": 25.0, "carbs_g": 8.0, "fat_g": 3.0, "fiber_g": 1.0, "unit": "glass"},
+    "Plant Protein Powder": {"food_id": "canon_plant_protein", "food_name": "Plant Protein Powder", "calories": 115.0, "protein_g": 22.0, "carbs_g": 3.0, "fat_g": 1.5, "fiber_g": 1.5, "unit": "scoop"},
+    "Chicken Tikka": {"food_id": "canon_chicken_tikka", "food_name": "Chicken Tikka", "calories": 220.0, "protein_g": 28.0, "carbs_g": 4.0, "fat_g": 10.0, "fiber_g": 1.0, "unit": "serving"},
     "Paneer": {"food_id": "canon_paneer", "food_name": "Paneer", "calories": 265.0, "protein_g": 18.0, "carbs_g": 3.5, "fat_g": 20.0, "fiber_g": 0.0, "unit": "serving"},
     "Paneer Bhurji": {"food_id": "canon_paneer_bhurji", "food_name": "Paneer Bhurji", "calories": 220.0, "protein_g": 14.0, "carbs_g": 6.0, "fat_g": 16.0, "fiber_g": 1.5, "unit": "bowl"},
     "Curd (Dahi)": {"food_id": "canon_curd", "food_name": "Curd (Dahi)", "calories": 98.0, "protein_g": 4.5, "carbs_g": 6.0, "fat_g": 6.5, "fiber_g": 0.0, "unit": "bowl"},
@@ -179,24 +185,28 @@ class FoodService:
             c_norm = re.sub(r"[^\w\s]", " ", c_name.lower()).strip()
             c_norm = re.sub(r"\s+", " ", c_norm)
             if c_name.lower() in (clean_q, q) or c_norm in (clean_q, clean_norm):
-                return c_prof
+                return {**c_prof, "is_recognized": True, "requires_clarification": False}
 
         # Step 1: Check known Indian dialect synonyms & slang map
         synonym_target = INDIAN_FOOD_SYNONYMS.get(clean_q) or INDIAN_FOOD_SYNONYMS.get(q)
 
-        # Multi-word phrase matching with word boundaries before single tokens
+        # Multi-word phrase matching with strict word boundaries before single tokens
         if not synonym_target:
             for food_key in sorted(INDIAN_FOOD_SYNONYMS.keys(), key=len, reverse=True):
-                if " " in food_key or any(ord(c) > 127 for c in food_key):
-                    if len(food_key) >= 3 and (food_key in clean_q or re.search(rf"\b{re.escape(food_key)}\b", clean_q, flags=re.I)):
+                if any(ord(c) > 127 for c in food_key):
+                    if food_key == clean_q or f" {food_key} " in f" {clean_q} " or food_key in clean_q.split():
+                        synonym_target = INDIAN_FOOD_SYNONYMS[food_key]
+                        break
+                else:
+                    if len(food_key) >= 3 and re.search(rf"\b{re.escape(food_key)}\b", clean_q, flags=re.I):
                         synonym_target = INDIAN_FOOD_SYNONYMS[food_key]
                         break
 
         # Check if synonym_target matches a canonical profile before token splitting
         if synonym_target and synonym_target in CANONICAL_INDIAN_FOOD_PROFILES:
-            return CANONICAL_INDIAN_FOOD_PROFILES[synonym_target]
+            return {**CANONICAL_INDIAN_FOOD_PROFILES[synonym_target], "is_recognized": True, "requires_clarification": False}
 
-        # Single tokens
+        # Single tokens matching
         if not synonym_target:
             tokens = clean_q.split()
             for t in tokens:
@@ -204,19 +214,12 @@ class FoodService:
                     synonym_target = INDIAN_FOOD_SYNONYMS[t]
                     break
 
-        # Fallback substring
-        if not synonym_target:
-            for food_key in sorted(INDIAN_FOOD_SYNONYMS.keys(), key=len, reverse=True):
-                if len(food_key) >= 3 and food_key in clean_q:
-                    synonym_target = INDIAN_FOOD_SYNONYMS[food_key]
-                    break
-
         # If canonical profile matches, return immediately with accurate macros and food name
         if synonym_target and synonym_target in CANONICAL_INDIAN_FOOD_PROFILES:
-            return CANONICAL_INDIAN_FOOD_PROFILES[synonym_target]
+            return {**CANONICAL_INDIAN_FOOD_PROFILES[synonym_target], "is_recognized": True, "requires_clarification": False}
         for c_name, c_prof in CANONICAL_INDIAN_FOOD_PROFILES.items():
             if c_name.lower() == clean_q or c_name.lower() == q:
-                return c_prof
+                return {**c_prof, "is_recognized": True, "requires_clarification": False}
 
         search_term = synonym_target.lower() if synonym_target else clean_q
 
@@ -262,148 +265,69 @@ class FoodService:
 
         # Step 6: Smart Heuristic Nutrition Profiling for Unmatched/Exotic Foods
         if not doc:
+            # Protein Shake / Smoothie
+            if re.search(r"\b(?:protein\s*shake|shake|smoothie)\b", search_term, re.I) or "પ્રોટીન શેક" in search_term or "प्रोटीन शेक" in search_term:
+                return {**CANONICAL_INDIAN_FOOD_PROFILES["Protein Shake"], "is_recognized": True, "requires_clarification": False}
+            # Protein Powder / Whey
+            if re.search(r"\b(?:protein\s*powder|whey|protein)\b", search_term, re.I) or "પ્રોટીન પાવડર" in search_term or "प्रोटीन पाउडर" in search_term:
+                return {**CANONICAL_INDIAN_FOOD_PROFILES["Whey Protein Powder"], "is_recognized": True, "requires_clarification": False}
+
             # Bhakri
-            if any(w in search_term for w in ["bhakri", "bhakhri"]):
-                return {
-                    "food_id": "smart_bhakri",
-                    "food_name": "Whole Wheat Bhakri",
-                    "calories": 130.0,
-                    "protein_g": 3.8,
-                    "carbs_g": 24.0,
-                    "fat_g": 2.2,
-                    "fiber_g": 3.0,
-                    "unit": "piece",
-                }
+            if any(re.search(rf"\b{re.escape(w)}\b", search_term, re.I) for w in ["bhakri", "bhakhri"]):
+                return {**CANONICAL_INDIAN_FOOD_PROFILES["Bhakri"], "is_recognized": True, "requires_clarification": False}
             # Chai / Tea / Coffee
-            if any(w in search_term for w in ["chai", "chay", "tea", "coffee"]):
-                return {
-                    "food_id": "smart_chai",
-                    "food_name": "Tea With Milk",
-                    "calories": 65.0,
-                    "protein_g": 2.0,
-                    "carbs_g": 9.0,
-                    "fat_g": 2.5,
-                    "fiber_g": 0.0,
-                    "unit": "cup",
-                }
+            if any(re.search(rf"\b{re.escape(w)}\b", search_term, re.I) for w in ["chai", "chay", "tea", "coffee"]):
+                return {**CANONICAL_INDIAN_FOOD_PROFILES["Tea With Milk"], "is_recognized": True, "requires_clarification": False}
             # Rotlo / Bajra
-            if any(w in search_term for w in ["rotlo", "rotla", "rotlu", "bajra", "bajri"]):
-                return {
-                    "food_id": "canon_bajra_roti",
-                    "food_name": "Rotlo",
-                    "calories": 116.0,
-                    "protein_g": 3.2,
-                    "carbs_g": 22.0,
-                    "fat_g": 1.5,
-                    "fiber_g": 3.5,
-                    "unit": "piece",
-                }
+            if any(re.search(rf"\b{re.escape(w)}\b", search_term, re.I) for w in ["rotlo", "rotla", "rotlu", "bajra", "bajri"]):
+                return {**CANONICAL_INDIAN_FOOD_PROFILES["Rotlo"], "is_recognized": True, "requires_clarification": False}
+            # Chapati
+            if any(re.search(rf"\b{re.escape(w)}\b", search_term, re.I) for w in ["chapati", "chapatis", "chappati"]):
+                return {**CANONICAL_INDIAN_FOOD_PROFILES["Chapati"], "is_recognized": True, "requires_clarification": False}
+            # Phulka
+            if any(re.search(rf"\b{re.escape(w)}\b", search_term, re.I) for w in ["phulka", "phulke", "phulkas"]):
+                return {**CANONICAL_INDIAN_FOOD_PROFILES["Phulka"], "is_recognized": True, "requires_clarification": False}
             # Roti / Breads
-            if any(w in search_term for w in ["roti", "rotli", "chapati", "khapli", "phulka"]):
-                return {
-                    "food_id": "smart_khapli_roti",
-                    "food_name": "Khapli Wheat Rotli",
-                    "calories": 85.0,
-                    "protein_g": 3.5,
-                    "carbs_g": 16.5,
-                    "fat_g": 0.8,
-                    "fiber_g": 3.2,
-                    "unit": "piece",
-                }
+            if any(re.search(rf"\b{re.escape(w)}\b", search_term, re.I) for w in ["roti", "rotli", "rotis", "rotlis", "khapli"]):
+                return {**CANONICAL_INDIAN_FOOD_PROFILES["Roti"], "is_recognized": True, "requires_clarification": False}
+            # Thepla
+            if any(re.search(rf"\b{re.escape(w)}\b", search_term, re.I) for w in ["thepla", "theplas", "theple"]):
+                return {**CANONICAL_INDIAN_FOOD_PROFILES["Methi Thepla"], "is_recognized": True, "requires_clarification": False}
             # Bananas / Fruits
-            if any(w in search_term for w in ["banana", "kela", "keda", "kelu"]):
-                return {
-                    "food_id": "smart_banana",
-                    "food_name": "Banana",
-                    "calories": 105.0,
-                    "protein_g": 1.3,
-                    "carbs_g": 27.0,
-                    "fat_g": 0.3,
-                    "fiber_g": 3.1,
-                    "unit": "piece",
-                }
+            if any(re.search(rf"\b{re.escape(w)}\b", search_term, re.I) for w in ["banana", "kela", "keda", "kelu"]):
+                return {**CANONICAL_INDIAN_FOOD_PROFILES["Banana"], "is_recognized": True, "requires_clarification": False}
             # Milk / Dairy
-            if any(w in search_term for w in ["milk", "doodh", "dudh"]):
-                return {
-                    "food_id": "smart_milk",
-                    "food_name": "Cow Milk (Toned)",
-                    "calories": 145.0,
-                    "protein_g": 8.0,
-                    "carbs_g": 12.0,
-                    "fat_g": 7.5,
-                    "fiber_g": 0.0,
-                    "unit": "cup",
-                }
+            if any(re.search(rf"\b{re.escape(w)}\b", search_term, re.I) for w in ["milk", "doodh", "dudh"]):
+                return {**CANONICAL_INDIAN_FOOD_PROFILES["Cow Milk (Toned)"], "is_recognized": True, "requires_clarification": False}
             # Buttermilk / Chaas
-            if any(w in search_term for w in ["chaas", "chhas", "chach", "buttermilk"]):
-                return {
-                    "food_id": "smart_chaas",
-                    "food_name": "Spiced Buttermilk (Chaas)",
-                    "calories": 40.0,
-                    "protein_g": 2.2,
-                    "carbs_g": 3.5,
-                    "fat_g": 1.5,
-                    "fiber_g": 0.0,
-                    "unit": "glass",
-                }
+            if any(re.search(rf"\b{re.escape(w)}\b", search_term, re.I) for w in ["chaas", "chhas", "chach", "buttermilk"]):
+                return {**CANONICAL_INDIAN_FOOD_PROFILES["Spiced Buttermilk (Chaas)"], "is_recognized": True, "requires_clarification": False}
             # Rice / Chawal / Bhaat
-            if any(w in search_term for w in ["rice", "chawal", "bhaat", "pulao", "khichdi"]):
-                return {
-                    "food_id": "smart_rice",
-                    "food_name": "Cooked White Rice",
-                    "calories": 130.0,
-                    "protein_g": 2.7,
-                    "carbs_g": 28.0,
-                    "fat_g": 0.3,
-                    "fiber_g": 0.4,
-                    "unit": "bowl",
-                }
+            if any(re.search(rf"\b{re.escape(w)}\b", search_term, re.I) for w in ["rice", "chawal", "bhaat", "pulao", "khichdi"]):
+                return {**CANONICAL_INDIAN_FOOD_PROFILES["Cooked White Rice"], "is_recognized": True, "requires_clarification": False}
             # Dal / Lentils
-            if any(w in search_term for w in ["dal", "daal", "toor", "moong", "sambhar", "kadhi"]):
-                return {
-                    "food_id": "smart_dal",
-                    "food_name": "Yellow Toor Dal",
-                    "calories": 120.0,
-                    "protein_g": 7.0,
-                    "carbs_g": 18.0,
-                    "fat_g": 2.5,
-                    "fiber_g": 4.0,
-                    "unit": "bowl",
-                }
+            if any(re.search(rf"\b{re.escape(w)}\b", search_term, re.I) for w in ["dal", "daal", "toor", "moong", "sambhar", "kadhi"]):
+                return {**CANONICAL_INDIAN_FOOD_PROFILES["Toor Dal"], "is_recognized": True, "requires_clarification": False}
             # Sabzi / Vegetables
-            if any(w in search_term for w in ["sabzi", "shaak", "shak", "bhindi", "aloo", "palak"]):
-                return {
-                    "food_id": "smart_sabzi",
-                    "food_name": "Mixed Vegetable Sabzi",
-                    "calories": 110.0,
-                    "protein_g": 2.5,
-                    "carbs_g": 12.0,
-                    "fat_g": 6.0,
-                    "fiber_g": 3.5,
-                    "unit": "bowl",
-                }
+            if any(re.search(rf"\b{re.escape(w)}\b", search_term, re.I) for w in ["sabzi", "shaak", "shak", "bhindi", "aloo", "palak"]):
+                return {**CANONICAL_INDIAN_FOOD_PROFILES["Mixed Vegetable Sabzi"], "is_recognized": True, "requires_clarification": False}
             # Eggs / Poultry
-            if any(w in search_term for w in ["egg", "anda", "ande", "omelette"]):
-                return {
-                    "food_id": "smart_egg",
-                    "food_name": "Whole Boiled Egg",
-                    "calories": 78.0,
-                    "protein_g": 6.3,
-                    "carbs_g": 0.6,
-                    "fat_g": 5.3,
-                    "fiber_g": 0.0,
-                    "unit": "piece",
-                }
-            # Generic fallback
+            if any(re.search(rf"\b{re.escape(w)}\b", search_term, re.I) for w in ["egg", "anda", "ande", "omelette"]):
+                return {**CANONICAL_INDIAN_FOOD_PROFILES["Boiled Egg"], "is_recognized": True, "requires_clarification": False}
+
+            # Generic fallback: UNKNOWN FOOD -> requires confirmation, do NOT invent fake calories or random food
             return {
-                "food_id": f"custom_{uuid.uuid4().hex[:8]}",
-                "food_name": food_query.title(),
-                "calories": 150.0,
-                "protein_g": 4.0,
-                "carbs_g": 20.0,
-                "fat_g": 5.0,
-                "fiber_g": 2.0,
+                "food_id": f"unknown_{uuid.uuid4().hex[:8]}",
+                "food_name": food_query.title().strip(),
+                "calories": 0.0,
+                "protein_g": 0.0,
+                "carbs_g": 0.0,
+                "fat_g": 0.0,
+                "fiber_g": 0.0,
                 "unit": "serving",
+                "is_recognized": False,
+                "requires_clarification": True,
+                "clarification_reason": "UNKNOWN_FOOD",
             }
 
         calories = float(doc.get("calories_kcal") or doc.get("calories") or (doc.get("calories_per_100g", 100)))
@@ -417,7 +341,90 @@ class FoodService:
             "fiber_g": float(doc.get("fiber_g", 0.0)),
             "category": doc.get("category"),
             "unit": doc.get("serving_unit", "serving"),
+            "is_recognized": True,
+            "requires_clarification": False,
         }
+
+    @staticmethod
+    def calculate_portion_multiplier(
+        base_unit: str,
+        requested_unit: str,
+        quantity: float,
+        food_name: str = "",
+    ) -> float:
+        b_unit = (base_unit or "serving").lower().strip()
+        r_unit = (requested_unit or "serving").lower().strip()
+        qty = float(quantity) if quantity else 1.0
+        f_lower = (food_name or "").lower().strip()
+
+        # Same unit or default serving
+        if r_unit == b_unit or r_unit in ["serving", "servings"]:
+            return qty
+
+        # Protein Powders / Supplements (base unit: scoop ~ 30g = ~120 kcal)
+        if "scoop" in b_unit or any(w in f_lower for w in ["powder", "whey"]):
+            if r_unit in ["tbsp", "tablespoon", "spoon", "chamach", "chamchi", "चम्मच", "ચમચી"]:
+                # 1 tablespoon powder is ~10g -> 1/3 of a 30g scoop
+                return (10.0 / 30.0) * qty
+            if r_unit in ["tsp", "teaspoon"]:
+                # 1 teaspoon powder is ~4g
+                return (4.0 / 30.0) * qty
+            if r_unit in ["g", "gram", "grams"]:
+                return (qty / 30.0)
+            if r_unit in ["scoop", "scoops"]:
+                return qty
+
+        # Protein Shakes / Smoothies / Drinks (base unit: glass ~ 250ml = 160 kcal)
+        if any(w in f_lower for w in ["shake", "smoothie"]):
+            if r_unit in ["tbsp", "tablespoon", "spoon", "chamach", "chamchi", "चम्मच", "ચમચી"]:
+                # 1 spoon of protein shake concentrate (~45 kcal vs 160 kcal full glass)
+                return (45.0 / 160.0) * qty
+            if r_unit in ["tsp", "teaspoon"]:
+                return (15.0 / 160.0) * qty
+            if r_unit in ["glass", "glasses"]:
+                return qty
+            if r_unit in ["cup", "cups"]:
+                return (150.0 / 250.0) * qty
+            if r_unit in ["ml"]:
+                return (qty / 250.0)
+            if r_unit in ["l", "liter", "litre"]:
+                return (qty * 1000.0 / 250.0)
+
+        # Liquids: Milk, Chaas, Water (base unit: glass or cup)
+        if b_unit in ["glass", "cup"] or any(w in f_lower for w in ["milk", "chaas", "doodh", "water", "tea", "coffee"]):
+            base_ml = 250.0 if b_unit == "glass" else 150.0
+            if r_unit in ["ml"]:
+                return (qty / base_ml)
+            if r_unit in ["l", "liter", "litre"]:
+                return (qty * 1000.0 / base_ml)
+            if r_unit in ["cup", "cups"]:
+                return (150.0 / base_ml) * qty
+            if r_unit in ["glass", "glasses"]:
+                return (250.0 / base_ml) * qty
+            if r_unit in ["tbsp", "spoon", "tablespoon"]:
+                return (15.0 / base_ml) * qty
+
+        # Bowls: Dal, Sabzi, Rice, Khichdi, Kadhi (base unit: bowl ~ 150g)
+        if b_unit in ["bowl", "katori", "vatki"]:
+            if r_unit in ["bowl", "katori", "vatki"]:
+                return qty
+            if r_unit in ["plate", "dish"]:
+                return 2.0 * qty
+            if r_unit in ["tbsp", "spoon", "tablespoon"]:
+                return 0.1 * qty
+            if r_unit in ["tsp", "teaspoon"]:
+                return 0.03 * qty
+            if r_unit in ["g", "gram", "grams"]:
+                return (qty / 150.0)
+
+        # Pieces: Roti, Chapati, Thepla, Bhakri, Eggs, Fruits (base unit: piece)
+        if b_unit in ["piece", "nag", "slice"]:
+            if r_unit in ["piece", "pieces", "nag", "slice", "slices"]:
+                return qty
+            if r_unit in ["plate"]:
+                return 2.0 * qty
+
+        return qty
 
     @staticmethod
     async def process_and_log_food(
@@ -441,6 +448,65 @@ class FoodService:
 
         meal_type = meal_type_override or detected_meal or "LUNCH"
 
+        # Pre-resolution and clarification validation
+        unrecognized_items = []
+        ambiguous_qty_items = []
+        validated_items = []
+
+        for item in items:
+            # Check heuristic extraction flags
+            is_recog = getattr(item, "is_recognized", True)
+            has_qty = getattr(item, "has_explicit_quantity", True)
+            req_clar = getattr(item, "requires_clarification", False)
+
+            resolved = await FoodService.resolve_food(item.food)
+            if not is_recog or not resolved.get("is_recognized", True) or (req_clar and getattr(item, "clarification_reason", "") == "UNKNOWN_FOOD"):
+                unrecognized_items.append(item.food)
+            elif not has_qty or (req_clar and getattr(item, "clarification_reason", "") == "AMBIGUOUS_QUANTITY") or not item.quantity or item.quantity <= 0:
+                ambiguous_qty_items.append(resolved.get("food_name", item.food))
+            else:
+                validated_items.append((item, resolved))
+
+        if unrecognized_items:
+            names = ", ".join(f"'{n}'" for n in unrecognized_items)
+            msg = f"I couldn't identify the food {names}. Could you please confirm the exact food name?"
+            summary_result = await FoodService.get_daily_grouped_food_cards(user_id, target_date_str)
+            return FoodLoggingResult(
+                success=False,
+                requiresClarification=True,
+                clarificationQuestion=msg,
+                replyText=msg,
+                loggedItems=[],
+                groupedFoodCards=summary_result["groupedFoodCards"],
+                dailyNutritionSummary=summary_result["dailyNutritionSummary"],
+                mealTotals={"calories": 0.0, "proteinG": 0.0, "carbsG": 0.0, "fatG": 0.0, "fiberG": 0.0},
+                dailyProgress={
+                    "totalCaloriesLoggedToday": summary_result["dailyNutritionSummary"].totalCalories,
+                    "dailyCalorieTarget": summary_result["dailyNutritionSummary"].targetCalories,
+                    "remainingCalories": summary_result["dailyNutritionSummary"].remainingCalories,
+                },
+            )
+
+        if ambiguous_qty_items:
+            names = ", ".join(f"'{n}'" for n in ambiguous_qty_items)
+            msg = f"How much {names} did you have? (e.g. 1 glass, 1 scoop, 1 bowl, 2 pieces)"
+            summary_result = await FoodService.get_daily_grouped_food_cards(user_id, target_date_str)
+            return FoodLoggingResult(
+                success=False,
+                requiresClarification=True,
+                clarificationQuestion=msg,
+                replyText=msg,
+                loggedItems=[],
+                groupedFoodCards=summary_result["groupedFoodCards"],
+                dailyNutritionSummary=summary_result["dailyNutritionSummary"],
+                mealTotals={"calories": 0.0, "proteinG": 0.0, "carbsG": 0.0, "fatG": 0.0, "fiberG": 0.0},
+                dailyProgress={
+                    "totalCaloriesLoggedToday": summary_result["dailyNutritionSummary"].totalCalories,
+                    "dailyCalorieTarget": summary_result["dailyNutritionSummary"].targetCalories,
+                    "remainingCalories": summary_result["dailyNutritionSummary"].remainingCalories,
+                },
+            )
+
         logged_items = []
         total_meal_cal = 0.0
         total_meal_p = 0.0
@@ -448,19 +514,23 @@ class FoodService:
         total_meal_f = 0.0
         total_meal_fib = 0.0
 
-        for item in items:
-            if not item.quantity or item.quantity <= 0:
-                continue
-            resolved = await FoodService.resolve_food(item.food)
+        for item, resolved in validated_items:
             qty = float(item.quantity)
             unit = item.unit or resolved.get("unit", "serving")
             item_meal_type = getattr(item, "mealType", None) or meal_type
 
-            item_cal = round(resolved["calories"] * qty, 1)
-            item_p = round(resolved["protein_g"] * qty, 1)
-            item_c = round(resolved["carbs_g"] * qty, 1)
-            item_f = round(resolved["fat_g"] * qty, 1)
-            item_fib = round(resolved["fiber_g"] * qty, 1)
+            multiplier = FoodService.calculate_portion_multiplier(
+                base_unit=resolved.get("unit", "serving"),
+                requested_unit=unit,
+                quantity=qty,
+                food_name=resolved.get("food_name", ""),
+            )
+
+            item_cal = round(resolved["calories"] * multiplier, 1)
+            item_p = round(resolved["protein_g"] * multiplier, 1)
+            item_c = round(resolved["carbs_g"] * multiplier, 1)
+            item_f = round(resolved["fat_g"] * multiplier, 1)
+            item_fib = round(resolved["fiber_g"] * multiplier, 1)
 
             # Idempotency check: prevent duplicate entry within 5 seconds
             five_sec_ago = datetime.fromtimestamp(now.timestamp() - 5, timezone.utc)

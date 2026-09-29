@@ -6,6 +6,10 @@ class FoodItemInput(BaseModel):
     quantity: Optional[float] = 1.0
     unit: Optional[str] = "serving"
     mealType: Optional[str] = "SNACK"
+    is_recognized: Optional[bool] = True
+    has_explicit_quantity: Optional[bool] = True
+    requires_clarification: Optional[bool] = False
+    clarification_reason: Optional[str] = None
 
 class CreateFoodLogDto(BaseModel):
     foodName: str

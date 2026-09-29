@@ -188,6 +188,7 @@ class ChatService:
             return await ChatService.handle_multi_log(user_id, session_id, entities, ai_res, user_message=user_message, inferred_meal=inferred_meal)
 
         # 1. CREATE_FOOD_LOG
+        # 1. CREATE_FOOD_LOG
         if intent == "CREATE_FOOD_LOG":
             raw_foods = entities.get("foodItems") or []
             if not raw_foods and entities.get("food"):
@@ -195,7 +196,11 @@ class ChatService:
                     "food": entities.get("food"),
                     "quantity": entities.get("quantity", 1),
                     "unit": entities.get("unit", "serving"),
-                    "mealType": inferred_meal or entities.get("mealType") or entities.get("meal_type") or "LUNCH"
+                    "mealType": inferred_meal or entities.get("mealType") or entities.get("meal_type") or "LUNCH",
+                    "is_recognized": entities.get("is_recognized", True),
+                    "has_explicit_quantity": entities.get("has_explicit_quantity", True),
+                    "requires_clarification": entities.get("requires_clarification", False),
+                    "clarification_reason": entities.get("clarification_reason"),
                 }]
 
             items = [
@@ -203,7 +208,11 @@ class ChatService:
                     food=f.get("food") or f.get("name", "Food"),
                     quantity=f.get("quantity", 1),
                     unit=f.get("unit", "serving"),
-                    mealType=inferred_meal or f.get("mealType") or entities.get("mealType") or entities.get("meal_type") or "LUNCH"
+                    mealType=inferred_meal or f.get("mealType") or entities.get("mealType") or entities.get("meal_type") or "LUNCH",
+                    is_recognized=f.get("is_recognized", True),
+                    has_explicit_quantity=f.get("has_explicit_quantity", True),
+                    requires_clarification=f.get("requires_clarification", False),
+                    clarification_reason=f.get("clarification_reason"),
                 )
                 for f in raw_foods
             ]
@@ -220,6 +229,19 @@ class ChatService:
             food_result = await FoodService.process_and_log_food(
                 user_id, items, meal_type_override=detected_meal, log_date_str=today_str
             )
+
+            if food_result.requiresClarification:
+                return {
+                    "success": True,
+                    "sessionId": session_id,
+                    "message": food_result.replyText,
+                    "data": food_result.model_dump(),
+                    "ui": {
+                        "type": "MESSAGE",
+                        "requiresClarification": True,
+                        "clarificationQuestion": food_result.clarificationQuestion,
+                    },
+                }
 
             cards = [
                 {
@@ -527,7 +549,11 @@ class ChatService:
                     food=f.get("food") or f.get("name"),
                     quantity=f.get("quantity", 1),
                     unit=f.get("unit", "serving"),
-                    mealType=inferred_meal or f.get("mealType") or "LUNCH"
+                    mealType=inferred_meal or f.get("mealType") or "LUNCH",
+                    is_recognized=f.get("is_recognized", True),
+                    has_explicit_quantity=f.get("has_explicit_quantity", True),
+                    requires_clarification=f.get("requires_clarification", False),
+                    clarification_reason=f.get("clarification_reason"),
                 )
                 for f in food_items_to_log
             ]
@@ -546,14 +572,15 @@ class ChatService:
             )
             latest_food_result = food_result
 
-            for item in food_result.loggedItems:
-                cards.append({
-                    "type": "FOOD",
-                    "title": item.get("food_name"),
-                    "subtitle": f"{item.get('quantity_amount')} {item.get('quantity_unit')}",
-                    "metric": f"{int(item.get('calories', 0))} kcal",
-                })
-            summary_lines.append(f"{int(food_result.mealTotals.get('calories', 0))} kcal across {len(food_result.loggedItems)} foods")
+            if not food_result.requiresClarification:
+                for item in food_result.loggedItems:
+                    cards.append({
+                        "type": "FOOD",
+                        "title": item.get("food_name"),
+                        "subtitle": f"{item.get('quantity_amount')} {item.get('quantity_unit')}",
+                        "metric": f"{int(item.get('calories', 0))} kcal",
+                    })
+                summary_lines.append(f"{int(food_result.mealTotals.get('calories', 0))} kcal across {len(food_result.loggedItems)} foods")
 
         # 2. Process workouts
         raw_acts = entities.get("activities") or entities.get("activityItems") or ([entities.get("activity")] if entities.get("activity") else [])

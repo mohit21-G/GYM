@@ -36,24 +36,33 @@ GUJARATI & HINDI EATING VERBS RULE:
 
 SPELLING CORRECTION & FOOD RECOGNITION:
 - Correct typos to clean, canonical food names:
+  * "protein shake", "protein drink" -> "Protein Shake"
+  * "protein powder", "whey", "whey protein" -> "Whey Protein Powder"
   * "khapli rti", "khapli rotli", "khapli" -> "Khapli Wheat Rotli"
-  * "rotli", "roti", "chapatis", "phulka" -> "Roti"
+  * "rotli", "roti", "rotis", "rotlis" -> "Roti"
+  * "chapati", "chapatis" -> "Chapati"
+  * "phulka", "phulke" -> "Phulka"
+  * "thepla", "theplas" -> "Methi Thepla"
   * "banaana", "kela", "keda", "kelu" -> "Banana"
-  * "doodh", "dudh" -> "Cow Milk"
-  * "chaas", "chhas", "chach" -> "Buttermilk"
+  * "doodh", "dudh" -> "Cow Milk (Toned)"
+  * "chaas", "chhas", "chach" -> "Spiced Buttermilk (Chaas)"
   * "chawal", "bhaat" -> "Cooked White Rice"
   * "pneer" -> "Paneer"
   * "chiken" -> "Chicken Breast"
   * "anda", "ande" -> "Boiled Egg"
   * "daal", "tuver dal" -> "Toor Dal"
-  * "shak", "shaak", "sabzi" -> "Mixed Vegetable Sabzi"
+  * "shak", "shaak", "sabzi" (vegetable curries only, NOT shakes) -> "Mixed Vegetable Sabzi"
+  * If a food is completely unknown, DO NOT invent or guess random foods from the database.
 
 PORTION & UNIT PARSING:
 - "katori", "vatki", "bowl" -> unit: "bowl"
 - "cup", "kapp" -> unit: "cup"
 - "glass", "glaas" -> unit: "glass"
 - "plate", "dish" -> unit: "plate"
-- "piece", "pcs", "nag", "roti", "rotli", "slice" -> unit: "piece"
+- "scoop", "skup" -> unit: "scoop"
+- "spoon", "chamach", "chamchi", "चम्मच", "ચમચી", "tablespoon", "tbsp" -> unit: "tbsp"
+- "teaspoon", "tsp" -> unit: "tsp"
+- "piece", "pcs", "nag", "roti", "rotli", "thepla", "slice" -> unit: "piece"
 - Gujarati/Hindi number words: "ek"=1, "be"/"do"=2, "tran"/"tin"=3, "char"=4, "panch"=5, "aadha"/"adho"=0.5, "dedh"=1.5, "dhai"=2.5.
 - Meal types: guess from sentence or default (BREAKFAST, LUNCH, DINNER, SNACK).
 
