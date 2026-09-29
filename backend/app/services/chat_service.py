@@ -73,7 +73,18 @@ class ChatService:
             prev_user_msgs = [d for d in recent_docs[:-1] if d.get("sender") == "USER"]
             if prev_user_msgs:
                 last_user_msg = prev_user_msgs[-1]
-                t_diff = (now - last_user_msg.get("created_at", now)).total_seconds() if isinstance(last_user_msg.get("created_at"), datetime) else 999
+                past_dt = last_user_msg.get("created_at")
+                if isinstance(past_dt, str):
+                    try:
+                        past_dt = datetime.fromisoformat(past_dt.replace("Z", "+00:00"))
+                    except Exception:
+                        past_dt = None
+                if isinstance(past_dt, datetime):
+                    dt1 = now if now.tzinfo is not None else now.replace(tzinfo=timezone.utc)
+                    dt2 = past_dt if past_dt.tzinfo is not None else past_dt.replace(tzinfo=timezone.utc)
+                    t_diff = (dt1 - dt2).total_seconds()
+                else:
+                    t_diff = 999.0
                 norm_prev = AgentNLP.normalize_text(last_user_msg.get("message", "")).strip().lower()
                 norm_curr = AgentNLP.normalize_text(message).strip().lower()
                 if norm_prev == norm_curr and t_diff <= 30:

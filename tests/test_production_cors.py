@@ -145,3 +145,53 @@ def test_frontend_api_base_url_configuration():
     with open(prod_env_path, "r", encoding="utf-8") as f:
         content = f.read()
     assert "https://gym-ikjt.onrender.com" in content
+
+@pytest.mark.asyncio
+async def test_offset_naive_datetime_subtraction_regression(client, prod_origin):
+    """
+    Regression test: PyMongo returns offset-naive datetimes in conversation_messages.
+    Ensure ChatService.handle_user_message does not crash with
+    'TypeError: can't subtract offset-naive and offset-aware datetimes'.
+    """
+    from datetime import datetime
+    import uuid
+
+    db = get_db()
+    user_id = f"user_naive_{uuid.uuid4().hex[:8]}"
+    await db.users.insert_one({"id": user_id, "email": f"{user_id}@test.com", "role": "USER"})
+
+    session_id = f"session_naive_{uuid.uuid4().hex[:8]}"
+    await db.chat_sessions.insert_one({
+        "id": session_id,
+        "user_id": user_id,
+        "title": "Naive DT Test",
+        "created_at": datetime.now(),  # naive datetime as returned by PyMongo
+    })
+
+    # Insert a prior user message with a naive datetime
+    await db.conversation_messages.insert_one({
+        "id": f"msg_naive_{uuid.uuid4().hex[:8]}",
+        "session_id": session_id,
+        "sender": "USER",
+        "message": "1 bowl dal khadhi",
+        "created_at": datetime.now(),  # naive datetime
+    })
+
+    token = create_access_token({"sub": user_id, "role": "USER"})
+    # Send another message to trigger the duplicate check that compares now (aware) with past (naive)
+    resp = client.post(
+        "/api/v1/chat/message",
+        headers={
+            "Origin": prod_origin,
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "message": "1 bowl dal khadhi",
+            "sessionId": session_id,
+        },
+    )
+    assert resp.status_code == 200, f"Expected 200 but got {resp.status_code}: {resp.text}"
+    body = resp.json()
+    assert body.get("success") is True
+
