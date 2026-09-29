@@ -2,6 +2,7 @@ import json
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from fastapi import FastAPI, Request, HTTPException, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -113,25 +114,51 @@ app.add_middleware(ResponseEnvelopeMiddleware)
 
 # CORS setup - added outermost so preflight OPTIONS requests are handled immediately
 cors_origins = [
+    # Production Vercel Frontends
+    "https://gym-nine-xi-65.vercel.app",
+    "https://gym-zeta-five-47.vercel.app",
+    # Local Development Frontends
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "https://gym-zeta-five-47.vercel.app",
+    "http://localhost:4173",
+    "http://127.0.0.1:4173",
 ]
 if settings.CORS_ORIGINS:
-    for origin in settings.CORS_ORIGINS.split(","):
-        origin = origin.strip()
-        if origin and origin not in cors_origins:
-            cors_origins.append(origin)
+    for raw_origin in settings.CORS_ORIGINS.split(","):
+        cleaned_origin = raw_origin.strip().rstrip("/")
+        if cleaned_origin and cleaned_origin not in cors_origins:
+            cors_origins.append(cleaned_origin)
+
+# Sanitize all origins: strip whitespace and any trailing slashes
+cors_origins = [orig.strip().rstrip("/") for orig in cors_origins if orig.strip()]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
     allow_origin_regex=r"^https:\/\/.*\.vercel\.app$",
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "Accept",
+        "Origin",
+        "User-Agent",
+        "DNT",
+        "Cache-Control",
+        "X-Mx-ReqToken",
+        "Keep-Alive",
+        "X-Requested-With",
+        "If-Modified-Since",
+        "X-CSRF-Token",
+        "access-control-request-method",
+        "access-control-request-headers",
+        "*",
+    ],
+    expose_headers=["Content-Length", "Content-Type", "Authorization"],
+    max_age=86400,
 )
 
 # Custom Exception Handlers for frontend / test compatibility
@@ -143,6 +170,18 @@ async def http_exception_handler(request: Request, exc: HTTPException):
             "statusCode": exc.status_code,
             "message": exc.detail,
             "error": exc.detail,
+            "success": False,
+        },
+    )
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(
+        status_code=422,
+        content={
+            "statusCode": 422,
+            "message": "Validation Error",
+            "error": exc.errors(),
             "success": False,
         },
     )

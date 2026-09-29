@@ -12,7 +12,13 @@ class Settings(BaseSettings):
     API_PORT: int = int(os.getenv("API_PORT", "3000"))
     API_RELOAD: bool = os.getenv("API_RELOAD", "True").lower() == "true"
     DEBUG: bool = os.getenv("DEBUG", "False").lower() == "true"
-    CORS_ORIGINS: str = os.getenv("CORS_ORIGIN", os.getenv("CORS_ORIGINS", ""))
+    CORS_ORIGINS: str = os.getenv(
+        "CORS_ORIGINS",
+        os.getenv(
+            "CORS_ORIGIN",
+            "https://gym-nine-xi-65.vercel.app,https://gym-zeta-five-47.vercel.app,http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,http://localhost:4173,http://127.0.0.1:4173",
+        ),
+    )
     
     JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "default_secret_key_change_in_production")
     JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")

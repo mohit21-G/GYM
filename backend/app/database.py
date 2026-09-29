@@ -18,28 +18,26 @@ class MockCollection:
     def __init__(self, name="col"):
         self.name = name
         self.docs = []
+    def _matches(self, doc, query):
+        if not query:
+            return True
+        for k, v in query.items():
+            if k == "$or" and isinstance(v, list):
+                if not any(self._matches(doc, cond) for cond in v):
+                    return False
+                continue
+            if k.startswith("$"):
+                continue
+            if doc.get(k) != v:
+                return False
+        return True
     async def find_one(self, query=None, sort=None):
         for d in self.docs:
-            match = True
-            for k, v in (query or {}).items():
-                if d.get(k) != v:
-                    match = False
-                    break
-            if match:
+            if self._matches(d, query):
                 return dict(d)
         return None
     def find(self, query=None):
-        filtered = []
-        for d in self.docs:
-            match = True
-            for k, v in (query or {}).items():
-                if k.startswith("$"):
-                    continue
-                if d.get(k) != v:
-                    match = False
-                    break
-            if match:
-                filtered.append(dict(d))
+        filtered = [dict(d) for d in self.docs if self._matches(d, query)]
         return MockCursor(filtered)
     async def insert_one(self, doc):
         self.docs.append(dict(doc))
