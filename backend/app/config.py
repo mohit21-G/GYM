@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     API_PORT: int = int(os.getenv("API_PORT", "3000"))
     API_RELOAD: bool = os.getenv("API_RELOAD", "True").lower() == "true"
     DEBUG: bool = os.getenv("DEBUG", "False").lower() == "true"
+    CORS_ORIGINS: str = os.getenv("CORS_ORIGIN", os.getenv("CORS_ORIGINS", ""))
     
     JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "default_secret_key_change_in_production")
     JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
