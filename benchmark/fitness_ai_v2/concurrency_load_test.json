@@ -1,0 +1,42 @@
+{
+  "1_users": {
+    "concurrent_users": 1,
+    "total_requests": 2,
+    "total_duration_sec": 0.59,
+    "throughput_req_per_sec": 3.36,
+    "mean_latency_sec": 0.473,
+    "p95_latency_sec": 0.582,
+    "error_count": 0,
+    "error_rate_pct": 0.0
+  },
+  "5_users": {
+    "concurrent_users": 5,
+    "total_requests": 10,
+    "total_duration_sec": 1.24,
+    "throughput_req_per_sec": 8.08,
+    "mean_latency_sec": 0.79,
+    "p95_latency_sec": 1.189,
+    "error_count": 0,
+    "error_rate_pct": 0.0
+  },
+  "10_users": {
+    "concurrent_users": 10,
+    "total_requests": 20,
+    "total_duration_sec": 2.69,
+    "throughput_req_per_sec": 7.44,
+    "mean_latency_sec": 1.527,
+    "p95_latency_sec": 2.67,
+    "error_count": 0,
+    "error_rate_pct": 0.0
+  },
+  "25_users": {
+    "concurrent_users": 25,
+    "total_requests": 50,
+    "total_duration_sec": 6.18,
+    "throughput_req_per_sec": 8.08,
+    "mean_latency_sec": 4.069,
+    "p95_latency_sec": 6.154,
+    "error_count": 0,
+    "error_rate_pct": 0.0
+  }
+}

@@ -126,7 +126,7 @@ export const HomePage: React.FC = () => {
 
       {/* Footer */}
       <footer className="border-t border-slate-800 py-6 text-center text-xs text-slate-500">
-        <p>&copy; {new Date().getFullYear()} Google Fitbit AI Chatbot. All rights reserved.</p>
+        <p>&copy; {new Date().getFullYear()} Google Fitness AI Chatbot. All rights reserved.</p>
       </footer>
     </div>
   );

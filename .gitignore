@@ -41,3 +41,17 @@ Desktop.ini
 
 # Prisma generated artifacts if any
 # prisma/migrations/ is kept, but generated client if in node_modules is ignored
+
+# Local PostgreSQL Data Cluster
+.postgres_data/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+.pytest_cache/

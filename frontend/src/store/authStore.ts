@@ -17,19 +17,19 @@ interface AuthState {
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
-  user: JSON.parse(localStorage.getItem('fitbit_user') || 'null'),
-  token: localStorage.getItem('fitbit_token') || null,
-  isAuthenticated: !!localStorage.getItem('fitbit_token'),
+  user: JSON.parse(localStorage.getItem('Fitness_user') || 'null'),
+  token: localStorage.getItem('Fitness_token') || null,
+  isAuthenticated: !!localStorage.getItem('Fitness_token'),
 
   setAuth: (user: User, token: string) => {
-    localStorage.setItem('fitbit_user', JSON.stringify(user));
-    localStorage.setItem('fitbit_token', token);
+    localStorage.setItem('Fitness_user', JSON.stringify(user));
+    localStorage.setItem('Fitness_token', token);
     set({ user, token, isAuthenticated: true });
   },
 
   logout: () => {
-    localStorage.removeItem('fitbit_user');
-    localStorage.removeItem('fitbit_token');
+    localStorage.removeItem('Fitness_user');
+    localStorage.removeItem('Fitness_token');
     set({ user: null, token: null, isAuthenticated: false });
   },
 }));

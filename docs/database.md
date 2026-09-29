@@ -1,4 +1,4 @@
-# Google Fitbit AI Chatbot - Database Architecture & Schema
+# Google Fitness AI Chatbot - Database Architecture & Schema
 
 ## 1. Overview
 The database layer is implemented using **MySQL 8.0** managed through **Prisma ORM**. All database credentials, ports, and connection strings are strictly environment-driven via `DATABASE_URL`.

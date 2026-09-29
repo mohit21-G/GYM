@@ -1,0 +1,39 @@
+{
+  "benchmark_name": "Fitness AI Chatbot 5000 Benchmark Suite",
+  "version": "2.0.0",
+  "target_environment": "Local FastAPI + MongoDB Atlas + Cloudflare Workers AI",
+  "api_base_url": "http://127.0.0.1:3000/api/v1",
+  "ai_provider": "Cloudflare Workers AI",
+  "active_model": "@cf/meta/llama-3.1-8b-instruct",
+  "fallback_model": "Groq Llama-3.3-70b-versatile / AgentNLP Heuristics",
+  "database": "MongoDB Atlas Cluster (fitness_chatbot)",
+  "dataset_files": {
+    "jsonl": "test_cases.jsonl",
+    "csv": "test_cases.csv"
+  },
+  "total_test_cases": 5000,
+  "categories": [
+    "Indian Food Recognition",
+    "Regional Indian Dishes",
+    "Multilingual & Typos",
+    "Nutrition Questions",
+    "Exercise & Activity Tracking",
+    "Hydration Tracking",
+    "Sleep Tracking",
+    "Weight Tracking",
+    "Intent & False Positive Prevention",
+    "Context & Conversational Memory",
+    "Food Card Aggregation & Units",
+    "API Security & Isolation"
+  ],
+  "concurrency_levels": [1, 5, 10, 25],
+  "request_timeout_seconds": 25,
+  "rate_limit_delay_seconds": 0.05,
+  "accuracy_targets": {
+    "intent_classification_min_pct": 95.0,
+    "food_recognition_min_pct": 92.0,
+    "false_positive_max_pct": 2.0,
+    "user_isolation_min_pct": 100.0,
+    "api_availability_min_pct": 99.0
+  }
+}

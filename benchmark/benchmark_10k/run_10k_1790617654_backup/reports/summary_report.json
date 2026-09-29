@@ -1,0 +1,157 @@
+{
+  "run_id": "run_10k_1790617654",
+  "benchmark_name": "Fitness AI 10,000-Test Master Benchmark Suite",
+  "version": "3.0.0",
+  "start_time": "2026-09-28T17:47:34.320656+00:00",
+  "end_time": "2026-09-28T17:47:39.221493+00:00",
+  "total_cases_evaluated": 10000,
+  "overall_metrics": {
+    "strict_pass_count": 1511,
+    "partial_pass_count": 714,
+    "failed_count": 343,
+    "infrastructure_error_count": 7432,
+    "skipped_count": -9980,
+    "strict_accuracy_pct": 15.11,
+    "total_pass_accuracy_pct": 22.25,
+    "false_positive_count": 0,
+    "user_isolation_failures": 0
+  },
+  "latency_metrics_ms": {
+    "p50": 237.9,
+    "p95": 2111.3,
+    "p99": 2724.6,
+    "mean": 572.9,
+    "min": 0.0,
+    "max": 4554.4
+  },
+  "category_metrics": {
+    "Food Logging": {
+      "total": 2500,
+      "passed": 1327,
+      "partial": 714,
+      "failed": 343,
+      "infra": 116
+    },
+    "Hydration": {
+      "total": 1000,
+      "passed": 0,
+      "partial": 0,
+      "failed": 0,
+      "infra": 1000
+    },
+    "Exercise & Activity": {
+      "total": 1000,
+      "passed": 0,
+      "partial": 0,
+      "failed": 0,
+      "infra": 1000
+    },
+    "Weight Tracking": {
+      "total": 700,
+      "passed": 0,
+      "partial": 0,
+      "failed": 0,
+      "infra": 700
+    },
+    "Sleep Tracking": {
+      "total": 700,
+      "passed": 0,
+      "partial": 0,
+      "failed": 0,
+      "infra": 700
+    },
+    "Nutrition & Advice": {
+      "total": 900,
+      "passed": 0,
+      "partial": 0,
+      "failed": 0,
+      "infra": 900
+    },
+    "Intent & False-Positive Prevention": {
+      "total": 1000,
+      "passed": 0,
+      "partial": 0,
+      "failed": 0,
+      "infra": 1000
+    },
+    "Context & Multi-Turn": {
+      "total": 800,
+      "passed": 0,
+      "partial": 0,
+      "failed": 0,
+      "infra": 800
+    },
+    "Aggregation & DB Verification": {
+      "total": 700,
+      "passed": 184,
+      "partial": 0,
+      "failed": 0,
+      "infra": 516
+    },
+    "Edge Cases & Robustness": {
+      "total": 700,
+      "passed": 0,
+      "partial": 0,
+      "failed": 0,
+      "infra": 700
+    }
+  },
+  "language_metrics": {
+    "English": {
+      "total": 4589,
+      "passed": 467,
+      "partial": 166,
+      "failed": 139
+    },
+    "Gujlish": {
+      "total": 1459,
+      "passed": 389,
+      "partial": 212,
+      "failed": 3
+    },
+    "Hindi": {
+      "total": 972,
+      "passed": 85,
+      "partial": 29,
+      "failed": 42
+    },
+    "Hinglish": {
+      "total": 1139,
+      "passed": 344,
+      "partial": 208,
+      "failed": 86
+    },
+    "Gujarati": {
+      "total": 1141,
+      "passed": 226,
+      "partial": 99,
+      "failed": 73
+    },
+    "Code-Mixed / Slang": {
+      "total": 700,
+      "passed": 0,
+      "partial": 0,
+      "failed": 0
+    }
+  },
+  "script_metrics": {
+    "Latin": {
+      "total": 7887,
+      "passed": 1200,
+      "partial": 586,
+      "failed": 228
+    },
+    "Devanagari": {
+      "total": 972,
+      "passed": 85,
+      "partial": 29,
+      "failed": 42
+    },
+    "Gujarati": {
+      "total": 1141,
+      "passed": 226,
+      "partial": 99,
+      "failed": 73
+    }
+  }
+}

@@ -3,17 +3,17 @@ version: '3.8'
 services:
   mysql:
     image: mysql:8.0
-    container_name: fitbit-mysql
+    container_name: Fitness-mysql
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-123456}
-      MYSQL_DATABASE: ${DB_DATABASE:-google-fitbit-ai-chatbot}
+      MYSQL_DATABASE: ${DB_DATABASE:-google-Fitness-ai-chatbot}
     ports:
       - "${MYSQL_PORT:-3306}:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     networks:
-      - fitbit-network
+      - Fitness-network
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD:-123456}"]
       interval: 10s
@@ -22,14 +22,14 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: fitbit-redis
+    container_name: Fitness-redis
     restart: unless-stopped
     ports:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     networks:
-      - fitbit-network
+      - Fitness-network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -40,7 +40,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: fitbit-backend
+    container_name: Fitness-backend
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -50,11 +50,11 @@ services:
       DB_PORT: 3306
       DB_USERNAME: root
       DB_PASSWORD: ${DB_PASSWORD:-123456}
-      DB_DATABASE: ${DB_DATABASE:-google-fitbit-ai-chatbot}
-      DATABASE_URL: mysql://root:${DB_PASSWORD:-123456}@mysql:3306/${DB_DATABASE:-google-fitbit-ai-chatbot}
+      DB_DATABASE: ${DB_DATABASE:-google-Fitness-ai-chatbot}
+      DATABASE_URL: mysql://root:${DB_PASSWORD:-123456}@mysql:3306/${DB_DATABASE:-google-Fitness-ai-chatbot}
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      JWT_SECRET: ${JWT_SECRET:-supersecretjwtkey_fitbit_ai_production_change_me_123456}
+      JWT_SECRET: ${JWT_SECRET:-supersecretjwtkey_Fitness_ai_production_change_me_123456}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       AI_PROVIDER: ${AI_PROVIDER:-cloudflare}
       AI_MODEL: ${AI_MODEL:-@cf/zai-org/glm-4.7-flash}
@@ -71,24 +71,26 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - fitbit-network
+      - Fitness-network
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: fitbit-frontend
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api/v1}
+    container_name: Fitness-frontend
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-5173}:80"
     depends_on:
       - backend
     networks:
-      - fitbit-network
+      - Fitness-network
 
   nginx:
     image: nginx:alpine
-    container_name: fitbit-nginx
+    container_name: Fitness-nginx
     restart: unless-stopped
     ports:
       - "${NGINX_HTTP_PORT:-80}:80"
@@ -99,10 +101,10 @@ services:
       - backend
       - frontend
     networks:
-      - fitbit-network
+      - Fitness-network
 
 networks:
-  fitbit-network:
+  Fitness-network:
     driver: bridge
 
 volumes:

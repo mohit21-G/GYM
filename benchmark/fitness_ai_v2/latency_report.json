@@ -1,0 +1,9 @@
+{
+  "mean_seconds": 0.768,
+  "median_p50_seconds": 0.853,
+  "p90_seconds": 1.101,
+  "p95_seconds": 1.129,
+  "p99_seconds": 1.146,
+  "min_seconds": 0.003,
+  "max_seconds": 1.15
+}

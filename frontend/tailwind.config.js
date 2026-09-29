@@ -13,7 +13,7 @@ export default {
           200: '#a7f3d0',
           300: '#6ee7b7',
           400: '#34d399',
-          500: '#10b981', // Fitbit emerald teal
+          500: '#10b981', // Fitness emerald teal
           600: '#059669',
           700: '#047857',
           800: '#065f46',

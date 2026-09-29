@@ -1,7 +1,7 @@
-# Google Fitbit AI Chatbot - System Architecture
+# Google Fitness AI Chatbot - System Architecture
 
 ## 1. Overview
-The **Google Fitbit AI Chatbot** platform is an intelligent, multi-provider health and fitness assistant platform. It enables customers to log food, activity, hydration, sleep, and weight naturally using conversational language (including multilingual inputs like English, Hindi, Gujarati, Hinglish, and Gujlish), while providing administrators full oversight, audit logging, master catalog management, and AI usage metrics.
+The **Google Fitness AI Chatbot** platform is an intelligent, multi-provider health and fitness assistant platform. It enables customers to log food, activity, hydration, sleep, and weight naturally using conversational language (including multilingual inputs like English, Hindi, Gujarati, Hinglish, and Gujlish), while providing administrators full oversight, audit logging, master catalog management, and AI usage metrics.
 
 ## 2. Core Architectural Principles
 1. **Separation of Concerns**:

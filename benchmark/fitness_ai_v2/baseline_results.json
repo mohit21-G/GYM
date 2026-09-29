@@ -1,0 +1,167 @@
+{
+  "execution_metadata": {
+    "benchmark_name": "Fitness AI Chatbot 5000 Benchmark Suite",
+    "version": "2.0.0",
+    "mode": "baseline",
+    "start_time": "2026-09-28T22:43:13.529518",
+    "end_time": "2026-09-28T22:43:16.149324",
+    "elapsed_seconds": 2.619806,
+    "elapsed_minutes": 0.043663433333333335,
+    "total_cases": 12,
+    "concurrency": 5,
+    "model": "@cf/meta/llama-3.1-8b-instruct",
+    "backend": "FastAPI (Python 3.14)",
+    "database": "MongoDB Atlas"
+  },
+  "summary_scores": {
+    "overall_accuracy_pct": 83.33,
+    "intent_classification_pct": 91.67,
+    "logging_behavior_accuracy_pct": 91.67,
+    "total_passed": 10,
+    "total_partial_passed": 1,
+    "total_failed": 1,
+    "false_positive_count": 1,
+    "user_isolation_failures": 0
+  },
+  "latency_metrics": {
+    "mean_seconds": 0.768,
+    "median_p50_seconds": 0.853,
+    "p90_seconds": 1.101,
+    "p95_seconds": 1.129,
+    "p99_seconds": 1.146,
+    "min_seconds": 0.003,
+    "max_seconds": 1.15
+  },
+  "category_metrics": {
+    "Sleep Tracking": {
+      "total": 1,
+      "passed": 1,
+      "partial": 0,
+      "failed": 0,
+      "latencies": [
+        0.6605536937713623
+      ]
+    },
+    "Hydration Tracking": {
+      "total": 1,
+      "passed": 1,
+      "partial": 0,
+      "failed": 0,
+      "latencies": [
+        0.662869930267334
+      ]
+    },
+    "API Security & Isolation": {
+      "total": 1,
+      "passed": 1,
+      "partial": 0,
+      "failed": 0,
+      "latencies": [
+        0.0034041404724121094
+      ]
+    },
+    "Exercise & Activity Tracking": {
+      "total": 1,
+      "passed": 1,
+      "partial": 0,
+      "failed": 0,
+      "latencies": [
+        0.6838428974151611
+      ]
+    },
+    "Regional Indian Dishes": {
+      "total": 1,
+      "passed": 1,
+      "partial": 0,
+      "failed": 0,
+      "latencies": [
+        0.8687753677368164
+      ]
+    },
+    "Context & Conversational Memory": {
+      "total": 1,
+      "passed": 1,
+      "partial": 0,
+      "failed": 0,
+      "latencies": [
+        0.9997055530548096
+      ]
+    },
+    "Indian Food Recognition": {
+      "total": 1,
+      "passed": 1,
+      "partial": 0,
+      "failed": 0,
+      "latencies": [
+        0.3478260040283203
+      ]
+    },
+    "Nutrition Questions": {
+      "total": 1,
+      "passed": 1,
+      "partial": 0,
+      "failed": 0,
+      "latencies": [
+        0.9559321403503418
+      ]
+    },
+    "Intent & False Positive Prevention": {
+      "total": 1,
+      "passed": 0,
+      "partial": 0,
+      "failed": 1,
+      "latencies": [
+        1.1120450496673584
+      ]
+    },
+    "Food Card Aggregation & Units": {
+      "total": 1,
+      "passed": 1,
+      "partial": 0,
+      "failed": 0,
+      "latencies": [
+        0.9364485740661621
+      ]
+    },
+    "Weight Tracking": {
+      "total": 1,
+      "passed": 1,
+      "partial": 0,
+      "failed": 0,
+      "latencies": [
+        0.8364050388336182
+      ]
+    },
+    "Multilingual & Typos": {
+      "total": 1,
+      "passed": 0,
+      "partial": 1,
+      "failed": 0,
+      "latencies": [
+        1.1501142978668213
+      ]
+    }
+  },
+  "language_metrics": {
+    "English": {
+      "total": 9,
+      "passed": 8,
+      "failed": 1
+    },
+    "System / API": {
+      "total": 1,
+      "passed": 1,
+      "failed": 0
+    },
+    "English / Mixed": {
+      "total": 1,
+      "passed": 1,
+      "failed": 0
+    },
+    "Code-Mixed / Slang": {
+      "total": 1,
+      "passed": 0,
+      "failed": 1
+    }
+  }
+}

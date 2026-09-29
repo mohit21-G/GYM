@@ -1,9 +1,9 @@
 PROMPT 01 — PROJECT FOUNDATION
 
-Build the initial foundation for the Google Fitbit AI Chatbot project.
+Build the initial foundation for the Google Fitness AI Chatbot project.
 
 Repository:
-google-fitbit-ai-chatbot/
+google-Fitness-ai-chatbot/
 ├── frontend/
 ├── backend/
 ├── docs/

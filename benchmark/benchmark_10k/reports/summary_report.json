@@ -1,0 +1,167 @@
+{
+  "run_id": "run_10k_1790619102",
+  "benchmark_name": "Fitness AI Master 10,000-Test Benchmark Suite",
+  "version": "3.1.0",
+  "suite_started_at": "2026-09-28T18:11:42.898300+00:00",
+  "suite_completed_at": "2026-09-28T18:35:16.327237+00:00",
+  "total_cases": 10000,
+  "status_accounting": {
+    "strict_pass_count": 7041,
+    "partial_pass_count": 2186,
+    "failed_count": 773,
+    "infrastructure_error_count": 0,
+    "skipped_count": 0,
+    "total_reconciled": 10000
+  },
+  "accuracy_scores": {
+    "strict_accuracy_all_pct": 70.41,
+    "total_pass_accuracy_all_pct": 92.27,
+    "strict_accuracy_eligible_pct": 70.41,
+    "total_pass_accuracy_eligible_pct": 92.27,
+    "eligible_cases_count": 10000,
+    "false_positive_count": 315,
+    "user_isolation_failures": 0
+  },
+  "latency_metrics_ms": {
+    "p50": 1147.3,
+    "p95": 2410.1,
+    "p99": 2907.8,
+    "mean": 1348.3,
+    "min": 36.0,
+    "max": 4332.2,
+    "valid_latency_samples_count": 10000
+  },
+  "error_classification": {},
+  "category_metrics": {
+    "Food Logging": {
+      "total": 2500,
+      "passed": 1115,
+      "partial": 1028,
+      "failed": 357,
+      "infra": 0,
+      "skipped": 0
+    },
+    "Hydration": {
+      "total": 1000,
+      "passed": 723,
+      "partial": 277,
+      "failed": 0,
+      "infra": 0,
+      "skipped": 0
+    },
+    "Exercise & Activity": {
+      "total": 1000,
+      "passed": 972,
+      "partial": 28,
+      "failed": 0,
+      "infra": 0,
+      "skipped": 0
+    },
+    "Weight Tracking": {
+      "total": 700,
+      "passed": 700,
+      "partial": 0,
+      "failed": 0,
+      "infra": 0,
+      "skipped": 0
+    },
+    "Sleep Tracking": {
+      "total": 700,
+      "passed": 392,
+      "partial": 308,
+      "failed": 0,
+      "infra": 0,
+      "skipped": 0
+    },
+    "Nutrition & Advice": {
+      "total": 900,
+      "passed": 900,
+      "partial": 0,
+      "failed": 0,
+      "infra": 0,
+      "skipped": 0
+    },
+    "Intent & False-Positive Prevention": {
+      "total": 1000,
+      "passed": 738,
+      "partial": 0,
+      "failed": 262,
+      "infra": 0,
+      "skipped": 0
+    },
+    "Context & Multi-Turn": {
+      "total": 800,
+      "passed": 732,
+      "partial": 68,
+      "failed": 0,
+      "infra": 0,
+      "skipped": 0
+    },
+    "Aggregation & DB Verification": {
+      "total": 700,
+      "passed": 450,
+      "partial": 186,
+      "failed": 64,
+      "infra": 0,
+      "skipped": 0
+    },
+    "Edge Cases & Robustness": {
+      "total": 700,
+      "passed": 319,
+      "partial": 291,
+      "failed": 90,
+      "infra": 0,
+      "skipped": 0
+    }
+  },
+  "language_metrics": {
+    "English": {
+      "total": 4589,
+      "passed": 3746,
+      "partial": 474,
+      "failed": 369,
+      "infra": 0,
+      "skipped": 0
+    },
+    "Gujlish": {
+      "total": 1459,
+      "passed": 961,
+      "partial": 461,
+      "failed": 37,
+      "infra": 0,
+      "skipped": 0
+    },
+    "Hindi": {
+      "total": 972,
+      "passed": 594,
+      "partial": 299,
+      "failed": 79,
+      "infra": 0,
+      "skipped": 0
+    },
+    "Hinglish": {
+      "total": 1139,
+      "passed": 790,
+      "partial": 261,
+      "failed": 88,
+      "infra": 0,
+      "skipped": 0
+    },
+    "Gujarati": {
+      "total": 1141,
+      "passed": 631,
+      "partial": 400,
+      "failed": 110,
+      "infra": 0,
+      "skipped": 0
+    },
+    "Code-Mixed / Slang": {
+      "total": 700,
+      "passed": 319,
+      "partial": 291,
+      "failed": 90,
+      "infra": 0,
+      "skipped": 0
+    }
+  }
+}

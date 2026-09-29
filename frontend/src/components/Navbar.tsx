@@ -23,7 +23,7 @@ export const Navbar: React.FC = () => {
               </div>
               <div>
                 <span className="text-lg font-bold bg-gradient-to-r from-emerald-400 to-teal-200 bg-clip-text text-transparent">
-                  Fitbit AI
+                  Fitness AI
                 </span>
                 <span className="text-xs ml-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-medium border border-emerald-500/20">
                   Assistant
@@ -46,6 +46,18 @@ export const Navbar: React.FC = () => {
                   className="text-sm font-medium text-slate-300 hover:text-white transition-colors"
                 >
                   AI Chatbot
+                </Link>
+                <Link
+                  to="/logs"
+                  className="text-sm font-medium text-slate-300 hover:text-white transition-colors"
+                >
+                  History
+                </Link>
+                <Link
+                  to="/profile"
+                  className="text-sm font-medium text-slate-300 hover:text-white transition-colors"
+                >
+                  Profile
                 </Link>
 
                 {user?.role === 'ADMIN' && (

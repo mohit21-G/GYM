@@ -9,7 +9,7 @@ DB_HOST=localhost
 DB_PORT=3306
 DB_USERNAME=root
 DB_PASSWORD=123456
-DB_DATABASE=google-fitbit-ai-chatbot
+DB_DATABASE=google-Fitness-ai-chatbot
 
 DATABASE_URL must be generated from environment variables and never hard-coded in source.
 

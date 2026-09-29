@@ -1,0 +1,13 @@
+Category,Total Cases,Passed,Partial Pass,Failed,Pass Rate (%),Avg Latency (s)
+Sleep Tracking,1,1,0,0,100.00%,0.661
+Hydration Tracking,1,1,0,0,100.00%,0.663
+API Security & Isolation,1,1,0,0,100.00%,0.003
+Exercise & Activity Tracking,1,1,0,0,100.00%,0.684
+Regional Indian Dishes,1,1,0,0,100.00%,0.869
+Context & Conversational Memory,1,1,0,0,100.00%,1.000
+Indian Food Recognition,1,1,0,0,100.00%,0.348
+Nutrition Questions,1,1,0,0,100.00%,0.956
+Intent & False Positive Prevention,1,0,0,1,0.00%,1.112
+Food Card Aggregation & Units,1,1,0,0,100.00%,0.936
+Weight Tracking,1,1,0,0,100.00%,0.836
+Multilingual & Typos,1,0,1,0,0.00%,1.150

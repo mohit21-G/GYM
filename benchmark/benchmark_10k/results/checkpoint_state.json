@@ -1,0 +1,9 @@
+{
+  "run_id": "run_10k_1790619102",
+  "suite_started_at": "2026-09-28T18:11:42.898300+00:00",
+  "last_checkpoint_at": "2026-09-28T18:35:16.323962+00:00",
+  "target_total_cases": 10000,
+  "completed_count": 10000,
+  "progress_pct": 100.0,
+  "concurrency": 10
+}

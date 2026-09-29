@@ -11,22 +11,34 @@ export const apiClient = axios.create({
 
 // Interceptor to attach Bearer token if present
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('fitbit_token');
+  const token = localStorage.getItem('Fitness_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
-// Interceptor to handle unauthorized responses
+// Interceptor to handle and unwrap responses
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // If backend returns standard NestJS TransformInterceptor envelope: { success, statusCode, data }
+    if (
+      response.data &&
+      typeof response.data === 'object' &&
+      'success' in response.data &&
+      'data' in response.data
+    ) {
+      response.data = response.data.data;
+    }
+    return response;
+  },
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('fitbit_token');
-      localStorage.removeItem('fitbit_user');
+      localStorage.removeItem('Fitness_token');
+      localStorage.removeItem('Fitness_user');
       // redirect or state change can trigger here if not on auth page
     }
     return Promise.reject(error);
   },
 );
+
