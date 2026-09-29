@@ -259,13 +259,27 @@ class ChatService:
 
         # 5. CREATE_ACTIVITY_LOG
         if intent == "CREATE_ACTIVITY_LOG":
-            act_data = entities.get("activity") if isinstance(entities.get("activity"), dict) else {
-                "activity": entities.get("activity", "Workout"),
-                "durationMinutes": entities.get("durationMinutes") or entities.get("duration", 30),
-                "intensity": entities.get("intensity", "MEDIUM"),
-            }
-            res = await ActivityService.process_and_log_activity(user_id, act_data, today_str)
-            calc = res["calculation"]
+            if ai_res.get("requiresClarification") or entities.get("requiresClarification"):
+                return {
+                    "success": True,
+                    "sessionId": session_id,
+                    "message": ai_res.get("replyText") or "Great job on working out! Could you please let me know how many minutes or reps you completed, so I can accurately calculate your calories burned?",
+                    "data": {},
+                    "ui": {"type": "TEXT"},
+                }
+
+            activities = entities.get("activities")
+            if not activities:
+                act_data = entities.get("activity") if isinstance(entities.get("activity"), dict) else {
+                    "activity": entities.get("activity", "Workout"),
+                    "durationMinutes": entities.get("durationMinutes") or entities.get("duration", 30),
+                    "reps": entities.get("reps"),
+                    "sets": entities.get("sets"),
+                    "intensity": entities.get("intensity", "MEDIUM"),
+                }
+                activities = [act_data]
+
+            res = await ActivityService.process_and_log_activities(user_id, activities, today_str)
             return {
                 "success": True,
                 "sessionId": session_id,
@@ -273,12 +287,7 @@ class ChatService:
                 "data": res,
                 "ui": {
                     "type": "LOG_RESULT",
-                    "cards": [{
-                        "type": "ACTIVITY",
-                        "title": calc["activityName"],
-                        "subtitle": f"{int(calc['durationMinutes'])} mins · MET {calc['metValue']}",
-                        "metric": f"{int(calc['caloriesBurned'])} kcal burned",
-                    }],
+                    "cards": res["cards"],
                 },
             }
 
@@ -441,20 +450,25 @@ class ChatService:
             summary_lines.append(f"{int(food_result.mealTotals.get('calories', 0))} kcal across {len(food_result.loggedItems)} foods")
 
         # 2. Process workouts
-        raw_acts = entities.get("activityItems") or ([entities.get("activity")] if entities.get("activity") else [])
-        for act in raw_acts:
-            act_data = act if isinstance(act, dict) else {"activity": str(act), "durationMinutes": 30}
-            act_res = await ActivityService.process_and_log_activity(user_id, act_data, today_str)
-            calc = act_res["calculation"]
-            cards.append({
-                "type": "ACTIVITY",
-                "title": calc["activityName"],
-                "subtitle": f"{int(calc['durationMinutes'])} mins · MET {calc['metValue']}",
-                "metric": f"{int(calc['caloriesBurned'])} kcal burned",
-            })
-            summary_lines.append(f"{calc['activityName']} ({int(calc['durationMinutes'])}m, {int(calc['caloriesBurned'])} kcal)")
+        raw_acts = entities.get("activities") or entities.get("activityItems") or ([entities.get("activity")] if entities.get("activity") else [])
+        if raw_acts:
+            acts_to_log = [a if isinstance(a, dict) else {"activity": str(a), "durationMinutes": 30} for a in raw_acts]
+            act_res = await ActivityService.process_and_log_activities(user_id, acts_to_log, today_str)
+            cards.extend(act_res["cards"])
+            for calc in act_res["calculations"]:
+                metric = f"{calc['reps']} reps" if calc.get("reps") else f"{int(calc['durationMinutes'])}m"
+                summary_lines.append(f"{calc['activityName']} ({metric}, {int(calc['caloriesBurned'])} kcal)")
 
-        reply = ai_res.get("replyText") or f"Logged your routine: {', '.join(summary_lines)}."
+        # Build clean bullet-point summary if both foods and activities logged
+        reply = None
+        if latest_food_result and raw_acts:
+            reply = f"{latest_food_result.replyText}\n\n{act_res['replyText']}"
+        elif latest_food_result:
+            reply = latest_food_result.replyText
+        elif raw_acts:
+            reply = act_res["replyText"]
+        else:
+            reply = ai_res.get("replyText") or f"Logged your routine: {', '.join(summary_lines)}."
         return {
             "success": True,
             "sessionId": session_id,

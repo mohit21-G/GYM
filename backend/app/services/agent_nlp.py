@@ -101,12 +101,13 @@ DRINKING_VERBS = [
 
 WORKOUT_PATTERNS = [
     r"\bwalk\b", r"\bwalked\b", r"\bwalking\b", r"\brun\b", r"\brunning\b", r"\bran\b",
-    r"\bgym\b", r"\bworkout\b", r"\bexercise\b", r"\bcycling\b", r"\bpushups?\b",
+    r"\bgym\b", r"\bworkout\b", r"\bexercise\b", r"\bcycling\b", r"\bpush-?ups?\b", r"\bpull-?ups?\b",
     r"\byoga\b", r"\bbadminton\b", r"\bcricket\b", r"\bswimming\b", r"\bfootball\b",
     r"\bjump rope\b", r"\bhiit\b", r"\bpilates\b", r"\bzumba\b", r"\bdance\b",
-    r"\bsquats\b", r"\bbench press\b", r"\bstretching\b", r"\bdhodhyo\b", r"\bkasrat\b", r"\bchalyo\b",
-    r"દૌડ્યા", r"દૌડ્યો", r"દોડ્યો", r"ચાલ્યો", r"કસરત", r"વર્કઆઉટ", r"યોગા",
-    r"दौड़ा", r"दौड़ी", "कसरत", "वर्कआउट", "योगा", "व्यायाम"
+    r"\bsquats?\b", r"\blunges?\b", r"\bcrunches?\b", r"\bplanks?\b", r"\bburpees?\b",
+    r"\bbench press\b", r"\bdeadlifts?\b", r"\bstretching\b", r"\bdhodhyo\b", r"\bkasrat\b", r"\bchalyo\b",
+    r"દૌડ્યા", r"દૌડ્યો", r"દોડ્યો", r"ચાલ્યો", r"કસરત", r"વર્કઆઉટ", r"યોગા", r"સ્ક્વોટ્સ?", r"પુશઅપ્સ?",
+    r"दौड़ा", r"दौड़ी", "कसरत", "वर्कआउट", "योगा", "व्यायाम", r"स्क्वैट्स?", r"पुशअप्स?"
 ]
 
 # Common food spelling corrections & slang aliases
@@ -609,6 +610,23 @@ class AgentNLP:
             "forgot what i ate", "what i ate", "remaining", "ketli calories thai", "calories thai"
         ])
 
+        # Fitness & Workout Question / Recommendation Check -> FITNESS_ADVISORY (DO NOT LOG)
+        has_q_word = bool(re.search(r"\b(?:what|how|which|why|give me|suggest|batao|aapo|kya|kaise|kaunse|shu|kem|kaya|kai)\b", lower)) or "?" in lower or any(ch in lower for ch in ["કયા", "શું", "કેમ", "કેવી રીતે", "ફાયદા", "ફાયદો", "क्या", "कैसे", "कौनसे", "फायदे"])
+        is_fitness_advisory = any(w in lower for w in [
+            "benefits of", "benefit of", "fayda", "fayde", "faida", "faide", "લાભ", "ફાયદા", "ફાયદો", "फायदे", "लाभ",
+            "workout plan", "routine plan", "exercise plan", "beginner workout", "beginner plan", "workout for beginner",
+            "stamina", "endurance", "સ્ટેમિના", "स्टैमिना", "दम", "improve my stamina", "improve stamina", "increase stamina",
+            "stamina kem", "stamina kaise", "badhaye", "vadharvu", "target the legs", "target legs", "leg exercise", "leg workout",
+            "exercises for", "exercise for", "exercises target", "which exercises", "which exercise", "kaya exercise",
+            "kaunse exercise", "calories does", "calories burn", "burn calories", "calorie burn", "ketli calories burn",
+            "kitni calories burn", "give me a beginner", "how to improve", "how can i", "how do i improve",
+            "how to build stamina", "best exercise", "exercises target"
+        ]) or (
+            has_q_word and any(bool(re.search(pat, lower)) for pat in WORKOUT_PATTERNS)
+        )
+        if is_fitness_advisory:
+            return "FITNESS_ADVISORY"
+
         if is_hypothetical or is_negative or is_advisory or is_question:
             return "GENERAL_CHAT"
 
@@ -709,38 +727,168 @@ class AgentNLP:
         return {"waterAmount": amount, "amountMl": amount, "unit": "ml"}
 
     @staticmethod
-    def extract_activity_entity(text: str) -> Dict[str, Any]:
-        """Extracts exercise activity name and duration."""
+    def extract_activity_entities(text: str) -> List[Dict[str, Any]]:
+        """
+        Extracts all exercise activities, durations, repetitions, and sets.
+        Supports single and multiple exercises across English, Hindi, Gujarati, Hinglish, Gujlish.
+        """
         norm = AgentNLP.normalize_text(text)
         lower = norm.lower()
-        mins = 30
-        m = re.search(r"\b(\d+)\s*(?:minute|minutes|min|mins|મિનિટ|मिनट)\b", lower)
-        if m:
-            mins = int(m.group(1))
-        else:
-            m2 = re.search(r"\b(\d+)\b", lower)
-            if m2:
-                mins = int(m2.group(1))
-                
-        activity = "Walking"
-        if "run" in lower or "running" in lower or "ran" in lower or "દોડ" in lower or "दौड़" in lower:
-            activity = "Running"
-        elif "cycling" in lower or "cycle" in lower:
-            activity = "Cycling"
-        elif "gym" in lower or "workout" in lower or "વર્કઆઉટ" in lower or "वर्कआउट" in lower:
-            activity = "Gym Workout"
-        elif "yoga" in lower or "યોગા" in lower or "योगा" in lower:
-            activity = "Yoga"
-        elif "swim" in lower:
-            activity = "Swimming"
-        elif "badminton" in lower:
-            activity = "Badminton"
-        elif "cricket" in lower:
-            activity = "Cricket"
-        elif "pushup" in lower:
-            activity = "Pushups"
+        
+        # Split into potential exercise clauses
+        clauses = re.split(r"[,;\n\+]|\band\b|\bane\b|\baur\b|\bતથા\b|\bઅને\b", lower)
+        clauses = [c.strip() for c in clauses if c.strip()]
+        if not clauses:
+            clauses = [lower]
 
-        return {"activity": activity, "durationMinutes": mins, "intensity": "MEDIUM"}
+        exercise_map = [
+            (r"\bsquats?\b|સ્ક્વોટ્સ?|સ્કવોટ્સ?|स्क्वैट्स?", "Squats", 5.0, True),
+            (r"\bpush-?ups?\b|પુશઅપ્સ?|पुशअप्स?|\bદંડ\b", "Push-ups", 4.5, True),
+            (r"\bpull-?ups?\b|પુલઅપ્સ?|पुलअप्स?|ચિનઅપ", "Pull-ups", 5.0, True),
+            (r"\blunges?\b|લંજીસ?|લંજ", "Lunges", 4.5, True),
+            (r"\bcrunches?\b|sit-?ups?|ક્રંચ|क्रंचेस", "Crunches", 3.8, True),
+            (r"\bplanks?\b|પ્લેન્ક|પ્લેંક|प्लैंक", "Plank", 3.5, False),
+            (r"\bburpees?\b|બર્પી|बर्पी", "Burpees", 8.0, True),
+            (r"\bjump(?:ing)?\s*jacks?\b|જમ્પિંગ\s*જેક", "Jumping Jacks", 8.0, True),
+            (r"\bjump\s*rope\b|skipping|દોરડા\s*કૂદવા|रस्सी\s*कूद", "Jump Rope", 10.0, False),
+            (r"\bbench\s*press\b|બેન્ચ\s*પ્રેસ|बेंच\s*प्रेस", "Bench Press", 5.5, True),
+            (r"\bdeadlifts?\b|ડેડલિફ્ટ|डेडलिफ्ट", "Deadlift", 6.0, True),
+            (r"\brun(?:ning)?\b|\bran\b|દોડ|दौड़", "Running", 8.5, False),
+            (r"\bwalk(?:ing)?\b|\bwalked\b|ચાલ|ટહેલ|टहल", "Walking", 3.5, False),
+            (r"\bcycl(?:ing|e)\b|સાયકલ|साइकिल", "Cycling", 6.0, False),
+            (r"\bswim(?:ming)?\b|તરવું|तैरना", "Swimming", 7.0, False),
+            (r"\byoga\b|યોગ|योग", "Yoga", 3.0, False),
+            (r"\bbadminton\b", "Badminton", 5.5, False),
+            (r"\bcricket\b", "Cricket", 5.0, False),
+            (r"\bgym\b|\bworkout\b|\bexercise\b|\bkasrat\b|\bvyayam\b|કસરત|વર્કઆઉટ|વ્યાયામ|व्यायाम|कसरत", "Workout", 5.0, False),
+        ]
+
+        extracted = []
+        seen_names = set()
+
+        for clause in clauses:
+            matched_name = None
+            matched_met = 4.0
+            is_rep_based = False
+            matched_pat = ""
+
+            for pat, name, met, rep_flag in exercise_map:
+                if re.search(pat, clause):
+                    matched_name = name
+                    matched_met = met
+                    is_rep_based = rep_flag
+                    matched_pat = pat
+                    break
+
+            if not matched_name:
+                continue
+
+            if matched_name in seen_names:
+                continue
+
+            # 1. Extract sets if any
+            sets_val = 1
+            m_sets = re.search(r"(\d+)\s*(?:sets?|સેટ|सेट)", clause)
+            if m_sets:
+                sets_val = int(m_sets.group(1))
+
+            # 2. Extract reps if any
+            reps_val = None
+            m_reps = re.search(r"(\d+)\s*(?:reps?|repetitions?|rep|રેપ|रेप|દાણા|વખત)", clause)
+            if m_reps:
+                reps_val = int(m_reps.group(1))
+            elif is_rep_based:
+                # E.g. "20 squats" or "squats 20" or "15 pushups"
+                m_num = re.search(r"(\d+)\s*(?:" + matched_pat + r")|(?:" + matched_pat + r")\s*(\d+)", clause)
+                if m_num:
+                    num_str = m_num.group(1) or m_num.group(2)
+                    if num_str:
+                        reps_val = int(num_str)
+
+            # 3. Extract duration in minutes if any
+            duration_val = None
+            m_min = re.search(r"(\d+(?:\.\d+)?)\s*(?:minutes?|mins?|min|મિનિટ|मिनट)", clause)
+            if m_min:
+                duration_val = float(m_min.group(1))
+            else:
+                m_hr = re.search(r"(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|hr|કલાક|घंटे|घंटा)", clause)
+                if m_hr:
+                    duration_val = float(m_hr.group(1)) * 60.0
+
+            # If duration is missing but reps is present: estimate duration based on reps & sets
+            if duration_val is None and reps_val is not None:
+                total_reps = reps_val * sets_val
+                duration_val = max(1.0, round(total_reps * 0.08, 1))
+
+            # If reps is missing and duration is missing:
+            # Check if there is a loose number in the clause (not sets or weight)
+            if duration_val is None and reps_val is None:
+                m_loose = re.search(r"\b(\d+)\b", clause)
+                if m_loose:
+                    val = int(m_loose.group(1))
+                    if is_rep_based and val <= 100:
+                        reps_val = val
+                        duration_val = max(1.0, round(reps_val * 0.08, 1))
+                    else:
+                        duration_val = float(val)
+
+            requires_clarification = (duration_val is None and reps_val is None)
+            if duration_val is None:
+                duration_val = 30.0  # default tracker baseline if forced
+
+            seen_names.add(matched_name)
+            extracted.append({
+                "activity": matched_name,
+                "reps": reps_val,
+                "sets": sets_val if reps_val else None,
+                "durationMinutes": duration_val,
+                "intensity": "MEDIUM",
+                "metValue": matched_met,
+                "requiresClarification": requires_clarification,
+            })
+
+        # Fallback if no clause matched but whole text had an exercise:
+        if not extracted:
+            for pat, name, met, rep_flag in exercise_map:
+                if re.search(pat, lower):
+                    mins = 30.0
+                    m_min = re.search(r"(\d+(?:\.\d+)?)\s*(?:minutes?|mins?|min|મિનિટ|मिनट)", lower)
+                    if m_min:
+                        mins = float(m_min.group(1))
+                    reps = None
+                    m_rep = re.search(r"(\d+)\s*(?:reps?|rep|રેપ|रेप)", lower)
+                    if m_rep:
+                        reps = int(m_rep.group(1))
+                        mins = max(1.0, round(reps * 0.08, 1))
+                    extracted.append({
+                        "activity": name,
+                        "reps": reps,
+                        "sets": 1 if reps else None,
+                        "durationMinutes": mins,
+                        "intensity": "MEDIUM",
+                        "metValue": met,
+                        "requiresClarification": (m_min is None and m_rep is None),
+                    })
+                    break
+
+        if not extracted:
+            extracted.append({
+                "activity": "Workout",
+                "reps": None,
+                "sets": None,
+                "durationMinutes": 30.0,
+                "intensity": "MEDIUM",
+                "metValue": 5.0,
+                "requiresClarification": True,
+            })
+
+        return extracted
+
+    @staticmethod
+    def extract_activity_entity(text: str) -> Dict[str, Any]:
+        """Extracts primary exercise activity entity (backward-compatible)."""
+        entities = AgentNLP.extract_activity_entities(text)
+        return entities[0]
 
     @staticmethod
     def extract_sleep_entity(text: str) -> Dict[str, Any]:

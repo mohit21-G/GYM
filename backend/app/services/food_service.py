@@ -530,12 +530,28 @@ class FoodService:
         for inp_item, l in zip(items, logged_items):
             qty_val = int(l['quantity_amount']) if l['quantity_amount'].is_integer() else l['quantity_amount']
             raw_q = (inp_item.food or "").strip()
-            if raw_q and raw_q.lower() != l['food_name'].lower() and raw_q.lower() not in l['food_name'].lower():
-                items_parts.append(f"{qty_val} {l['quantity_unit']} {l['food_name']} ({raw_q}) ({int(l['calories'])} kcal)")
+            unit_str = (l['quantity_unit'] or "").strip()
+            food_name = (l['food_name'] or "Food").strip()
+            cal_str = f"({int(l['calories'])} kcal)"
+
+            if unit_str.lower() in ["piece", "pieces", "nag", "unit", "serving"]:
+                if raw_q and raw_q.lower() != food_name.lower() and raw_q.lower() not in food_name.lower():
+                    items_parts.append(f"{qty_val} {food_name} ({raw_q}) {cal_str}")
+                else:
+                    items_parts.append(f"{qty_val} {food_name} {cal_str}")
             else:
-                items_parts.append(f"{qty_val} {l['quantity_unit']} {l['food_name']} ({int(l['calories'])} kcal)")
-        items_summary = ", ".join(items_parts)
-        reply_text = f"Logged {items_summary} for {meal_type.lower()}. Meal total: {int(total_meal_cal)} kcal (P: {int(total_meal_p)}g, C: {int(total_meal_c)}g, F: {int(total_meal_f)}g). Today's total: {int(summary_result['dailyNutritionSummary'].totalCalories)} / {int(summary_result['dailyNutritionSummary'].targetCalories)} kcal."
+                if raw_q and raw_q.lower() != food_name.lower() and raw_q.lower() not in food_name.lower():
+                    items_parts.append(f"{qty_val} {unit_str} {food_name} ({raw_q}) {cal_str}")
+                else:
+                    items_parts.append(f"{qty_val} {unit_str} {food_name} {cal_str}")
+
+        bullet_items = "\n".join(f"* {part}" for part in items_parts)
+        reply_text = (
+            f"🍽️ **Food Logged**\n\n"
+            f"{bullet_items}\n\n"
+            f"Meal total ({meal_type.title()}): {int(total_meal_cal)} kcal (P: {int(total_meal_p)}g, C: {int(total_meal_c)}g, F: {int(total_meal_f)}g)\n"
+            f"Today's total: {int(summary_result['dailyNutritionSummary'].totalCalories)} / {int(summary_result['dailyNutritionSummary'].targetCalories)} kcal"
+        )
 
         return FoodLoggingResult(
             success=True,

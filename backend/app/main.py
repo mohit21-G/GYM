@@ -30,32 +30,35 @@ from .routers import (
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    await connect_to_mongo()
-    db = get_db()
-    
-    # Ensure default admin user exists
-    admin_email = settings.ADMIN_EMAIL.lower().strip()
-    admin_user = await db.users.find_one({"email": admin_email})
-    hashed = AuthService.hash_password(settings.ADMIN_PASSWORD)
-    if not admin_user:
-        await db.users.insert_one({
-            "id": "admin-system-id",
-            "email": admin_email,
-            "passwordHash": hashed,
-            "password_hash": hashed,
-            "name": "System Administrator",
-            "role": "ADMIN",
-            "status": "ACTIVE",
-            "created_at": datetime.now(timezone.utc),
-            "updated_at": datetime.now(timezone.utc),
-        })
-        print(f"[Admin] Seeded default admin user {admin_email}")
-    else:
-        # Ensure password hash is current
-        await db.users.update_one(
-            {"email": admin_email},
-            {"$set": {"passwordHash": hashed, "password_hash": hashed, "role": "ADMIN", "status": "ACTIVE"}}
-        )
+    try:
+        await connect_to_mongo()
+        db = get_db()
+        
+        # Ensure default admin user exists
+        admin_email = settings.ADMIN_EMAIL.lower().strip()
+        admin_user = await db.users.find_one({"email": admin_email})
+        hashed = AuthService.hash_password(settings.ADMIN_PASSWORD)
+        if not admin_user:
+            await db.users.insert_one({
+                "id": "admin-system-id",
+                "email": admin_email,
+                "passwordHash": hashed,
+                "password_hash": hashed,
+                "name": "System Administrator",
+                "role": "ADMIN",
+                "status": "ACTIVE",
+                "created_at": datetime.now(timezone.utc),
+                "updated_at": datetime.now(timezone.utc),
+            })
+            print(f"[Admin] Seeded default admin user {admin_email}")
+        else:
+            # Ensure password hash is current
+            await db.users.update_one(
+                {"email": admin_email},
+                {"$set": {"passwordHash": hashed, "password_hash": hashed, "role": "ADMIN", "status": "ACTIVE"}}
+            )
+    except Exception as e:
+        print(f"[Startup Warning] MongoDB connection or seeding skipped: {e}")
     
     yield
 

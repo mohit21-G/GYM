@@ -24,6 +24,85 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const isUser = msg.sender === 'USER';
   const timestamp = msg.createdAt ? format(new Date(msg.createdAt), 'h:mm a') : '';
 
+  const renderFormattedMessage = (content: string) => {
+    if (!content) return null;
+
+    const rawLines = content.split('\n');
+    const renderedElements: React.ReactNode[] = [];
+    let currentBulletGroup: React.ReactNode[] = [];
+
+    const flushBullets = () => {
+      if (currentBulletGroup.length > 0) {
+        renderedElements.push(
+          <ul key={`list-${renderedElements.length}`} className="my-2 space-y-1.5 pl-1">
+            {currentBulletGroup}
+          </ul>
+        );
+        currentBulletGroup = [];
+      }
+    };
+
+    const formatInlineText = (text: string): React.ReactNode => {
+      const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
+      return parts.map((part, index) => {
+        if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
+          return (
+            <strong
+              key={index}
+              className={isUser ? 'font-semibold text-white' : 'font-semibold text-emerald-400'}
+            >
+              {part.slice(2, -2)}
+            </strong>
+          );
+        }
+        if (part.startsWith('*') && part.endsWith('*') && part.length > 2 && !part.startsWith('**')) {
+          return (
+            <em key={index} className="italic text-slate-300">
+              {part.slice(1, -1)}
+            </em>
+          );
+        }
+        return part;
+      });
+    };
+
+    rawLines.forEach((line, index) => {
+      const trimmed = line.trim();
+
+      if (trimmed.startsWith('* ') || trimmed.startsWith('- ') || trimmed.startsWith('• ')) {
+        const bulletContent = trimmed.slice(2);
+        currentBulletGroup.push(
+          <li key={`bullet-${index}`} className="flex items-start space-x-2 text-sm leading-snug">
+            <span
+              className={
+                isUser
+                  ? 'text-emerald-200 font-bold select-none'
+                  : 'text-emerald-400 font-bold select-none'
+              }
+            >
+              •
+            </span>
+            <span className="flex-1">{formatInlineText(bulletContent)}</span>
+          </li>
+        );
+      } else {
+        flushBullets();
+        if (!trimmed) {
+          renderedElements.push(<div key={`space-${index}`} className="h-2" />);
+        } else {
+          renderedElements.push(
+            <div key={`line-${index}`} className="text-sm leading-relaxed">
+              {formatInlineText(line)}
+            </div>
+          );
+        }
+      }
+    });
+
+    flushBullets();
+    return <div className="space-y-0.5 whitespace-pre-wrap">{renderedElements}</div>;
+  };
+
   return (
     <div
       className={`flex items-start space-x-3 max-w-3xl ${
@@ -49,7 +128,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             : 'bg-slate-800 text-slate-100 border border-slate-700/60 rounded-tl-sm'
         }`}
       >
-        <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.message}</p>
+        {renderFormattedMessage(msg.message)}
 
         {/* Structured card if provided */}
         {!isUser && msg.cardData && (

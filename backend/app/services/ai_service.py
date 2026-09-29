@@ -5,6 +5,7 @@ import logging
 from typing import Dict, Any, Optional, List
 from ..config import settings
 from .agent_nlp import AgentNLP
+from .fitness_advisory_service import FitnessAdvisoryService
 
 logger = logging.getLogger("ai_service")
 
@@ -117,12 +118,26 @@ class AIService:
         lang = AgentNLP.detect_language(message)
 
         # 1. Non-logging or Query intents: Handle immediately with zero latency and 100% precision
+        if detected_intent == "FITNESS_ADVISORY" or (detected_intent == "GENERAL_CHAT" and FitnessAdvisoryService.is_fitness_query(message)):
+            advisory_text = FitnessAdvisoryService.generate_advisory_response(message, lang)
+            return {
+                "intent": "FITNESS_ADVISORY",
+                "language": lang,
+                "entities": {},
+                "replyText": advisory_text,
+            }
+
         if detected_intent == "GENERAL_CHAT":
+            lower_msg = message.lower()
+            if any(w in lower_msg for w in ["hi", "hello", "hey", "kem chho", "namaste", "halo"]):
+                reply = "Hello! I am your personal Fitness AI coach. I can help you log meals, track workouts and hydration, monitor sleep, and answer your fitness and nutrition questions!"
+            else:
+                reply = "I can help you track your fitness, log what you ate, record workouts, and reach your goals. Feel free to tell me what you did or ask any question!"
             return {
                 "intent": "GENERAL_CHAT",
                 "language": lang,
                 "entities": {"foodItems": []},
-                "replyText": "I can answer nutrition and fitness questions or log what you ate when you're ready!"
+                "replyText": reply,
             }
 
         if detected_intent == "QUERY_FOOD_LOG":
@@ -153,12 +168,26 @@ class AIService:
             }
 
         if detected_intent == "CREATE_ACTIVITY_LOG":
-            a_ent = AgentNLP.extract_activity_entity(message)
+            acts = AgentNLP.extract_activity_entities(message)
+            if acts and acts[0].get("requiresClarification"):
+                return {
+                    "intent": "CREATE_ACTIVITY_LOG",
+                    "language": lang,
+                    "entities": {"activities": acts, "requiresClarification": True},
+                    "requiresClarification": True,
+                    "replyText": "Great job on being active! Could you please let me know how many minutes you exercised or how many reps and sets you completed, so I can accurately calculate your calories burned?",
+                }
             return {
                 "intent": "CREATE_ACTIVITY_LOG",
                 "language": lang,
-                "entities": a_ent,
-                "replyText": f"Logged {a_ent['durationMinutes']} mins of {a_ent['activity']}."
+                "entities": {
+                    "activities": acts,
+                    "activity": acts[0]["activity"],
+                    "durationMinutes": acts[0]["durationMinutes"],
+                    "reps": acts[0].get("reps"),
+                    "sets": acts[0].get("sets"),
+                },
+                "replyText": f"Logged {len(acts)} workout item(s).",
             }
 
         if detected_intent == "CREATE_SLEEP_LOG":
@@ -335,16 +364,18 @@ class AIService:
 
         # 5. ACTIVITY_LOG fallback
         if intent == "CREATE_ACTIVITY_LOG":
-            mins = 30
-            num_match = re.search(r"(\d+)\s*(?:min|minute|ghanta|hour|hr)", pre_processed.lower())
-            if num_match:
-                val = int(num_match.group(1))
-                mins = val * 60 if any(w in pre_processed.lower() for w in ["hour", "hr", "ghanta"]) else val
+            acts = AgentNLP.extract_activity_entities(original_message)
             return {
                 "intent": "CREATE_ACTIVITY_LOG",
                 "language": lang,
-                "entities": {"activity": "Workout", "durationMinutes": mins},
-                "replyText": f"Logged {mins} mins workout.",
+                "entities": {
+                    "activities": acts,
+                    "activity": acts[0]["activity"],
+                    "durationMinutes": acts[0]["durationMinutes"],
+                    "reps": acts[0].get("reps"),
+                    "sets": acts[0].get("sets"),
+                },
+                "replyText": f"Logged {len(acts)} workout item(s).",
             }
 
         # 6. FOOD_LOG fallback
@@ -358,7 +389,16 @@ class AIService:
                     "replyText": f"Logged {len(food_items)} food items.",
                 }
 
-        # 7. GENERAL_CHAT fallback
+        # 7. FITNESS_ADVISORY or fitness query fallback
+        if intent == "FITNESS_ADVISORY" or FitnessAdvisoryService.is_fitness_query(original_message):
+            return {
+                "intent": "FITNESS_ADVISORY",
+                "language": lang,
+                "entities": {},
+                "replyText": FitnessAdvisoryService.generate_advisory_response(original_message, lang),
+            }
+
+        # 8. GENERAL_CHAT fallback
         return {
             "intent": "GENERAL_CHAT",
             "language": lang,
