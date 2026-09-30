@@ -106,16 +106,17 @@ class TestFoodIdentificationAccuracy:
         assert item["requires_clarification"] is True
         assert item["clarification_reason"] == "UNKNOWN_FOOD"
 
-    def test_ambiguous_quantity_flagged_for_clarification(self):
-        """Missing or ambiguous quantity must be flagged for clarification."""
+    def test_missing_quantity_uses_reasonable_default(self):
+        """Identified food without explicit quantity must use reasonable default serving without clarification."""
         query = "protein shake lidhu"
         extracted = AgentNLP.extract_food_entities_heuristically(query)
         assert len(extracted) == 1
         item = extracted[0]
         assert item["food"] == "Protein Shake"
         assert item["has_explicit_quantity"] is False
-        assert item["requires_clarification"] is True
-        assert item["clarification_reason"] == "AMBIGUOUS_QUANTITY"
+        assert item["quantity"] == 1.0
+        assert item["unit"] == "scoop"
+        assert item["requires_clarification"] is False
 
 class TestFoodServiceResolutionAndPortions:
     """Tests for FoodService.resolve_food and calculate_portion_multiplier."""

@@ -201,12 +201,13 @@ async def test_case_5_food_specific_quantity_question():
     oats_q = FoodService.get_quantity_clarification_question("Oats", lang="en")
     assert "How much oats did you have? (e.g. 1 bowl, 2 bowls)" in oats_q
 
-    # Now verify ChatService returns the question when user logs food without quantity
+    # Verify ChatService automatically logs default serving when user provides no quantity
     user_id = f"test_user_c5_{uuid.uuid4().hex[:6]}"
     session_id = f"session_c5_{uuid.uuid4().hex[:6]}"
     res = await ChatService.handle_user_message(user_id, "me green tea pidhi", session_id_input=session_id)
-    assert "How much green tea did you have?" in res["message"]
-    assert "1 scoop" not in res["message"]
+    assert res["success"] is True
+    assert "Green Tea" in res["ui"]["groupedFoodCards"][0]["foodName"]
+    assert res["ui"]["groupedFoodCards"][0]["totalQuantity"] == 1
 
 @pytest.mark.asyncio
 async def test_case_6_nutrition_recalculates_after_edit():

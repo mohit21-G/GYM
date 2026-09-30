@@ -588,9 +588,13 @@ class FoodService:
             resolved = await FoodService.resolve_food(item.food)
             if not is_recog or not resolved.get("is_recognized", True) or (req_clar and getattr(item, "clarification_reason", "") == "UNKNOWN_FOOD"):
                 unrecognized_items.append(item.food)
-            elif not has_qty or (req_clar and getattr(item, "clarification_reason", "") == "AMBIGUOUS_QUANTITY") or not item.quantity or item.quantity <= 0:
+            elif req_clar and getattr(item, "clarification_reason", "") == "AMBIGUOUS_QUANTITY":
                 ambiguous_qty_items.append(resolved.get("food_name", item.food))
             else:
+                if not item.quantity or item.quantity <= 0:
+                    item.quantity = 1.0
+                if not item.unit or item.unit == "serving":
+                    item.unit = resolved.get("unit") or "serving"
                 validated_items.append((item, resolved))
 
         # If NO items were validated and there are unrecognized/ambiguous items, return clarification immediately

@@ -20,11 +20,11 @@ TEST_INPUT = """Today morning
 
 At 6:45 lamon water 1 glass
 7:00 400ml black cofee
-7:15 am 1 scoop pre workout with 300ml water
+7:15 am 1 skoop pre workout with 300ml watter
 7:30 to 9:00 gym back amd biceps and 20min walk
 8:00am 1 ltr watwr
-9:30 1 scoop protein powder with 400ml water
-10:00am 3 khapli roti and 1 cup milk"""
+9:30 1 skoop protin powdr with 400ml watter
+10:00am 3 khapli roti and 1 cup milkk"""
 
 def test_multi_entry_food_extraction():
     """Verify all 6 food items are accurately extracted from the exact typo benchmark input."""
@@ -213,7 +213,9 @@ async def test_multi_log_end_to_end(monkeypatch):
     act_cards = [c for c in cards if c.get("type") == "ACTIVITY"]
     hyd_cards = [c for c in cards if c.get("type") == "HYDRATION"]
     assert len(act_cards) == 3, f"Expected 3 activity cards, got {len(act_cards)}"
-    assert len(hyd_cards) == 4, f"Expected 4 hydration cards, got {len(hyd_cards)}"
+    assert len(hyd_cards) == 1, f"Expected 1 aggregated hydration card, got {len(hyd_cards)}"
+    assert hyd_cards[0]["totalMl"] == 1950.0
+    assert len(hyd_cards[0]["entries"]) == 4
 
     # 5. Verify message response summary has all categories
     msg = res.get("message", "")
@@ -326,4 +328,94 @@ async def test_history_endpoints_and_time_edit_flow(monkeypatch):
     assert update_res["success"] is True
     assert update_res["entry"]["hasExplicitTime"] is True
     assert "8:15" in update_res["entry"]["timeFormatted"]
+
+@pytest.mark.asyncio
+async def test_smart_default_food_servings_never_ask_quantity():
+    """
+    Requirement 2: Never ask normal food quantity when food is clearly identified.
+    Must automatically use reasonable default serving size from food profile/database.
+    Examples:
+    - 'dal khadhu' -> 1 bowl
+    - 'rice khadhu' -> 1 bowl
+    - 'roti khai' -> 1 piece
+    - 'milk pidhu' -> 1 glass
+    - 'banana khadhu' -> 1 piece
+    - 'protein shake lidho' -> 1 scoop
+    - 'coffee pidhi' -> 1 cup
+    """
+    cases = [
+        ("dal khadhu", "bowl", 1.0),
+        ("rice khadhu", "bowl", 1.0),
+        ("roti khai", "piece", 1.0),
+        ("milk pidhu", "glass", 1.0),
+        ("banana khadhu", "piece", 1.0),
+        ("protein shake lidho", "scoop", 1.0),
+        ("coffee pidhi", "cup", 1.0),
+    ]
+
+    for user_input, expected_unit, expected_qty in cases:
+        extracted = AgentNLP.extract_food_entities_heuristically(user_input)
+        assert len(extracted) == 1, f"Failed for {user_input}: got {extracted}"
+        item = extracted[0]
+        assert item["is_recognized"] is True, f"Food should be recognized for {user_input}"
+        assert item["quantity"] == expected_qty, f"Expected {expected_qty} for {user_input}, got {item['quantity']}"
+        assert item["unit"] == expected_unit, f"Expected {expected_unit} for {user_input}, got {item['unit']}"
+        assert item["requires_clarification"] is False, f"Must NEVER ask quantity clarification for {user_input}"
+
+@pytest.mark.asyncio
+async def test_single_hydration_card_and_timeline_underneath(monkeypatch):
+    """
+    Requirement 3 & 4: ONE Aggregated Hydration Card with timeline underneath.
+    Shows Total: 1950 / 2500 ml and individual timeline/details underneath:
+    - 6:45 AM — 250 ml Lemon Water
+    - 7:15 AM — 300 ml Water
+    - 8:00 AM — 1000 ml Water
+    - 9:30 AM — 400 ml Water
+    """
+    import backend.app.database as db_mod
+    mock_db = db_mod.MockDatabase()
+    user_id = "test_user_single_hyd"
+    await mock_db.users.insert_one({"id": user_id, "profile": {"dailyCalorieTarget": 2000, "currentWeightKg": 70}})
+
+    monkeypatch.setattr(db_mod.db_instance, "db", mock_db)
+    monkeypatch.setattr(db_mod, "get_db", lambda: mock_db)
+
+    ai_res = await AIService.process_message(TEST_INPUT)
+    res = await ChatService.route_intent(
+        user_id=user_id,
+        session_id="test_sess_single_hyd",
+        intent=ai_res["intent"],
+        entities=ai_res["entities"],
+        ai_res=ai_res,
+        user_message=TEST_INPUT,
+    )
+
+    cards = res.get("ui", {}).get("cards", [])
+    hyd_cards = [c for c in cards if c.get("type") == "HYDRATION"]
+    assert len(hyd_cards) == 1, f"Expected exactly ONE hydration card, got {len(hyd_cards)}"
+
+    hyd_card = hyd_cards[0]
+    assert hyd_card["title"] == "Hydration"
+    assert hyd_card["totalMl"] == 1950.0
+    assert hyd_card["targetMl"] == 2500.0
+
+    entries = hyd_card.get("entries", [])
+    assert len(entries) == 4, f"Expected 4 timeline entries, got {len(entries)}: {entries}"
+
+    # Verify times, amounts, and beverage names
+    assert entries[0]["time"] == "6:45 AM"
+    assert entries[0]["amountMl"] == 250
+    assert entries[0]["beverageName"] == "Lemon Water"
+
+    assert entries[1]["time"] == "7:15 AM"
+    assert entries[1]["amountMl"] == 300
+    assert entries[1]["beverageName"] == "Water"
+
+    assert entries[2]["time"] == "8:00 AM"
+    assert entries[2]["amountMl"] == 1000
+    assert entries[2]["beverageName"] == "Water"
+
+    assert entries[3]["time"] == "9:30 AM"
+    assert entries[3]["amountMl"] == 400
+    assert entries[3]["beverageName"] == "Water"
 

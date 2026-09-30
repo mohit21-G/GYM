@@ -224,7 +224,7 @@ export const StructuredCard: React.FC<CardProps> = ({
     );
   }
 
-  // Hydration Card
+  // Hydration Card (Single Aggregated Card with Timeline/Details)
   if (cardType === 'LOG_RESULT' && data.type === 'HYDRATION') {
     const log = data.log || data;
     const dailySummary = data.dailySummary;
@@ -235,27 +235,21 @@ export const StructuredCard: React.FC<CardProps> = ({
       100,
       Math.round(((totalMl) / (targetMl)) * 100),
     );
-    const subtitle = data.subtitle;
+    const entries: any[] = data.entries || (data.details ? data.details : []);
+
     return (
       <div className="mt-3 bg-slate-900/90 border border-cyan-500/30 rounded-xl p-4 shadow-lg backdrop-blur-sm w-full">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-3">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-2.5 mb-3">
           <div className="flex items-center space-x-2 text-cyan-400 font-semibold text-sm">
-            <Droplets className="w-4 h-4" />
-            <span>Hydration Logged</span>
-            {subtitle && subtitle.includes(':') && (
-              <span className="text-xs text-slate-400 font-normal">({subtitle})</span>
-            )}
+            <Droplets className="w-4 h-4 text-cyan-400" />
+            <span className="text-white font-semibold">Hydration</span>
           </div>
-          <span className="text-cyan-400 font-bold text-sm">+{amountMl} ml</span>
+          <span className="text-cyan-400 font-bold text-sm">
+            Total: {totalMl} / {targetMl} ml
+          </span>
         </div>
 
         <div className="space-y-2">
-          <div className="flex justify-between text-xs text-slate-300">
-            <span>Today's Total:</span>
-            <span className="font-semibold text-cyan-300">
-              {totalMl} / {targetMl} ml ({percent}%)
-            </span>
-          </div>
           <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
             <div
               className="bg-cyan-400 h-2 rounded-full transition-all duration-500"
@@ -263,6 +257,33 @@ export const StructuredCard: React.FC<CardProps> = ({
             />
           </div>
         </div>
+
+        {entries.length > 0 ? (
+          <div className="mt-3 pt-3 border-t border-slate-800/80 space-y-1.5">
+            {entries.map((item: any, idx: number) => {
+              const timeStr = item.time || item.timeFormatted || '';
+              const amtStr = `${item.amountMl ?? item.amount_ml ?? 0} ml`;
+              const bevStr = item.beverageName || item.beverage_name || 'Water';
+              return (
+                <div key={idx} className="flex items-center text-xs text-slate-300 py-0.5">
+                  <span className="text-slate-400 font-medium w-16">{timeStr}</span>
+                  <span className="text-slate-500 mx-1.5">—</span>
+                  <span className="text-slate-200 font-medium">{amtStr} {bevStr}</span>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          amountMl > 0 && (
+            <div className="mt-3 pt-3 border-t border-slate-800/80 space-y-1.5">
+              <div className="flex items-center text-xs text-slate-300 py-0.5">
+                <span className="text-slate-400 font-medium w-16">{data.subtitle || 'Today'}</span>
+                <span className="text-slate-500 mx-1.5">—</span>
+                <span className="text-slate-200 font-medium">{amountMl} ml {data.title && data.title !== 'Hydration' ? data.title : 'Water'}</span>
+              </div>
+            </div>
+          )
+        )}
       </div>
     );
   }

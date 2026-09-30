@@ -574,6 +574,7 @@ class AgentNLP:
             r"\bwid\b": "with",
             r"\bwth\b": "with",
             # Hydration & beverages
+            r"\bwatter\b": "water",
             r"\blamon\b": "lemon",
             r"\bleman\b": "lemon",
             r"\blimbu\b": "lemon",
@@ -581,11 +582,15 @@ class AgentNLP:
             r"\bwatr\b": "water",
             r"\bwtr\b": "water",
             r"\bwaater\b": "water",
+            r"\bpaani\b": "pani",
+            r"\bpanni\b": "pani",
             r"\bcofee\b": "coffee",
             r"\bcoffe\b": "coffee",
             r"\bcofe\b": "coffee",
             r"\bcaffe\b": "coffee",
             r"\bblck\b": "black",
+            r"\bmilkk\b": "milk",
+            r"\bmlik\b": "milk",
             # Workout & exercise
             r"\bbiseps?\b": "biceps",
             r"\bbicep\b": "biceps",
@@ -633,6 +638,7 @@ class AgentNLP:
             r"\bchiken\b": "chicken",
             r"\blitr\b": "litre",
             r"\blieter\b": "litre",
+            r"\bskoop\b": "scoop",
             r"\bscop\b": "scoop",
             r"\bskup\b": "scoop",
         }
@@ -641,7 +647,7 @@ class AgentNLP:
 
         # Safe fuzzy correction for remaining typos against core vocabulary
         fuzzy_vocab = [
-            "lemon", "water", "coffee", "biceps", "triceps", "walking", "workout", "protein", "powder", "scoop", "glass", "bottle", "roti", "khapli"
+            "lemon", "water", "coffee", "biceps", "triceps", "walking", "workout", "protein", "powder", "scoop", "glass", "bottle", "roti", "khapli", "milk"
         ]
         words = norm.split(" ")
         corrected_words = []
@@ -1299,6 +1305,7 @@ class AgentNLP:
         for line in lines:
             line = re.sub(r"\b(dal|daal|દાળ|દાલ|दाल)\s+(rice|bhat|chawal|ભાત|ચોખા|चावल)\b", r"\1 and \2", line, flags=re.I)
             line = re.sub(r"\b(roti|rotli|chapati|રોટલી|रोटी)\s+(dal|daal|sabzi|shak|દાળ|શાક|दाल|सब्जी)\b", r"\1 and \2", line, flags=re.I)
+            line = re.sub(r"\b(tea|chai|coffee)\s+with\s+milk\b", r"\1_with_milk", line, flags=re.I)
             
             l_low = line.lower()
             if any(w in l_low for w in ["morning", "savar", "savare", "saware", "subah", "સવાર", "સવારે", "सुबह"]):
@@ -1326,7 +1333,7 @@ class AgentNLP:
             clauses = re.split(r",| and | ane | aur | અને | અને\s+| અને| aur\s+| और | sath me | sathe | સાથે | સાથે\s+| साथ में | with |\+", line, flags=re.I)
 
             for clause in clauses:
-                clause = clause.strip()
+                clause = clause.strip().replace("_with_milk", " with milk")
                 if not clause:
                     continue
 
@@ -1527,21 +1534,28 @@ class AgentNLP:
                     if not canonical:
                         canonical = clean.title()
 
-                    confidence = 0.95 if is_recognized else 0.3
-                    requires_clarification = (not is_recognized) or (not has_explicit_qty)
-                    clarification_reason = "UNKNOWN_FOOD" if not is_recognized else ("AMBIGUOUS_QUANTITY" if not has_explicit_qty else None)
-
-                    # Context-aware default unit when unit was not specified
-                    if unit == "serving":
+                    # Context-aware default unit when unit was not specified or quantity was not explicitly given
+                    if not has_explicit_qty or unit == "serving":
                         c_lower = canonical.lower()
-                        if any(w in c_lower for w in ["powder", "whey"]):
+                        if any(w in c_lower for w in ["powder", "whey", "pre workout", "preworkout"]):
                             unit = "scoop"
                         elif any(w in c_lower for w in ["shake", "smoothie"]):
+                            unit = "scoop"
+                        elif any(w in c_lower for w in ["coffee", "tea", "chai"]):
+                            unit = "cup"
+                        elif any(w in c_lower for w in ["milk", "doodh", "dudh", "chaas", "chhas", "lassi", "juice"]):
                             unit = "glass"
                         elif any(w in c_lower for w in ["roti", "rotli", "bhakri", "thepla", "egg", "banana", "apple", "chapati", "phulka", "naan", "paratha", "poori"]):
                             unit = "piece"
                         elif any(w in c_lower for w in ["dal", "daal", "rice", "chawal", "khichdi", "sabzi", "shaak", "curd", "dahi", "salad"]):
                             unit = "bowl"
+
+                    if not has_explicit_qty:
+                        qty = 1.0
+
+                    confidence = 0.95 if is_recognized else 0.3
+                    requires_clarification = not is_recognized
+                    clarification_reason = "UNKNOWN_FOOD" if not is_recognized else None
 
                     results.append({
                         "food": canonical,

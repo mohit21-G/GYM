@@ -410,12 +410,34 @@ class ChatService:
         if intent == "CREATE_HYDRATION_LOG":
             amount = float(entities.get("waterAmount") or entities.get("amountMl") or 250.0)
             log_id = str(uuid.uuid4())
+
+            local_now = TimeService.get_current_local_datetime()
+            h_dt, has_time = TimeService.extract_time_from_text(user_message, reference_time=local_now)
+            h_dt_iso = h_dt.isoformat()
+            time_label = TimeService.format_time(h_dt)
+
+            bev_name = entities.get("beverageName") or entities.get("beverage_name") or "Water"
+            if bev_name == "Water" and user_message:
+                u_low = user_message.lower()
+                if any(w in u_low for w in ["lemon", "lamon", "nimbu", "limbu", "leembu"]):
+                    bev_name = "Lemon Water"
+                elif any(w in u_low for w in ["coconut", "nariyal"]):
+                    bev_name = "Coconut Water"
+                elif any(w in u_low for w in ["black coffee", "black cofee"]):
+                    bev_name = "Black Coffee"
+                elif any(w in u_low for w in ["green tea"]):
+                    bev_name = "Green Tea"
+
             await db.hydration_logs.insert_one({
                 "id": log_id,
                 "user_id": user_id,
                 "amount_ml": amount,
+                "unit": "ml",
                 "log_date": today_str,
                 "created_at": now,
+                "logged_at": h_dt_iso,
+                "beverage_name": bev_name,
+                "notes": bev_name,
             })
 
             dashboard_data = await DashboardService.get_today_dashboard(user_id, today_str)
@@ -424,6 +446,27 @@ class ChatService:
             target_water = hydration["targetMl"]
             remaining_water = hydration["remainingMl"]
             is_met = hydration["targetMet"]
+
+            # Query all today's hydration logs to show complete timeline/details
+            cursor = db.hydration_logs.find({"user_id": user_id, "log_date": today_str}).sort("created_at", 1)
+            all_today_hyd = await cursor.to_list(length=100) if db is not None else []
+            card_entries = []
+            if all_today_hyd:
+                for entry_doc in all_today_hyd:
+                    doc_dt = entry_doc.get("logged_at") or entry_doc.get("created_at")
+                    t_str = TimeService.format_time(doc_dt)
+                    doc_bev = entry_doc.get("beverage_name") or entry_doc.get("notes") or "Water"
+                    card_entries.append({
+                        "time": t_str,
+                        "amountMl": int(entry_doc.get("amount_ml", 0)),
+                        "beverageName": doc_bev,
+                    })
+            else:
+                card_entries = [{
+                    "time": time_label,
+                    "amountMl": int(amount),
+                    "beverageName": bev_name,
+                }]
 
             if is_met:
                 if lang in ["gu", "gu-Latn"]:
@@ -452,9 +495,13 @@ class ChatService:
                     "type": "LOG_RESULT",
                     "cards": [{
                         "type": "HYDRATION",
-                        "title": "Hydration Logged",
-                        "subtitle": f"+{int(amount)} ml",
+                        "title": "Hydration",
+                        "subtitle": f"Total: {int(total_water)} / {int(target_water)} ml",
                         "metric": f"{int(total_water)} ml",
+                        "amountMl": int(amount),
+                        "totalMl": int(total_water),
+                        "targetMl": int(target_water),
+                        "entries": card_entries,
                         "log": {"amountMl": amount},
                         "dailySummary": {"totalMl": total_water, "targetMl": target_water},
                     }],
@@ -613,6 +660,8 @@ class ChatService:
             raw_hyds = [raw_hyds]
 
         hyd_bullets = []
+        hyd_entries = []
+        batch_water_total = 0.0
         for h in (raw_hyds or []):
             h_ml = float(h.get("amount_ml") or h.get("amountMl") or h.get("waterAmount") or 0.0)
             if h_ml <= 0:
@@ -653,15 +702,15 @@ class ChatService:
                     "notes": bev_name,
                 })
 
-            time_sub = h.get("time_formatted") or (TimeService.format_time(h_dt) if h.get("has_explicit_time") else f"+{int(h_ml)} ml")
-            card_title = bev_name if bev_name != "Water" else "Water Intake"
-            cards.append({
-                "type": "HYDRATION",
-                "title": card_title,
-                "subtitle": time_sub,
+            time_sub = h.get("time_formatted") or TimeService.format_time(h_dt)
+            hyd_entries.append({
+                "time": time_sub,
                 "amountMl": int(h_ml),
-                "metric": f"{int(h_ml)} ml",
+                "beverageName": bev_name,
+                "loggedAt": h_dt_iso,
             })
+            batch_water_total += h_ml
+
             if bev_name != "Water":
                 summary_lines.append(f"{bev_name} ({int(h_ml)} ml)")
                 hyd_bullets.append(f"• {int(h_ml)} ml {bev_name.lower()} ({time_sub})")
@@ -671,6 +720,40 @@ class ChatService:
 
         # 4. Synchronize dashboard
         dashboard_data = await DashboardService.get_today_dashboard(user_id, today_str)
+
+        # Single aggregated hydration card for today
+        if hyd_entries:
+            today_water_total = dashboard_data["hydration"]["amountMl"]
+            today_water_target = dashboard_data["hydration"]["targetMl"]
+
+            # Query all today's hydration logs to show complete chronological timeline
+            cursor = db.hydration_logs.find({"user_id": user_id, "log_date": today_str}).sort("created_at", 1)
+            all_today_hyd = await cursor.to_list(length=100) if db is not None else []
+            card_entries = []
+            if all_today_hyd:
+                for entry_doc in all_today_hyd:
+                    doc_dt = entry_doc.get("logged_at") or entry_doc.get("created_at")
+                    t_str = TimeService.format_time(doc_dt)
+                    doc_bev = entry_doc.get("beverage_name") or entry_doc.get("notes") or "Water"
+                    card_entries.append({
+                        "time": t_str,
+                        "amountMl": int(entry_doc.get("amount_ml", 0)),
+                        "beverageName": doc_bev,
+                    })
+            else:
+                card_entries = hyd_entries
+
+            cards.append({
+                "type": "HYDRATION",
+                "title": "Hydration",
+                "subtitle": f"Total: {int(today_water_total)} / {int(today_water_target)} ml",
+                "amountMl": int(batch_water_total),
+                "totalMl": int(today_water_total),
+                "targetMl": int(today_water_target),
+                "metric": f"{int(today_water_total)} / {int(today_water_target)} ml",
+                "entries": card_entries,
+                "dailySummary": {"totalMl": today_water_total, "targetMl": today_water_target},
+            })
 
         # 5. Build clean, structured response summary (Requirement 15)
         food_bullets = []
