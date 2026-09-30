@@ -4,6 +4,8 @@ from fastapi import APIRouter, Depends, Query
 from ..services.auth_service import get_current_user
 from ..services.dashboard_service import DashboardService
 
+from ..services.time_service import TimeService
+
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
 @router.get("/today")
@@ -12,7 +14,7 @@ async def get_today_dashboard(
     current_user: dict = Depends(get_current_user),
 ):
     user_id = current_user.get("id") or str(current_user.get("_id"))
-    date_str = date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    date_str = date or TimeService.get_current_local_date_str()
     return await DashboardService.get_today_dashboard(user_id, date_str)
 
 @router.get("/week")

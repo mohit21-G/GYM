@@ -27,7 +27,7 @@ import { AdminProfilePage } from './admin/pages/AdminProfilePage';
 
 export const App: React.FC = () => {
   return (
-    <Router>
+    <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Routes>
         {/* Admin Login (no customer navbar) */}
         <Route path="/admin/login" element={<AdminLoginPage />} />

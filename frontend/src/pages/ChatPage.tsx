@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { apiClient } from '../config/api';
 import { MessageBubble, ChatMessageItem } from '../components/chat/MessageBubble';
 import { TypingIndicator } from '../components/chat/TypingIndicator';
+import { EditFoodLogModal } from '../components/food/EditFoodLogModal';
+import { FoodLogEntryData } from '../components/food/FoodLogEntry';
 import {
   Send,
   Sparkles,
@@ -23,8 +25,10 @@ export const ChatPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [editingEntry, setEditingEntry] = useState<FoodLogEntryData | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -37,6 +41,21 @@ export const ChatPage: React.FC = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages, loading]);
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      const scrollHeight = textareaRef.current.scrollHeight;
+      const maxHeight = 136; // Approx 4-5 lines of text with 22px line height + padding
+      if (scrollHeight > maxHeight) {
+        textareaRef.current.style.height = `${maxHeight}px`;
+        textareaRef.current.style.overflowY = 'auto';
+      } else {
+        textareaRef.current.style.height = `${Math.max(48, scrollHeight)}px`;
+        textareaRef.current.style.overflowY = 'hidden';
+      }
+    }
+  }, [inputValue]);
 
   const fetchSessions = async () => {
     try {
@@ -61,12 +80,15 @@ export const ChatPage: React.FC = () => {
       const res = await apiClient.get(`/chat/sessions/${sessionId}/messages`);
       const rawMessages = Array.isArray(res.data) ? res.data : (res.data?.items || res.data?.data || []);
       const parsed = rawMessages.map((m: any) => {
-
         let cardData = null;
         if (m.rawEntities) {
-          try {
-            cardData = JSON.parse(m.rawEntities);
-          } catch {}
+          if (typeof m.rawEntities === 'string') {
+            try {
+              cardData = JSON.parse(m.rawEntities);
+            } catch {}
+          } else if (typeof m.rawEntities === 'object') {
+            cardData = m.rawEntities;
+          }
         }
         const isFoodCards = cardData?.groupedFoodCards || cardData?.ui?.groupedFoodCards;
         return {
@@ -104,12 +126,184 @@ export const ChatPage: React.FC = () => {
     setError(null);
   };
 
+  const handleSaveEditedLog = async (updatedData: {
+    foodName: string;
+    quantity: number;
+    unit: string;
+    mealType: string;
+    loggedAt?: string;
+  }) => {
+    if (!editingEntry) return;
+
+    const res = await apiClient.patch(`/food-logs/${editingEntry.id}`, {
+      foodName: updatedData.foodName,
+      quantity: updatedData.quantity,
+      unit: updatedData.unit,
+      mealType: updatedData.mealType,
+      loggedAt: updatedData.loggedAt,
+    });
+
+    const respData = res.data;
+    const updatedDoc = respData.entry || respData;
+    const updatedDailySummary = respData.dailyNutritionSummary;
+
+    // Update React state immediately across messages
+    setMessages((prevMessages) => {
+      return prevMessages.map((msg) => {
+        if (!msg.cardData?.groupedFoodCards) return msg;
+
+        const updatedCards = msg.cardData.groupedFoodCards.map((card: any) => {
+          const entryExists = card.entries?.some((e: any) => e.id === editingEntry.id);
+          if (!entryExists) return card;
+
+          const updatedEntries = card.entries.map((e: any) => {
+            if (e.id === editingEntry.id) {
+              return {
+                ...e,
+                foodName: updatedDoc.foodName || updatedDoc.food_name || updatedData.foodName,
+                quantity: updatedDoc.quantity ?? updatedDoc.quantity_amount ?? updatedData.quantity,
+                unit: updatedDoc.unit || updatedDoc.quantity_unit || updatedData.unit,
+                calories: updatedDoc.calories,
+                mealType: updatedDoc.mealType || updatedDoc.meal_type || updatedData.mealType,
+                timeFormatted: updatedDoc.timeFormatted ?? e.timeFormatted,
+                macros: updatedDoc.macros || {
+                  proteinG: updatedDoc.protein_g ?? updatedDoc.proteinG ?? 0,
+                  carbsG: updatedDoc.carbs_g ?? updatedDoc.carbsG ?? 0,
+                  fatG: updatedDoc.fat_g ?? updatedDoc.fatG ?? 0,
+                  fiberG: updatedDoc.fiber_g ?? updatedDoc.fiberG ?? 0,
+                },
+              };
+            }
+            return e;
+          });
+
+          // Recalculate card totals
+          const totalQty = updatedEntries.reduce((acc: number, curr: any) => acc + (Number(curr.quantity) || 0), 0);
+          const totalCal = updatedEntries.reduce((acc: number, curr: any) => acc + (Number(curr.calories) || 0), 0);
+          const totalP = updatedEntries.reduce((acc: number, curr: any) => acc + (Number(curr.macros?.proteinG) || 0), 0);
+          const totalC = updatedEntries.reduce((acc: number, curr: any) => acc + (Number(curr.macros?.carbsG) || 0), 0);
+          const totalF = updatedEntries.reduce((acc: number, curr: any) => acc + (Number(curr.macros?.fatG) || 0), 0);
+          const totalFib = updatedEntries.reduce((acc: number, curr: any) => acc + (Number(curr.macros?.fiberG) || 0), 0);
+
+          const newFoodName = updatedDoc.foodName || updatedDoc.food_name || updatedData.foodName || card.foodName;
+
+          return {
+            ...card,
+            foodName: newFoodName,
+            foodKey: `food_${(updatedDoc.foodMasterId || updatedDoc.food_id || newFoodName).toLowerCase()}`,
+            totalQuantity: Number.isInteger(totalQty) ? totalQty : Math.round(totalQty * 10) / 10,
+            totalCalories: Math.round(totalCal),
+            unit: updatedDoc.unit || updatedDoc.quantity_unit || card.unit,
+            entries: updatedEntries,
+            macros: {
+              proteinG: Math.round(totalP * 10) / 10,
+              carbsG: Math.round(totalC * 10) / 10,
+              fatG: Math.round(totalF * 10) / 10,
+              fiberG: Math.round(totalFib * 10) / 10,
+            },
+          };
+        });
+
+        let updatedMsgText = msg.message;
+        if (updatedDailySummary && updatedMsgText.includes("Today's total:")) {
+          updatedMsgText = updatedMsgText.replace(
+            /Today's total:\s*\d+\s*\/\s*\d+\s*kcal/,
+            `Today's total: ${Math.round(updatedDailySummary.totalCalories)} / ${Math.round(updatedDailySummary.targetCalories)} kcal`
+          );
+        }
+
+        return {
+          ...msg,
+          message: updatedMsgText,
+          cardData: {
+            ...msg.cardData,
+            groupedFoodCards: updatedCards,
+            dailyNutritionSummary: updatedDailySummary || msg.cardData.dailyNutritionSummary,
+          },
+        };
+      });
+    });
+
+    setEditingEntry(null);
+  };
+
+  const handleDeleteFoodLog = async (entry: FoodLogEntryData) => {
+    if (!window.confirm(`Are you sure you want to delete ${entry.foodName}?`)) {
+      return;
+    }
+
+    try {
+      const res = await apiClient.delete(`/food-logs/${entry.id}`);
+      const respData = res.data;
+      const updatedDailySummary = respData?.dailyNutritionSummary;
+
+      // Update React state immediately across messages
+      setMessages((prevMessages) => {
+        return prevMessages.map((msg) => {
+          if (!msg.cardData?.groupedFoodCards) return msg;
+
+          const updatedCards = msg.cardData.groupedFoodCards
+            .map((card: any) => {
+              const remainingEntries = card.entries.filter((e: any) => e.id !== entry.id);
+              if (remainingEntries.length === 0) return null;
+
+              const totalQty = remainingEntries.reduce((acc: number, curr: any) => acc + (Number(curr.quantity) || 0), 0);
+              const totalCal = remainingEntries.reduce((acc: number, curr: any) => acc + (Number(curr.calories) || 0), 0);
+              const totalP = remainingEntries.reduce((acc: number, curr: any) => acc + (Number(curr.macros?.proteinG) || 0), 0);
+              const totalC = remainingEntries.reduce((acc: number, curr: any) => acc + (Number(curr.macros?.carbsG) || 0), 0);
+              const totalF = remainingEntries.reduce((acc: number, curr: any) => acc + (Number(curr.macros?.fatG) || 0), 0);
+              const totalFib = remainingEntries.reduce((acc: number, curr: any) => acc + (Number(curr.macros?.fiberG) || 0), 0);
+
+              return {
+                ...card,
+                entryCount: remainingEntries.length,
+                totalQuantity: Number.isInteger(totalQty) ? totalQty : Math.round(totalQty * 10) / 10,
+                totalCalories: Math.round(totalCal),
+                entries: remainingEntries,
+                macros: {
+                  proteinG: Math.round(totalP * 10) / 10,
+                  carbsG: Math.round(totalC * 10) / 10,
+                  fatG: Math.round(totalF * 10) / 10,
+                  fiberG: Math.round(totalFib * 10) / 10,
+                },
+              };
+            })
+            .filter(Boolean);
+
+          let updatedMsgText = msg.message;
+          if (updatedDailySummary && updatedMsgText.includes("Today's total:")) {
+            updatedMsgText = updatedMsgText.replace(
+              /Today's total:\s*\d+\s*\/\s*\d+\s*kcal/,
+              `Today's total: ${Math.round(updatedDailySummary.totalCalories)} / ${Math.round(updatedDailySummary.targetCalories)} kcal`
+            );
+          }
+
+          return {
+            ...msg,
+            message: updatedMsgText,
+            cardData: {
+              ...msg.cardData,
+              groupedFoodCards: updatedCards,
+              dailyNutritionSummary: updatedDailySummary || msg.cardData.dailyNutritionSummary,
+            },
+          };
+        });
+      });
+    } catch (err: any) {
+      console.error('Error deleting food log:', err);
+      alert(err.response?.data?.detail || 'Failed to delete food log. Please try again.');
+    }
+  };
+
   const handleSendMessage = async (textToSend?: string) => {
     const text = (textToSend || inputValue).trim();
     if (!text || loading) return;
 
     setError(null);
     setInputValue('');
+    if (textareaRef.current) {
+      textareaRef.current.style.height = '48px';
+    }
 
     // Optimistically append user message
     const userMsg: ChatMessageItem = {
@@ -126,8 +320,11 @@ export const ChatPage: React.FC = () => {
         message: text,
       });
 
-      const resPayload = res.data?.data || res.data || {};
-      const newSessionId = resPayload.sessionId || res.data?.sessionId;
+      const rawData = res.data || {};
+      const dataObj = rawData.data || {};
+      const uiObj = rawData.ui || dataObj.ui || {};
+
+      const newSessionId = rawData.sessionId || dataObj.sessionId;
       if (newSessionId && !currentSessionId) {
         setCurrentSessionId(newSessionId);
         setSessions((prev) => [
@@ -136,18 +333,44 @@ export const ChatPage: React.FC = () => {
         ]);
       }
 
-      const botMsg: ChatMessageItem = {
-        sender: 'ASSISTANT',
-        message: resPayload.message || resPayload.replyText || resPayload.replyMessage || res.data?.message || '',
-        createdAt: new Date().toISOString(),
-        cardType: resPayload.ui?.type || res.data?.cardType,
-        cardData: resPayload.ui?.groupedFoodCards
+      const foodCards =
+        uiObj.groupedFoodCards ||
+        dataObj.currentGroupedFoodCards ||
+        dataObj.groupedFoodCards ||
+        null;
+
+      const dailySummary =
+        uiObj.dailyNutritionSummary ||
+        dataObj.dailyNutritionSummary ||
+        null;
+
+      const cards = uiObj.cards || dataObj.cards || null;
+
+      const cardType =
+        uiObj.type ||
+        (foodCards && foodCards.length > 0 ? 'FOOD_LOG_CARDS' : rawData.cardType);
+
+      const cardData =
+        foodCards && foodCards.length > 0
           ? {
-              groupedFoodCards: resPayload.ui.groupedFoodCards,
-              dailyNutritionSummary: resPayload.ui.dailyNutritionSummary,
-              cards: resPayload.ui?.cards,
+              groupedFoodCards: foodCards,
+              dailyNutritionSummary: dailySummary,
+              cards,
             }
-          : resPayload.ui?.data || resPayload.ui?.cards || resPayload.data || res.data?.cardData,
+          : uiObj.data || cards || dataObj;
+
+      const botMsg: ChatMessageItem = {
+        id: rawData.messageId || rawData.id || `bot-${Date.now()}`,
+        sender: 'ASSISTANT',
+        message:
+          rawData.message ||
+          rawData.replyText ||
+          dataObj.replyText ||
+          dataObj.message ||
+          '',
+        createdAt: new Date().toISOString(),
+        cardType,
+        cardData,
       };
 
       setMessages((prev) => [...prev, botMsg]);
@@ -302,6 +525,8 @@ export const ChatPage: React.FC = () => {
                   key={m.id || idx}
                   msg={m}
                   onSelectOption={(text) => handleSendMessage(text)}
+                  onEditFoodLog={(entry) => setEditingEntry(entry)}
+                  onDeleteFoodLog={handleDeleteFoodLog}
                 />
               ))}
               {loading && <TypingIndicator />}
@@ -319,13 +544,21 @@ export const ChatPage: React.FC = () => {
             }}
             className="max-w-4xl mx-auto flex items-center space-x-3"
           >
-            <input
-              type="text"
+            <textarea
+              ref={textareaRef}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.nativeEvent.isComposing) return;
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
+              }}
+              rows={1}
               placeholder="Log food, workouts, sleep, or water in English, Hindi, or Gujarati..."
               disabled={loading}
-              className="flex-1 bg-slate-800 border border-slate-700/80 rounded-2xl px-5 py-3.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all disabled:opacity-50"
+              className="flex-1 bg-slate-800 border border-slate-700/80 rounded-2xl px-5 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all disabled:opacity-50 resize-none max-h-36 min-h-[48px] leading-relaxed"
             />
             <button
               type="submit"
@@ -338,6 +571,14 @@ export const ChatPage: React.FC = () => {
           </form>
         </div>
       </main>
+
+      {/* Edit Food Log Modal */}
+      <EditFoodLogModal
+        isOpen={Boolean(editingEntry)}
+        entry={editingEntry}
+        onClose={() => setEditingEntry(null)}
+        onSave={handleSaveEditedLog}
+      />
     </div>
   );
 };

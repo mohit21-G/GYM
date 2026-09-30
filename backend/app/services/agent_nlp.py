@@ -1,6 +1,8 @@
 import re
+import difflib
 import unicodedata
 from typing import Dict, Any, List, Optional, Tuple
+from .time_service import TimeService
 
 # Gujarati and Devanagari digit mapping
 INDIC_DIGITS = {
@@ -66,6 +68,7 @@ FOOD_NOUNS = [
     "dal", "daal", "rice", "chawal", "poha", "upma", "egg", "anda", "bread",
     "salad", "sabzi", "shaak", "shak", "thepla", "theplas", "paratha", "chaas", "chhas", "chach", "dahi", "bhakri", "bhakhri",
     "chai", "chay", "tea", "coffee", "lassi", "paneer", "pneer", "pneeeer", "almonds",
+    "lemon water", "nimbu pani", "black coffee", "pre workout", "preworkout",
     "whey", "protein powder", "protein shake", "protein", "whey protein", "shake", "protein drink",
     "dosa", "tikka", "pulao", "uttapam", "payasam", "sandesh", "curd", "biryani",
     "chicken", "momo", "idli", "vada", "samosa", "pakora", "khichdi", "chole", "bhature",
@@ -108,13 +111,14 @@ DRINKING_VERBS = [
 
 WORKOUT_PATTERNS = [
     r"\bwalk\b", r"\bwalked\b", r"\bwalking\b", r"\brun\b", r"\brunning\b", r"\bran\b",
-    r"\bgym\b", r"\bworkout\b", r"\bexercise\b", r"\bcycling\b", r"\bpush-?ups?\b", r"\bpull-?ups?\b",
+    r"\bgym\b", r"(?<!pre[-\s])\bworkout\b", r"\bexercise\b", r"\bcycling\b", r"\bpush-?ups?\b", r"\bpull-?ups?\b",
+    r"\bback\b(?!\s+(?:tea|coffee))", r"\bbiceps?\b", r"\btriceps?\b", r"\bchest\b", r"\blegs?\b", r"\bshoulders?\b", r"\babs\b",
     r"\byoga\b", r"\bbadminton\b", r"\bcricket\b", r"\bswimming\b", r"\bfootball\b",
     r"\bjump rope\b", r"\bhiit\b", r"\bpilates\b", r"\bzumba\b", r"\bdance\b",
     r"\bsquats?\b", r"\blunges?\b", r"\bcrunches?\b", r"\bplanks?\b", r"\bburpees?\b",
-    r"\bbench press\b", r"\bdeadlifts?\b", r"\bstretching\b", r"\bdhodhyo\b", r"\bkasrat\b", r"\bchalyo\b",
-    r"દૌડ્યા", r"દૌડ્યો", r"દોડ્યો", r"ચાલ્યો", r"કસરત", r"વર્કઆઉટ", r"યોગા", r"સ્ક્વોટ્સ?", r"પુશઅપ્સ?",
-    r"दौड़ा", r"दौड़ी", "कसरत", "वर्कआउट", "योगा", "व्यायाम", r"स्क्वैट्स?", r"पुशअप्स?"
+    r"\bbench press\b", r"\bdeadlifts?\b", r"\bstretching\b", r"\bstrength\s*training\b", r"\bdhodhyo\b", r"\bkasrat\b", r"\bchalyo\b",
+    r"દૌડ્યા", r"દૌડ્યો", r"દોડ્યો", r"ચાલ્યો", r"કસરત", r"વર્કઆઉટ", r"યોગા", r"સ્ક્વોટ્સ?", r"પુશઅપ્સ?", r"સ્ટ્રેન્થ\s*ટ્રેનિંગ",
+    r"दौड़ा", r"दौड़ी", "कसरत", "वर्कआउट", "योगा", "व्यायाम", r"स्क्वैट्स?", r"पुशअप्स?", r"स्ट्रेंथ\s*ट्रेनिंग"
 ]
 
 # Common food spelling corrections & slang aliases
@@ -136,6 +140,7 @@ INDIAN_FOOD_SYNONYMS: Dict[str, str] = {
     "phulkas": "Phulka",
     "theplas": "Methi Thepla",
     "theple": "Methi Thepla",
+    "rotlo": "Rotlo",
     "rotla": "Rotlo",
     "rotlu": "Rotlo",
     "bajra rotlo": "Rotlo",
@@ -169,7 +174,15 @@ INDIAN_FOOD_SYNONYMS: Dict[str, str] = {
     "masala chai": "Tea With Milk",
     "masala tea": "Tea With Milk",
     "coffee": "Coffee With Milk",
+    "cofee": "Coffee With Milk",
     "black coffee": "Black Coffee",
+    "black cofee": "Black Coffee",
+    "lemon water": "Lemon Water",
+    "nimbu pani": "Lemon Water",
+    "leembu pani": "Lemon Water",
+    "pre workout": "Pre Workout",
+    "pre-workout": "Pre Workout",
+    "preworkout": "Pre Workout",
     "green tea": "Green Tea",
     "chawal": "Cooked White Rice",
     "bhaat": "Cooked White Rice",
@@ -556,14 +569,55 @@ class AgentNLP:
             norm = re.sub(pat, repl, norm, flags=re.IGNORECASE)
 
         typos = {
+            # Conjunctions & prepositions
+            r"\bamd\b": "and",
+            r"\bwid\b": "with",
+            r"\bwth\b": "with",
+            # Hydration & beverages
+            r"\blamon\b": "lemon",
+            r"\bleman\b": "lemon",
+            r"\blimbu\b": "lemon",
+            r"\bwatwr\b": "water",
+            r"\bwatr\b": "water",
+            r"\bwtr\b": "water",
+            r"\bwaater\b": "water",
+            r"\bcofee\b": "coffee",
+            r"\bcoffe\b": "coffee",
+            r"\bcofe\b": "coffee",
+            r"\bcaffe\b": "coffee",
+            r"\bblck\b": "black",
+            # Workout & exercise
+            r"\bbiseps?\b": "biceps",
+            r"\bbicep\b": "biceps",
+            r"\bbyceps?\b": "biceps",
+            r"\btricep\b": "triceps",
+            r"\btriseps?\b": "triceps",
+            r"\btrisep\b": "triceps",
+            r"\bsholder\b": "shoulder",
+            r"\bsholders\b": "shoulders",
+            r"\bwalikng\b": "walking",
+            r"\bwalkng\b": "walking",
+            r"\bwaking\b": "walking",
+            r"\bwlak\b": "walk",
+            r"\bwokout\b": "workout",
+            r"\bworkot\b": "workout",
+            r"\bwrkout\b": "workout",
+            r"\bexersise\b": "exercise",
+            r"\bexcersise\b": "exercise",
+            # Food & supplements
+            r"\bprotien\b": "protein",
+            r"\bprotin\b": "protein",
+            r"\bpowdr\b": "powder",
+            r"\bpawder\b": "powder",
+            r"\bkhapali\b": "khapli",
             r"\brti\b": "roti",
             r"\bpice\b": "piece",
             r"\bpices\b": "pieces",
             r"\bplet\b": "plate",
             r"\bbwl\b": "bowl",
             r"\bgls\b": "glass",
+            r"\bglaas\b": "glass",
             r"\bbotle\b": "bottle",
-            r"\bwid\b": "with",
             r"\bchaye\b": "chai",
             r"\bpneer\b": "paneer",
             r"\bpneeeer\b": "paneer",
@@ -577,33 +631,64 @@ class AgentNLP:
             r"\bdaal\b": "dal",
             r"\bbanaana\b": "banana",
             r"\bchiken\b": "chicken",
+            r"\blitr\b": "litre",
+            r"\blieter\b": "litre",
+            r"\bscop\b": "scoop",
+            r"\bskup\b": "scoop",
         }
         for pat, repl in typos.items():
             norm = re.sub(pat, repl, norm, flags=re.IGNORECASE)
+
+        # Safe fuzzy correction for remaining typos against core vocabulary
+        fuzzy_vocab = [
+            "lemon", "water", "coffee", "biceps", "triceps", "walking", "workout", "protein", "powder", "scoop", "glass", "bottle", "roti", "khapli"
+        ]
+        words = norm.split(" ")
+        corrected_words = []
+        for w in words:
+            w_clean = re.sub(r"^[^\w]+|[^\w]+$", "", w.lower())
+            if len(w_clean) >= 4 and w_clean not in fuzzy_vocab and not w_clean.isdigit():
+                matches = difflib.get_close_matches(w_clean, fuzzy_vocab, n=1, cutoff=0.82)
+                if matches:
+                    w = re.sub(rf"\b{re.escape(w_clean)}\b", matches[0], w, flags=re.I)
+            corrected_words.append(w)
+        norm = " ".join(corrected_words)
 
         return norm
 
     @staticmethod
     def parse_number_tokens(text: str) -> str:
-        """Replaces written number words (e.g. 'two', 'be', 'ek', 'aadha') with numeric strings."""
-        tokens = text.split()
-        out = []
-        for i, t in enumerate(tokens):
-            cleaned = re.sub(r"[^\w\.]", "", t.lower())
-            prev_token = re.sub(r"[^\w\.]", "", tokens[i-1].lower()) if i > 0 else ""
-            next_token = re.sub(r"[^\w\.]", "", tokens[i+1].lower()) if i + 1 < len(tokens) else ""
-            
-            # Guard English verb "do" (e.g. "what did i do today", "how do i", "what to do")
-            if cleaned == "do" and (prev_token in ["i", "you", "we", "they", "to", "did", "how", "what", "can", "will", "would", "could", "should"] or next_token in ["i", "you", "today", "it", "not", "so", "exercise", "workout"]):
-                out.append(t)
-                continue
+        """Replaces written number words (e.g. 'two', 'be', 'ek', 'aadha') with numeric strings while preserving newlines."""
+        lines = text.splitlines(keepends=True)
+        res_lines = []
+        for line in lines:
+            ends_with_newline = line.endswith("\n") or line.endswith("\r")
+            content = line.rstrip("\r\n")
+            tokens = content.split(" ")
+            out = []
+            for i, t in enumerate(tokens):
+                if not t:
+                    out.append(t)
+                    continue
+                cleaned = re.sub(r"[^\w\.]", "", t.lower())
+                prev_token = re.sub(r"[^\w\.]", "", tokens[i-1].lower()) if i > 0 else ""
+                next_token = re.sub(r"[^\w\.]", "", tokens[i+1].lower()) if i + 1 < len(tokens) else ""
 
-            if cleaned in NUMBER_WORDS:
-                val = NUMBER_WORDS[cleaned]
-                out.append(str(int(val) if val.is_integer() else val))
-            else:
-                out.append(t)
-        return " ".join(out)
+                # Guard English verb "do" (e.g. "what did i do today", "how do i", "what to do")
+                if cleaned == "do" and (prev_token in ["i", "you", "we", "they", "to", "did", "how", "what", "can", "will", "would", "could", "should"] or next_token in ["i", "you", "today", "it", "not", "so", "exercise", "workout"]):
+                    out.append(t)
+                    continue
+
+                if cleaned in NUMBER_WORDS:
+                    val = NUMBER_WORDS[cleaned]
+                    out.append(str(int(val) if val.is_integer() else val))
+                else:
+                    out.append(t)
+            res_line = " ".join(out)
+            if ends_with_newline:
+                res_line += "\n"
+            res_lines.append(res_line)
+        return "".join(res_lines)
 
     @staticmethod
     def normalize_text(text: str) -> str:
@@ -829,30 +914,111 @@ class AgentNLP:
         return {"weightKg": 70.0, "unit": "kg"}
 
     @staticmethod
-    def extract_hydration_entity(text: str) -> Dict[str, Any]:
-        """Extracts water quantity in ml."""
+    def extract_hydration_entities(text: str) -> List[Dict[str, Any]]:
+        """
+        Extracts all hydration items from text with their specific amounts and explicit times.
+        Supports:
+        - "400ml water", "1 ltr water", "300ml water"
+        - "lemon water 1 glass" (filtered out since it's a beverage handled as food)
+        """
         norm = AgentNLP.normalize_text(text)
         lower = norm.lower()
-        qty = 1.0
-        m = re.search(r"\b(\d+(?:\.\d+)?)\b", lower)
-        if m:
-            qty = float(m.group(1))
-        
-        amount = 250.0
-        if "botle" in lower or "bottle" in lower:
-            amount = 750.0 * qty
-        elif "glass" in lower or "glaas" in lower or "ગ્લાસ" in lower or "ग्लास" in lower:
-            amount = 250.0 * qty
-        elif "cup" in lower or "kapp" in lower or "કપ" in lower or "कप" in lower:
-            amount = 200.0 * qty
-        elif "liter" in lower or "litre" in lower or re.search(r"\b\d+\s*l\b", lower):
-            amount = 1000.0 * qty
-        elif "ml" in lower:
-            amount = qty
-        else:
-            amount = 250.0 * qty
-            
-        return {"waterAmount": amount, "amountMl": amount, "unit": "ml"}
+        local_now = TimeService.get_current_local_datetime()
+
+        water_terms_regex = r"water|paani|પાણી|पानी|pani"
+        excluded_foods = ["pani puri", "panipuri", "water melon", "watermelon", "પાણીપુરી", "પાણી પૂરી", "પાની પુરી", "पानी पुरी"]
+
+        results = []
+        lines = [line.strip() for line in norm.splitlines() if line.strip()]
+        if not lines:
+            lines = [lower]
+
+        active_period = None
+        for line in lines:
+            l_low = line.lower()
+            if any(w in l_low for w in ["morning", "savar", "savare", "saware", "subah", "સવાર", "સવારે", "सुबह"]):
+                active_period = "morning"
+            elif any(w in l_low for w in ["afternoon", "bapor", "bapore", "dopahar", "બપોર", "બપોરે", "दोपहर"]):
+                active_period = "afternoon"
+            elif any(w in l_low for w in ["evening", "sanj", "sanje", "shaam", "સાંજ", "સાંજે", "शाम"]):
+                active_period = "evening"
+            elif any(w in l_low for w in ["night", "raat", "raate", "રાત", "રાત્રે", "रात"]):
+                active_period = "night"
+
+            time_input = f"{active_period} {line}" if (active_period and not any(w in l_low for w in ["am", "pm", "morning", "evening", "night", "savar", "subah", "bapor", "sanj", "raat"])) else line
+            line_dt, has_line_time = TimeService.extract_time_from_text(time_input, reference_time=local_now)
+            effective_dt = line_dt if has_line_time else local_now
+
+            clauses = re.split(r",| and | ane | aur | અને | और | with | along with | sathe | સાથે | ساتھ میں | साथ में |\+", line, flags=re.I)
+            for clause in clauses:
+                c = clause.strip()
+                if not c:
+                    continue
+
+                c_lower = c.lower()
+                if any(ex in c_lower for ex in excluded_foods):
+                    continue
+
+                if not re.search(rf"\b{water_terms_regex}\b", c_lower):
+                    continue
+
+                bev_name = "Water"
+                if any(w in c_lower for w in ["lemon water", "lamon water", "nimbu pani", "nimbu paani", "limbu pani", "leembu pani", "લીંબુ પાણી", "નીંબુ પાની"]):
+                    bev_name = "Lemon Water"
+                elif any(w in c_lower for w in ["coconut water", "nariyal pani", "nariyal paani", "નાળિયેર પાણી", "નારિયલ પાની"]):
+                    bev_name = "Coconut Water"
+                elif any(w in c_lower for w in ["jeera water", "jeera pani", "જીરું પાણી"]):
+                    bev_name = "Jeera Water"
+
+                c_time_input = f"{active_period} {c}" if (active_period and not any(w in c_lower for w in ["am", "pm", "morning", "evening", "night", "savar", "subah", "bapor", "sanj", "raat"])) else c
+                clause_dt, has_clause_time = TimeService.extract_time_from_text(c_time_input, reference_time=local_now)
+                item_has_time = has_clause_time or has_line_time
+                item_dt = clause_dt if has_clause_time else effective_dt
+
+                c_no_time = re.sub(r"(?:at\s+|@\s*)?\b\d{1,2}[:.]\d{2}(?:\s*(?:am|pm|a\.m\.|p\.m\.))?\b", " ", c, flags=re.I)
+                c_no_time = re.sub(r"\b\d{1,2}\s*(?:am|pm|a\.m\.|p\.m\.)\b", " ", c_no_time, flags=re.I)
+
+                m_qty = re.search(r"\b(\d+(?:\.\d+)?)\b", c_no_time)
+                qty = float(m_qty.group(1)) if m_qty else 1.0
+
+                c_lower_clean = c_no_time.lower()
+                amount_ml = 250.0
+                if "bottle" in c_lower_clean or "botle" in c_lower_clean or "બોટલ" in c_lower_clean or "बोतल" in c_lower_clean:
+                    amount_ml = 750.0 * qty
+                elif "glass" in c_lower_clean or "glaas" in c_lower_clean or "ગ્લાસ" in c_lower_clean or "ग्लास" in c_lower_clean:
+                    amount_ml = 250.0 * qty
+                elif "cup" in c_lower_clean or "kapp" in c_lower_clean or "કપ" in c_lower_clean or "कप" in c_lower_clean:
+                    amount_ml = 200.0 * qty
+                elif any(re.search(rf"\b{re.escape(w)}\b", c_lower_clean) for w in ["liter", "litre", "ltr", "liters", "litres", "લીટર", "लीटर"]) or re.search(r"\b\d+\s*l\b", c_lower_clean):
+                    amount_ml = 1000.0 * qty
+                elif "ml" in c_lower_clean:
+                    amount_ml = qty
+                else:
+                    amount_ml = 250.0 * qty
+
+                if amount_ml > 0:
+                    results.append({
+                        "beverage_name": bev_name,
+                        "beverageName": bev_name,
+                        "waterAmount": amount_ml,
+                        "amountMl": amount_ml,
+                        "amount_ml": amount_ml,
+                        "unit": "ml",
+                        "logged_at": item_dt.isoformat(),
+                        "has_explicit_time": item_has_time,
+                        "time_formatted": TimeService.format_time(item_dt) if item_has_time else "",
+                        "raw_text": c,
+                    })
+
+        return results
+
+    @staticmethod
+    def extract_hydration_entity(text: str) -> Dict[str, Any]:
+        """Extracts primary water quantity in ml (backward-compatible)."""
+        ents = AgentNLP.extract_hydration_entities(text)
+        if ents:
+            return ents[0]
+        return {"waterAmount": 250.0, "amountMl": 250.0, "amount_ml": 250.0, "unit": "ml"}
 
     @staticmethod
     def extract_activity_entities(text: str) -> List[Dict[str, Any]]:
@@ -862,16 +1028,17 @@ class AgentNLP:
         """
         norm = AgentNLP.normalize_text(text)
         lower = norm.lower()
-        
-        # Split into potential exercise clauses
-        clauses = re.split(r"[,;\n\+]|\band\b|\bane\b|\baur\b|\bતથા\b|\bઅને\b", lower)
-        clauses = [c.strip() for c in clauses if c.strip()]
-        if not clauses:
-            clauses = [lower]
+        local_now = TimeService.get_current_local_datetime()
+        global_dt, has_global_time = TimeService.extract_time_from_text(text, reference_time=local_now)
+        active_time_dt = global_dt if has_global_time else local_now
+
+        lines = [line.strip() for line in norm.splitlines() if line.strip()]
+        if not lines:
+            lines = [lower]
 
         exercise_map = [
             (r"\bsquats?\b|સ્ક્વોટ્સ?|સ્કવોટ્સ?|स्क्वैट्स?", "Squats", 5.0, True),
-            (r"\bpush-?ups?\b|પુશઅપ્સ?|पुशअप्स?|\bદંડ\b", "Push-ups", 4.5, True),
+            (r"\bpush-?ups?\b|પુશઅપ્સ?|पुशअप્સ?|\bદંડ\b", "Push-ups", 4.5, True),
             (r"\bpull-?ups?\b|પુલઅપ્સ?|पुलअप्स?|ચિનઅપ", "Pull-ups", 5.0, True),
             (r"\blunges?\b|લંજીસ?|લંજ", "Lunges", 4.5, True),
             (r"\bcrunches?\b|sit-?ups?|ક્રંચ|क्रंचेस", "Crunches", 3.8, True),
@@ -880,7 +1047,14 @@ class AgentNLP:
             (r"\bjump(?:ing)?\s*jacks?\b|જમ્પિંગ\s*જેક", "Jumping Jacks", 8.0, True),
             (r"\bjump\s*rope\b|skipping|દોરડા\s*કૂદવા|रस्सी\s*कूद", "Jump Rope", 10.0, False),
             (r"\bbench\s*press\b|બેન્ચ\s*પ્રેસ|बेंच\s*प्रेस", "Bench Press", 5.5, True),
-            (r"\bdeadlifts?\b|ડેડલિફ્ટ|डेडलिफ्ट", "Deadlift", 6.0, True),
+            (r"\bdeadlifts?\b|ડેડલિફ્ટ|डेडલિफ्ट", "Deadlift", 6.0, True),
+            (r"\bback\b|\bપીઠ\b", "Back Workout", 5.5, False),
+            (r"\bbiceps?\b|\bબાઈસેપ્સ?\b", "Biceps Workout", 5.5, False),
+            (r"\btriceps?\b|\bટ્રાઈસેપ્સ?\b", "Triceps Workout", 5.5, False),
+            (r"\bchest\b|\bછાતી\b", "Chest Workout", 5.5, False),
+            (r"\blegs?\b|\bપગ\b", "Legs Workout", 5.5, False),
+            (r"\bshoulders?\b|\bખભા\b", "Shoulders Workout", 5.5, False),
+            (r"\babs\b|\bcore\b", "Abs Workout", 4.5, False),
             (r"\brun(?:ning)?\b|\bran\b|દોડ|दौड़", "Running", 8.5, False),
             (r"\bwalk(?:ing)?\b|\bwalked\b|ચાલ|ટહેલ|टहल", "Walking", 3.5, False),
             (r"\bcycl(?:ing|e)\b|સાયકલ|साइकिल", "Cycling", 6.0, False),
@@ -888,92 +1062,153 @@ class AgentNLP:
             (r"\byoga\b|યોગ|योग", "Yoga", 3.0, False),
             (r"\bbadminton\b", "Badminton", 5.5, False),
             (r"\bcricket\b", "Cricket", 5.0, False),
-            (r"\bgym\b|\bworkout\b|\bexercise\b|\bkasrat\b|\bvyayam\b|કસરત|વર્કઆઉટ|વ્યાયામ|व्यायाम|कसरत", "Workout", 5.0, False),
+            (r"\bstrength\s*training\b|સ્ટ્રેન્થ\s*ટ્રેનિંગ|स्ट्रेंथ\s*ट्रेनिंग", "Strength Training", 5.5, False),
+            (r"\bgym\b|(?<!pre[-\s])\bworkout\b|\bexercise\b|\bkasrat\b|\bvyayam\b|કસરત|વર્કઆઉટ|વ્યાયામ|व्यायाम|कसरत", "Workout", 5.0, False),
         ]
 
         extracted = []
         seen_names = set()
 
-        for clause in clauses:
-            matched_name = None
-            matched_met = 4.0
-            is_rep_based = False
-            matched_pat = ""
+        active_period = None
+        for line in lines:
+            line_lower = line.lower()
+            if any(w in line_lower for w in ["morning", "savar", "savare", "saware", "subah", "સવાર", "સવારે", "सुबह"]):
+                active_period = "morning"
+            elif any(w in line_lower for w in ["afternoon", "bapor", "bapore", "dopahar", "બપોર", "બપોરે", "दोपहर"]):
+                active_period = "afternoon"
+            elif any(w in line_lower for w in ["evening", "sanj", "sanje", "shaam", "સાંજ", "સાંજે", "शाम"]):
+                active_period = "evening"
+            elif any(w in line_lower for w in ["night", "raat", "raate", "રાત", "રાત્રે", "रात"]):
+                active_period = "night"
 
-            for pat, name, met, rep_flag in exercise_map:
-                if re.search(pat, clause):
-                    matched_name = name
-                    matched_met = met
-                    is_rep_based = rep_flag
-                    matched_pat = pat
-                    break
+            time_input = f"{active_period} {line}" if (active_period and not any(w in line_lower for w in ["am", "pm", "morning", "evening", "night", "savar", "subah", "bapor", "sanj", "raat"])) else line
+            range_info = TimeService.extract_time_range_from_text(time_input, reference_time=local_now)
+            line_dt, has_line_time = TimeService.extract_time_from_text(time_input, reference_time=local_now)
+            if range_info:
+                line_dt = range_info["start_dt"]
+                has_line_time = True
+                active_time_dt = line_dt
+            elif has_line_time:
+                active_time_dt = line_dt
 
-            if not matched_name:
-                continue
+            # Strip raw time range match from processed line so digits aren't treated as duration/reps
+            line_processed = line_lower
+            if range_info:
+                line_processed = line_processed.replace(range_info["raw_match"].lower(), " ")
 
-            if matched_name in seen_names:
-                continue
+            # Split line into clauses
+            clauses = re.split(r"[,;()&+]|\band\b|\bane\b|\baur\b|\bતથા\b|\bઅને\b", line_processed)
+            clauses = [c.strip() for c in clauses if c.strip()]
+            if not clauses:
+                clauses = [line_processed]
 
-            # 1. Extract sets if any
-            sets_val = 1
-            m_sets = re.search(r"(\d+)\s*(?:sets?|સેટ|सेट)", clause)
-            if m_sets:
-                sets_val = int(m_sets.group(1))
+            line_matched = []
+            for clause in clauses:
+                matched_name = None
+                matched_met = 4.0
+                is_rep_based = False
+                matched_pat = ""
 
-            # 2. Extract reps if any
-            reps_val = None
-            m_reps = re.search(r"(\d+)\s*(?:reps?|repetitions?|rep|રેપ|रेप|દાણા|વખત)", clause)
-            if m_reps:
-                reps_val = int(m_reps.group(1))
-            elif is_rep_based:
-                # E.g. "20 squats" or "squats 20" or "15 pushups"
-                m_num = re.search(r"(\d+)\s*(?:" + matched_pat + r")|(?:" + matched_pat + r")\s*(\d+)", clause)
-                if m_num:
-                    num_str = m_num.group(1) or m_num.group(2)
-                    if num_str:
-                        reps_val = int(num_str)
+                for pat, name, met, rep_flag in exercise_map:
+                    if re.search(pat, clause):
+                        matched_name = name
+                        matched_met = met
+                        is_rep_based = rep_flag
+                        matched_pat = pat
+                        break
 
-            # 3. Extract duration in minutes if any
-            duration_val = None
-            m_min = re.search(r"(\d+(?:\.\d+)?)\s*(?:minutes?|mins?|min|મિનિટ|मिनट)", clause)
-            if m_min:
-                duration_val = float(m_min.group(1))
-            else:
-                m_hr = re.search(r"(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|hr|કલાક|घंटे|घंटा)", clause)
-                if m_hr:
-                    duration_val = float(m_hr.group(1)) * 60.0
+                if not matched_name or matched_name in seen_names:
+                    continue
 
-            # If duration is missing but reps is present: estimate duration based on reps & sets
-            if duration_val is None and reps_val is not None:
-                total_reps = reps_val * sets_val
-                duration_val = max(1.0, round(total_reps * 0.08, 1))
+                # 1. Extract sets if any
+                sets_val = 1
+                m_sets = re.search(r"(\d+)\s*(?:sets?|સેટ|सेट)", clause)
+                if m_sets:
+                    sets_val = int(m_sets.group(1))
 
-            # If reps is missing and duration is missing:
-            # Check if there is a loose number in the clause (not sets or weight)
-            if duration_val is None and reps_val is None:
-                m_loose = re.search(r"\b(\d+)\b", clause)
-                if m_loose:
-                    val = int(m_loose.group(1))
-                    if is_rep_based and val <= 100:
-                        reps_val = val
-                        duration_val = max(1.0, round(reps_val * 0.08, 1))
-                    else:
-                        duration_val = float(val)
+                # 2. Extract reps if any
+                reps_val = None
+                m_reps = re.search(r"(\d+)\s*(?:reps?|repetitions?|rep|રેપ|रेप|દાણા|વખત)", clause)
+                if m_reps:
+                    reps_val = int(m_reps.group(1))
+                elif is_rep_based:
+                    m_num = re.search(r"(\d+)\s*(?:" + matched_pat + r")|(?:" + matched_pat + r")\s*(\d+)", clause)
+                    if m_num:
+                        num_str = m_num.group(1) or m_num.group(2)
+                        if num_str:
+                            reps_val = int(num_str)
 
-            requires_clarification = (duration_val is None and reps_val is None)
-            if duration_val is None:
-                duration_val = 30.0  # default tracker baseline if forced
+                # 3. Extract explicit duration in minutes if any
+                duration_val = None
+                m_min = re.search(r"(\d+(?:\.\d+)?)\s*(?:minutes?|mins?|min|મિનિટ|मिनट)", clause)
+                if m_min:
+                    duration_val = float(m_min.group(1))
+                else:
+                    m_hr = re.search(r"(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|hr|કલાક|घंटे|घंटा)", clause)
+                    if m_hr:
+                        duration_val = float(m_hr.group(1)) * 60.0
 
-            seen_names.add(matched_name)
-            extracted.append({
-                "activity": matched_name,
-                "reps": reps_val,
-                "sets": sets_val if reps_val else None,
-                "durationMinutes": duration_val,
-                "intensity": "MEDIUM",
-                "metValue": matched_met,
-                "requiresClarification": requires_clarification,
-            })
+                c_time_input = f"{active_period} {clause}" if (active_period and not any(w in clause.lower() for w in ["am", "pm", "morning", "evening", "night", "savar", "subah", "bapor", "sanj", "raat"])) else clause
+                clause_dt, has_clause_time = TimeService.extract_time_from_text(c_time_input, reference_time=local_now)
+                if has_clause_time:
+                    active_time_dt = clause_dt
+                    act_dt = clause_dt
+                elif has_line_time:
+                    act_dt = line_dt
+                else:
+                    act_dt = active_time_dt
+
+                line_matched.append({
+                    "matched_name": matched_name,
+                    "matched_met": matched_met,
+                    "reps_val": reps_val,
+                    "sets_val": sets_val,
+                    "duration_val": duration_val,
+                    "is_rep_based": is_rep_based,
+                    "clause": clause,
+                    "act_dt": act_dt,
+                })
+
+            # If specific exercises are matched on this line, drop generic "Workout"
+            has_specific = any(it["matched_name"] != "Workout" for it in line_matched)
+            if has_specific:
+                line_matched = [it for it in line_matched if it["matched_name"] != "Workout"]
+
+            # Distribute time range duration across exercises that didn't specify individual duration
+            if range_info:
+                unspecified = [it for it in line_matched if it["duration_val"] is None]
+                if unspecified:
+                    distributed_mins = round(range_info["duration_minutes"] / len(unspecified), 1)
+                    for it in unspecified:
+                        it["duration_val"] = distributed_mins
+                        it["time_formatted"] = range_info["range_str"]
+
+            for it in line_matched:
+                had_explicit_measure = (it["duration_val"] is not None or it["reps_val"] is not None or bool(range_info))
+                requires_clarification = not had_explicit_measure
+
+                if it["duration_val"] is None and it["reps_val"] is not None:
+                    total_reps = it["reps_val"] * it["sets_val"]
+                    it["duration_val"] = max(1.0, round(total_reps * 0.08, 1))
+
+                if it["duration_val"] is None:
+                    it["duration_val"] = 30.0
+
+                time_formatted = it.get("time_formatted") or (range_info["range_str"] if range_info else TimeService.format_time(it["act_dt"]))
+
+                seen_names.add(it["matched_name"])
+                extracted.append({
+                    "activity": it["matched_name"],
+                    "activity_name": it["matched_name"],
+                    "reps": it["reps_val"],
+                    "sets": it["sets_val"] if it["reps_val"] else None,
+                    "durationMinutes": it["duration_val"],
+                    "intensity": "MEDIUM",
+                    "metValue": it["matched_met"],
+                    "logged_at": it["act_dt"].isoformat(),
+                    "timeFormatted": time_formatted,
+                    "requiresClarification": requires_clarification,
+                })
 
         # Fallback if no clause matched but whole text had an exercise:
         if not extracted:
@@ -988,25 +1223,33 @@ class AgentNLP:
                     if m_rep:
                         reps = int(m_rep.group(1))
                         mins = max(1.0, round(reps * 0.08, 1))
+                    act_dt = global_dt if has_global_time else local_now
                     extracted.append({
                         "activity": name,
+                        "activity_name": name,
                         "reps": reps,
                         "sets": 1 if reps else None,
                         "durationMinutes": mins,
                         "intensity": "MEDIUM",
                         "metValue": met,
+                        "logged_at": act_dt.isoformat(),
+                        "timeFormatted": TimeService.format_time(act_dt),
                         "requiresClarification": (m_min is None and m_rep is None),
                     })
                     break
 
         if not extracted:
+            act_dt = global_dt if has_global_time else local_now
             extracted.append({
                 "activity": "Workout",
+                "activity_name": "Workout",
                 "reps": None,
                 "sets": None,
                 "durationMinutes": 30.0,
                 "intensity": "MEDIUM",
                 "metValue": 5.0,
+                "logged_at": act_dt.isoformat(),
+                "timeFormatted": TimeService.format_time(act_dt),
                 "requiresClarification": True,
             })
 
@@ -1039,191 +1282,355 @@ class AgentNLP:
 
     @staticmethod
     def extract_food_entities_heuristically(text: str) -> List[Dict[str, Any]]:
-        """Fallback entity extractor for food messages with typos, quantities, and units."""
+        """Fallback entity extractor for food messages with typos, quantities, and units across multiple lines."""
         norm = AgentNLP.normalize_text(text)
-        lower = norm.lower()
+        local_now = TimeService.get_current_local_datetime()
+        lines = [line.strip() for line in norm.splitlines() if line.strip()]
+        if not lines:
+            lines = [norm]
 
-        # Split message into clauses using separators
-        clauses = re.split(r",| and | ane | aur | અને | અને\s+| અને| aur\s+| और | sath me | sathe | સાથે | સાથે\s+| साथ में | with |\+", lower)
+        has_active_time = False
+        active_time_dt = local_now
+        active_meal = "—"
+
         results = []
 
-        # Guess meal type from sentence
-        meal_type = "LUNCH"
-        if any(w in lower for w in [
-            "morning", "breakfast", "savar", "savare", "saware", "sawar", "savaar", 
-            "subah", "subha", "nasto", "nashta", "સવાર", "સવારે", "નાસ્તો", "सुबह", "नाश्ता"
-        ]):
-            meal_type = "BREAKFAST"
-        elif any(w in lower for w in [
-            "dinner", "sanj", "sanje", "saanj", "saanje", "sanju", "shaam", "sham", 
-            "raat", "raate", "raatri", "valoo", "valo", "vaalu", "વાળુ", "વાળું", "સાંજ", "સાંજે", "રાત", "રાત્રે", "रात", "शाम"
-        ]):
-            meal_type = "DINNER"
-        elif any(w in lower for w in ["snack", "snacks", "chaai", "tea", "ચા"]):
-            meal_type = "SNACK"
+        active_period = None
+        for line in lines:
+            line = re.sub(r"\b(dal|daal|દાળ|દાલ|दाल)\s+(rice|bhat|chawal|ભાત|ચોખા|चावल)\b", r"\1 and \2", line, flags=re.I)
+            line = re.sub(r"\b(roti|rotli|chapati|રોટલી|रोटी)\s+(dal|daal|sabzi|shak|દાળ|શાક|दाल|सब्जी)\b", r"\1 and \2", line, flags=re.I)
+            
+            l_low = line.lower()
+            if any(w in l_low for w in ["morning", "savar", "savare", "saware", "subah", "સવાર", "સવારે", "सुबह"]):
+                active_period = "morning"
+            elif any(w in l_low for w in ["afternoon", "bapor", "bapore", "dopahar", "બપોર", "બપોરે", "दोपहर"]):
+                active_period = "afternoon"
+            elif any(w in l_low for w in ["evening", "sanj", "sanje", "shaam", "સાંજ", "સાંજે", "शाम"]):
+                active_period = "evening"
+            elif any(w in l_low for w in ["night", "raat", "raate", "રાત", "રાત્રે", "रात"]):
+                active_period = "night"
 
-        for clause in clauses:
-            clause = clause.strip()
-            if not clause:
-                continue
+            time_input = f"{active_period} {line}" if (active_period and not any(w in l_low for w in ["am", "pm", "morning", "evening", "night", "savar", "subah", "bapor", "sanj", "raat"])) else line
+            line_dt, has_line_time = TimeService.extract_time_from_text(time_input, reference_time=local_now)
+            if has_line_time:
+                active_time_dt = line_dt
+                has_active_time = True
+                active_meal = TimeService.infer_meal_type(line, dt=line_dt)
 
-            # Skip pure water, activity, or sleep clauses
-            if any(w in clause for w in ["pani", "water", "walk", "run", "gym", "sleep", "slept", "oongh", "neend", "suto", "suvo", "પાણી", "પાની", "ઊંઘ", "નીંદ", "સોયા", "सोया"]):
-                continue
+            effective_line_dt = line_dt if has_line_time else (active_time_dt if has_active_time else None)
+            line_meal = TimeService.infer_meal_type(line, dt=effective_line_dt)
+            if line_meal != "—":
+                active_meal = line_meal
 
-            # Strip SQL injection attempts and benchmark noise
-            clause = re.sub(r";\s*DROP TABLE.*|;\s*--.*", "", clause, flags=re.IGNORECASE)
-            clause = re.sub(r"\bpleez\s+trac\w*\b|\bpleez\b|\btrac\b", "", clause, flags=re.IGNORECASE)
-            clause = re.sub(r'\{"user_id".*\}', '', clause)
+            # Split message into clauses using separators
+            clauses = re.split(r",| and | ane | aur | અને | અને\s+| અને| aur\s+| और | sath me | sathe | સાથે | સાથે\s+| साथ में | with |\+", line, flags=re.I)
 
-            # Extract quantity
-            has_explicit_qty = False
-            qty = 1.0
-            num_match = re.search(r"\b(\d+(?:\.\d+)?)\b", clause)
-            if num_match:
-                try:
-                    qty = float(num_match.group(1))
-                    has_explicit_qty = True
-                except Exception:
-                    qty = 1.0
-            else:
-                for nw_word, nw_val in NUMBER_WORDS.items():
-                    if any(ord(c) > 127 for c in nw_word):
-                        if re.search(rf"(?<![\u0A80-\u0AFF\u0900-\u097F]){re.escape(nw_word)}(?![\u0A80-\u0AFF\u0900-\u097F])", clause):
-                            qty = nw_val
-                            has_explicit_qty = True
+            for clause in clauses:
+                clause = clause.strip()
+                if not clause:
+                    continue
+
+                c_low = clause.lower()
+
+                # Meta commands and confirmation phrases (e.g., "Aa badhu log kari do", "log all", "log this")
+                is_meta = (
+                    any(bool(re.search(pat, c_low)) for pat in [
+                        r"\blog\s*(?:kari\s*do|karo|kar|do|kardo|karo\s*ne|de|dena|kariye|kijiye)\b",
+                        r"\b(?:aa\s*badhu|badhu|badhu\s*j|aa\s*badha|aa\s*badhu\s*log|aa\s*badhu\s*save)\b",
+                        r"\b(?:ye\s*sab|ye\s*sab\s*log|ye\s*bhi|sab\s*log\s*karo|yeh\s*sab)\b",
+                        r"\b(?:log\s*all|save\s*all|track\s*all|log\s*this|save\s*this|track\s*this)\b",
+                        r"\b(?:record\s*this|record\s*all|enter\s*this)\b",
+                        r"(?:આ\s*બધું|બધું\s*લોગ|લોગ\s*કરી\s*દો|લોગ\s*કરો|આ\s*બધુ)",
+                        r"(?:ये\s*सब|सब\s*लॉग|लॉग\s*कर\s*दो|लॉग\s*करो)",
+                    ])
+                    or c_low in ["aa badhu", "badhu", "ye sab", "sab log", "log kari do", "log kar do", "log this"]
+                )
+                if is_meta:
+                    continue
+
+                is_culinary_water = any(w in c_low for w in [
+                    "lemon water", "nimbu pani", "nimbu paani", "leembu pani",
+                    "coconut water", "nariyal pani", "nariyal paani", "jeera water", "jeera pani",
+                    "detox water", "pani puri", "water melon", "watermelon",
+                    "પાણીપુરી", "પાણી પૂરી", "લીંબુ પાણી", "નીંબુ પાની", "પાની પુરી", "पानी पुरी"
+                ])
+
+                # Skip pure water clauses
+                is_pure_water = (any(w in c_low for w in ["pani", "water", "watwr", "paani", "પાણી", "પાની", "पानी"]) and not is_culinary_water)
+                if is_pure_water:
+                    continue
+
+                # Skip exercise, muscle groups, or sleep (protect pre workout / pre-workout as food!)
+                is_pre_workout = bool(re.search(r"\bpre[-\s]?workout\b", c_low))
+                is_activity_or_sleep = False
+                if not is_pre_workout:
+                    is_activity_or_sleep = (
+                        any(bool(re.search(pat, c_low)) for pat in [
+                            r"\b(?:walk|walked|walking|run|running|ran|gym|cycling|swimming|yoga|badminton|cricket)\b",
+                            r"\b(?:kasrat|vyayam|cardio|stretching|aerobics|hiit)\b",
+                            r"(?<!pre[-\s])\bworkout\b",
+                            r"\b(?:biceps?|triceps?|delts?|quads?|hamstrings?|glutes?|calves|abs|core)\b",
+                            r"\bback\b(?!\s+(?:tea|coffee))",
+                            r"\b(?:bench\s*press|push-?ups?|pull-?ups?|squats?|deadlifts?|crunches?|planks?|lunges?|burpees?)\b",
+                            r"\b(?:sleep|slept|oongh|neend|suto|suvo)\b",
+                        ])
+                        or any(w in c_low for w in ["કસરત", "વ્યાયામ", "ચાલ", "દોડ", "યોગ", "ઊંઘ", "નીંદ", "સોયા", "सोया"])
+                    )
+
+                if is_activity_or_sleep:
+                    continue
+
+                # Strip SQL injection attempts and benchmark noise
+                clause = re.sub(r";\s*DROP TABLE.*|;\s*--.*", "", clause, flags=re.IGNORECASE)
+                clause = re.sub(r"\bpleez\s+trac\w*\b|\bpleez\b|\btrac\b", "", clause, flags=re.IGNORECASE)
+                clause = re.sub(r'\{"user_id".*\}', '', clause)
+
+                c_time_input = f"{active_period} {clause}" if (active_period and not any(w in c_low for w in ["am", "pm", "morning", "evening", "night", "savar", "subah", "bapor", "sanj", "raat"])) else clause
+                clause_dt, has_clause_time = TimeService.extract_time_from_text(c_time_input, reference_time=local_now)
+                if has_clause_time:
+                    active_time_dt = clause_dt
+                    has_active_time = True
+                    active_meal = TimeService.infer_meal_type(clause, dt=clause_dt)
+
+                item_has_exp_time = bool(has_clause_time or has_line_time or has_active_time)
+                item_dt = clause_dt if has_clause_time else (line_dt if has_line_time else (active_time_dt if has_active_time else local_now))
+                item_meal = TimeService.infer_meal_type(clause, dt=clause_dt if has_clause_time else effective_line_dt)
+                if item_meal == "—" and line_meal != "—":
+                    item_meal = line_meal
+                if item_meal == "—" and active_meal != "—":
+                    item_meal = active_meal
+
+                # Strip explicit time tokens before quantity extraction to avoid treating '8:30' as quantity '8'
+                clause_no_time = re.sub(r"(?:at\s+|@\s*)?\b\d{1,2}[:.]\d{2}(?:\s*(?:am|pm|a\.m\.|p\.m\.))?\b", " ", clause, flags=re.I)
+                clause_no_time = re.sub(r"\b\d{1,2}\s*(?:am|pm|a\.m\.|p\.m\.)\b", " ", clause_no_time, flags=re.I)
+
+                # Extract quantity
+                has_explicit_qty = False
+                qty = 1.0
+                num_match = re.search(r"\b(\d+(?:\.\d+)?)\b", clause_no_time)
+                if num_match:
+                    try:
+                        qty = float(num_match.group(1))
+                        has_explicit_qty = True
+                    except Exception:
+                        qty = 1.0
+                else:
+                    for nw_word, nw_val in NUMBER_WORDS.items():
+                        if any(ord(c) > 127 for c in nw_word):
+                            if re.search(rf"(?<![\u0A80-\u0AFF\u0900-\u097F]){re.escape(nw_word)}(?![\u0A80-\u0AFF\u0900-\u097F])", clause_no_time):
+                                qty = nw_val
+                                has_explicit_qty = True
+                                break
+                        else:
+                            if re.search(rf"\b{re.escape(nw_word)}\b", clause_no_time, flags=re.I):
+                                qty = nw_val
+                                has_explicit_qty = True
+                                break
+                    if not has_explicit_qty and any(w in clause_no_time.lower() for w in ["thodu", "thoda", "thodi", "thodak", "zara", "thora", "થોડું", "થોડી", "थोड़ा", "थोड़ी"]):
+                        qty = 0.5
+                        has_explicit_qty = True
+
+                # Extract unit safely with word boundaries for short keys
+                unit = "serving"
+                for u_raw in sorted(UNIT_MAP.keys(), key=len, reverse=True):
+                    if any(ord(c) > 127 for c in u_raw):
+                        if re.search(rf"(?<![\u0A80-\u0AFF\u0900-\u097F]){re.escape(u_raw)}(?![\u0A80-\u0AFF\u0900-\u097F])", clause):
+                            unit = UNIT_MAP[u_raw]
                             break
                     else:
-                        if re.search(rf"\b{re.escape(nw_word)}\b", clause, flags=re.I):
-                            qty = nw_val
-                            has_explicit_qty = True
-                            break
-                if not has_explicit_qty and any(w in clause for w in ["thodu", "thoda", "thodi", "thodak", "zara", "thora", "થોડું", "થોડી", "थोड़ा", "थोड़ी"]):
-                    qty = 0.5
-                    has_explicit_qty = True
-
-            # Extract unit safely with word boundaries for short keys
-            unit = "serving"
-            for u_raw in sorted(UNIT_MAP.keys(), key=len, reverse=True):
-                if any(ord(c) > 127 for c in u_raw):
-                    if re.search(rf"(?<![\u0A80-\u0AFF\u0900-\u097F]){re.escape(u_raw)}(?![\u0A80-\u0AFF\u0900-\u097F])", clause):
-                        unit = UNIT_MAP[u_raw]
-                        break
-                else:
-                    if re.search(rf"\b{re.escape(u_raw)}\b", clause, flags=re.I):
-                        unit = UNIT_MAP[u_raw]
-                        break
-
-            # Clean food phrase by stripping numbers, units, verbs, and filler words
-            clean = clause
-            clean = re.sub(r"^\d+(\.\d+)?", "", clean)
-            clean = re.sub(r"\b\d+(\.\d+)?\b", "", clean)
-            for nw_word in sorted(NUMBER_WORDS.keys(), key=len, reverse=True):
-                if any(ord(c) > 127 for c in nw_word):
-                    clean = re.sub(rf"(?<![\u0A80-\u0AFF\u0900-\u097F]){re.escape(nw_word)}(?![\u0A80-\u0AFF\u0900-\u097F])", " ", clean)
-                else:
-                    clean = re.sub(rf"\b{re.escape(nw_word)}\b", " ", clean, flags=re.I)
-            for u_raw in sorted(UNIT_MAP.keys(), key=len, reverse=True):
-                if any(ord(c) > 127 for c in u_raw):
-                    clean = re.sub(rf"(?<![\u0A80-\u0AFF\u0900-\u097F]){re.escape(u_raw)}(?![\u0A80-\u0AFF\u0900-\u097F])", " ", clean)
-                else:
-                    clean = re.sub(rf"\b{re.escape(u_raw)}\b", " ", clean, flags=re.I)
-
-            # Remove time words, postpositions, informal modifiers, and eating verbs
-            clean = re.sub(
-                r"\b(?:morning|afternoon|evening|night|breakfast|lunch|dinner|snack|savar|savare|saware|sawar|savaar|bapor|bapore|sanj|sanje|saanj|saanje|sanju|raat|raate|subah|subha|dopahar|shaam|sham|shami)\b"
-                r"|\b(?:thodu|thoda|thodi|thodak|zara|thora|kam|thoda sa|thodi si|થોડું|થોડી|थोड़ा|थोड़ी)\b"
-                r"|\b(?:ma|maa|me|mein|ko|ne|nu|na|ni|no|thi|par|pe|se|of|for|in|at|on|with)\b"
-                r"|\b(?:i|my|mine|me|maine|hamne|aaj|aaje|today|please|track|just now|yesterday|kal)\b"
-                r"|\b(?:and|ane|aur|sathe|sath|along with)\b"
-                r"|\b(?:ate|had|eaten|have|drank|drink|drinking|khadha|khadhi|khadhu|khadho|khado|khaye|khaya|khayi|khalo|pidhi|pidhu|pidha|pidho|pido|piya|piyi|peeli|peena|lidhi|lidhu|lidho|lido|leedhi|leedhu|liya|li)\b"
-                r"|\b(?:che|tha|thi|the|hata|hati|chho|chhe)\b"
-                r"|(?:મેં|ખાધો|ખાધી|ખાધું|ખાધા|લીધો|લીધી|લીધું|લીધા|પીધો|પીધું|પીધી|પીધા|છે|હતી|હતો|હતા|આજે|બપોરે|બપોર|સવાર|સવારે|સાંજ|સાંજે|રાત્રે|રાત|સાથે|નાસ્તો|વાળુ|વાળું|માં|ના|ની|નો|નું|ને|થી|પર|માટે)"
-                r"|(?:मैंने|खाया|खाई|खाए|पिया|पी|लिया|ली|है|था|थी|आज|सुबह|दोपहर|रात|साथ|नाश्ता|में|का|की|के|को|से|पर|पे|ने|लिए)",
-                " ",
-                clean,
-                flags=re.I
-            )
-            clean = re.sub(r"[^\w\s\u0A80-\u0AFF\u0900-\u097F]", " ", clean).strip()
-            clean = re.sub(r"\s+", " ", clean).strip()
-
-            if clean:
-                canonical = None
-                is_recognized = False
-
-                # 1. Exact lookup
-                if clean in INDIAN_FOOD_SYNONYMS:
-                    canonical = INDIAN_FOOD_SYNONYMS[clean]
-                    is_recognized = True
-
-                # 2. Check multi-word phrase keys first (longest first) with strict boundaries
-                if not canonical:
-                    for food_key in sorted(INDIAN_FOOD_SYNONYMS.keys(), key=len, reverse=True):
-                        if any(ord(c) > 127 for c in food_key):
-                            if food_key == clean or food_key in clean.split() or f" {food_key} " in f" {clean} ":
-                                canonical = INDIAN_FOOD_SYNONYMS[food_key]
-                                is_recognized = True
-                                break
-                        else:
-                            if re.search(rf"\b{re.escape(food_key)}\b", clean, flags=re.I):
-                                canonical = INDIAN_FOOD_SYNONYMS[food_key]
-                                is_recognized = True
-                                break
-
-                # 3. Check single tokens
-                if not canonical:
-                    tokens = clean.split()
-                    for t in tokens:
-                        if t in INDIAN_FOOD_SYNONYMS:
-                            canonical = INDIAN_FOOD_SYNONYMS[t]
-                            is_recognized = True
+                        if re.search(rf"\b{re.escape(u_raw)}\b", clause, flags=re.I):
+                            unit = UNIT_MAP[u_raw]
                             break
 
-                # 4. Check known FOOD_NOUNS with strict boundaries
-                if not canonical:
-                    for noun in sorted(FOOD_NOUNS, key=len, reverse=True):
-                        if any(ord(c) > 127 for c in noun):
-                            if noun == clean or noun in clean.split() or f" {noun} " in f" {clean} ":
-                                canonical = noun.title()
+                # Clean food phrase by stripping numbers, units, verbs, and filler words
+                clean = clause
+                clean = re.sub(r"^\d+(\.\d+)?", "", clean)
+                clean = re.sub(r"\b\d+(\.\d+)?\b", "", clean)
+                for nw_word in sorted(NUMBER_WORDS.keys(), key=len, reverse=True):
+                    if any(ord(c) > 127 for c in nw_word):
+                        clean = re.sub(rf"(?<![\u0A80-\u0AFF\u0900-\u097F]){re.escape(nw_word)}(?![\u0A80-\u0AFF\u0900-\u097F])", " ", clean)
+                    else:
+                        clean = re.sub(rf"\b{re.escape(nw_word)}\b", " ", clean, flags=re.I)
+                for u_raw in sorted(UNIT_MAP.keys(), key=len, reverse=True):
+                    if any(ord(c) > 127 for c in u_raw):
+                        clean = re.sub(rf"(?<![\u0A80-\u0AFF\u0900-\u097F]){re.escape(u_raw)}(?![\u0A80-\u0AFF\u0900-\u097F])", " ", clean)
+                    else:
+                        clean = re.sub(rf"\b{re.escape(u_raw)}\b", " ", clean, flags=re.I)
+
+                # Remove time words, postpositions, informal modifiers, and eating verbs
+                clean = re.sub(
+                    r"\b(?:morning|afternoon|evening|night|breakfast|lunch|dinner|snack|savar|savare|saware|sawar|savaar|bapor|bapore|sanj|sanje|saanj|saanje|sanju|raat|raate|subah|subha|dopahar|shaam|sham|shami)\b"
+                    r"|\b(?:thodu|thoda|thodi|thodak|zara|thora|kam|thoda sa|thodi si|થોડું|થોડી|थोड़ा|थोड़ी)\b"
+                    r"|\b(?:ma|maa|me|mein|ko|ne|nu|na|ni|no|thi|par|pe|se|of|for|in|at|on|with)\b"
+                    r"|\b(?:i|my|mine|me|maine|hamne|aaj|aaje|today|please|track|just now|yesterday|kal)\b"
+                    r"|\b(?:and|ane|aur|sathe|sath|along with)\b"
+                    r"|\b(?:ate|had|eaten|have|drank|drink|drinking|khadha|khadhi|khadhu|khadho|khado|khaye|khaya|khayi|khalo|pidhi|pidhu|pidha|pidho|pido|piya|piyi|peeli|peena|lidhi|lidhu|lidho|lido|leedhi|leedhu|liya|li)\b"
+                    r"|\b(?:che|tha|thi|the|hata|hati|chho|chhe)\b"
+                    r"|(?:મેં|ખાધો|ખાધી|ખાધું|ખાધા|લીધો|લીધી|લીધું|લીધા|પીધો|પીધું|પીધી|પીધા|છે|હતી|હતો|હતા|આજે|બપોરે|બપોર|સવાર|સવારે|સાંજ|સાંજે|રાત્રે|રાત|સાથે|નાસ્તો|વાળુ|વાળું|માં|ના|ની|નો|નું|ને|થી|પર|માટે)"
+                    r"|(?:मैंने|खाया|खाई|खाए|पिया|पी|लिया|ली|है|था|थी|आज|सुबह|दोपहर|रात|साथ|नाश्ता|में|का|की|के|को|से|पर|पे|ने|लिए)",
+                    " ",
+                    clean,
+                    flags=re.I
+                )
+                clean = re.sub(r"[^\w\s\u0A80-\u0AFF\u0900-\u097F]", " ", clean).strip()
+                clean = re.sub(r"\s+", " ", clean).strip()
+
+                if clean:
+                    if clean.lower() in ["aa badhu", "badhu", "ye sab", "sab", "log", "all", "today", "aaj", "aaje", "badhu j"]:
+                        continue
+                    canonical = None
+                    is_recognized = False
+
+                    # 1. Exact lookup
+                    if clean.lower() in INDIAN_FOOD_SYNONYMS:
+                        canonical = INDIAN_FOOD_SYNONYMS[clean.lower()]
+                        is_recognized = True
+
+                    # 2. Check multi-word phrase keys first (longest first) with strict boundaries
+                    if not canonical:
+                        for food_key in sorted(INDIAN_FOOD_SYNONYMS.keys(), key=len, reverse=True):
+                            if any(ord(c) > 127 for c in food_key):
+                                if food_key == clean or food_key in clean.split() or f" {food_key} " in f" {clean} ":
+                                    canonical = INDIAN_FOOD_SYNONYMS[food_key]
+                                    is_recognized = True
+                                    break
+                            else:
+                                if re.search(rf"\b{re.escape(food_key)}\b", clean, flags=re.I):
+                                    canonical = INDIAN_FOOD_SYNONYMS[food_key]
+                                    is_recognized = True
+                                    break
+
+                    # 3. Check single tokens
+                    if not canonical:
+                        tokens = clean.split()
+                        for t in tokens:
+                            if t.lower() in INDIAN_FOOD_SYNONYMS:
+                                canonical = INDIAN_FOOD_SYNONYMS[t.lower()]
                                 is_recognized = True
                                 break
-                        else:
-                            if re.search(rf"\b{re.escape(noun)}\b", clean, flags=re.I):
-                                canonical = noun.title()
-                                is_recognized = True
-                                break
 
-                # If unrecognized, preserve user's exact food name; do NOT invent or guess random foods
-                if not canonical:
-                    canonical = clean.title()
+                    # 4. Check known FOOD_NOUNS with strict boundaries
+                    if not canonical:
+                        for noun in sorted(FOOD_NOUNS, key=len, reverse=True):
+                            if any(ord(c) > 127 for c in noun):
+                                if noun == clean or noun in clean.split() or f" {noun} " in f" {clean} ":
+                                    canonical = noun.title()
+                                    is_recognized = True
+                                    break
+                            else:
+                                if re.search(rf"\b{re.escape(noun)}\b", clean, flags=re.I):
+                                    canonical = noun.title()
+                                    is_recognized = True
+                                    break
 
-                confidence = 0.95 if is_recognized else 0.3
-                requires_clarification = (not is_recognized) or (not has_explicit_qty)
-                clarification_reason = "UNKNOWN_FOOD" if not is_recognized else ("AMBIGUOUS_QUANTITY" if not has_explicit_qty else None)
+                    # If unrecognized, preserve user's exact food name; do NOT invent or guess random foods
+                    if not canonical:
+                        canonical = clean.title()
 
-                # Context-aware default unit when unit was not specified
-                if unit == "serving":
-                    c_lower = canonical.lower()
-                    if any(w in c_lower for w in ["powder", "whey"]):
-                        unit = "scoop"
-                    elif any(w in c_lower for w in ["shake", "smoothie"]):
-                        unit = "glass"
-                    elif any(w in c_lower for w in ["roti", "rotli", "bhakri", "thepla", "egg", "banana", "apple", "chapati", "phulka", "naan", "paratha", "poori"]):
-                        unit = "piece"
-                    elif any(w in c_lower for w in ["dal", "daal", "rice", "chawal", "khichdi", "sabzi", "shaak", "curd", "dahi", "salad"]):
-                        unit = "bowl"
+                    confidence = 0.95 if is_recognized else 0.3
+                    requires_clarification = (not is_recognized) or (not has_explicit_qty)
+                    clarification_reason = "UNKNOWN_FOOD" if not is_recognized else ("AMBIGUOUS_QUANTITY" if not has_explicit_qty else None)
 
-                results.append({
-                    "food": canonical,
-                    "food_name": canonical,
-                    "quantity": qty,
-                    "unit": unit,
-                    "mealType": meal_type,
-                    "confidence": confidence,
-                    "is_recognized": is_recognized,
-                    "has_explicit_quantity": has_explicit_qty,
-                    "requires_clarification": requires_clarification,
-                    "clarification_reason": clarification_reason,
-                })
+                    # Context-aware default unit when unit was not specified
+                    if unit == "serving":
+                        c_lower = canonical.lower()
+                        if any(w in c_lower for w in ["powder", "whey"]):
+                            unit = "scoop"
+                        elif any(w in c_lower for w in ["shake", "smoothie"]):
+                            unit = "glass"
+                        elif any(w in c_lower for w in ["roti", "rotli", "bhakri", "thepla", "egg", "banana", "apple", "chapati", "phulka", "naan", "paratha", "poori"]):
+                            unit = "piece"
+                        elif any(w in c_lower for w in ["dal", "daal", "rice", "chawal", "khichdi", "sabzi", "shaak", "curd", "dahi", "salad"]):
+                            unit = "bowl"
+
+                    results.append({
+                        "food": canonical,
+                        "food_name": canonical,
+                        "quantity": qty,
+                        "unit": unit,
+                        "mealType": item_meal,
+                        "meal_type": item_meal,
+                        "logged_at": item_dt.isoformat(),
+                        "has_explicit_time": item_has_exp_time,
+                        "timeFormatted": TimeService.format_time(item_dt) if item_has_exp_time else "",
+                        "confidence": confidence,
+                        "is_recognized": is_recognized,
+                        "has_explicit_quantity": has_explicit_qty,
+                        "requires_clarification": requires_clarification,
+                        "clarification_reason": clarification_reason,
+                        "raw_text": clause,
+                    })
 
         return results
+
+    @staticmethod
+    def extract_structured_actions(text: str) -> List[Dict[str, Any]]:
+        """
+        Extracts all valid structured actions (Food, Activity, Hydration) from the message.
+        """
+        norm = AgentNLP.normalize_text(text)
+        actions = []
+
+        # 1. Foods
+        foods = AgentNLP.extract_food_entities_heuristically(text)
+        for f in foods:
+            actions.append({
+                "type": "CREATE_FOOD_LOG",
+                "food_name": f["food"],
+                "quantity": f["quantity"],
+                "unit": f["unit"],
+                "logged_at": f.get("logged_at"),
+                "has_explicit_time": f.get("has_explicit_time", False),
+                "time_formatted": f.get("timeFormatted", ""),
+                "meal_type": f.get("mealType", "—"),
+                "is_recognized": f.get("is_recognized", True),
+                "has_explicit_quantity": f.get("has_explicit_quantity", True),
+                "requires_clarification": f.get("requires_clarification", False),
+                "clarification_reason": f.get("clarification_reason"),
+            })
+
+        # 2. Activities
+        lower = norm.lower()
+        has_workout = any(bool(re.search(pat, lower)) for pat in WORKOUT_PATTERNS)
+        if has_workout:
+            acts = AgentNLP.extract_activity_entities(text)
+            for a in acts:
+                if a.get("activity") and a["activity"] != "Workout":
+                    actions.append({
+                        "type": "CREATE_ACTIVITY_LOG",
+                        "activity_name": a["activity"],
+                        "duration_minutes": a.get("durationMinutes", 30.0),
+                        "reps": a.get("reps"),
+                        "sets": a.get("sets"),
+                        "logged_at": a.get("logged_at"),
+                        "time_formatted": a.get("timeFormatted"),
+                        "met_value": a.get("metValue"),
+                        "requires_clarification": a.get("requiresClarification", False),
+                    })
+                elif not foods:
+                    actions.append({
+                        "type": "CREATE_ACTIVITY_LOG",
+                        "activity_name": a.get("activity", "Workout"),
+                        "duration_minutes": a.get("durationMinutes", 30.0),
+                        "reps": a.get("reps"),
+                        "sets": a.get("sets"),
+                        "logged_at": a.get("logged_at"),
+                        "time_formatted": a.get("timeFormatted"),
+                        "met_value": a.get("metValue", 5.0),
+                        "requires_clarification": a.get("requiresClarification", False),
+                    })
+
+        # 3. Hydration
+        hyd_ents = AgentNLP.extract_hydration_entities(text)
+        for h_ent in hyd_ents:
+            actions.append({
+                "type": "CREATE_HYDRATION_LOG",
+                "beverage_name": h_ent.get("beverage_name", "Water"),
+                "amount_ml": h_ent.get("amount_ml", 250.0),
+                "unit": "ml",
+                "logged_at": h_ent.get("logged_at"),
+                "has_explicit_time": h_ent.get("has_explicit_time", False),
+                "time_formatted": h_ent.get("time_formatted", ""),
+            })
+
+        return actions

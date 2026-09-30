@@ -74,6 +74,7 @@ async def list_hydration_logs(
         items.append({
             "id": d.get("id") or str(d.get("_id")),
             "amountMl": d.get("amount_ml", 0),
+            "beverageName": d.get("beverage_name") or d.get("notes") or "Water",
             "loggedAt": dt.isoformat() if hasattr(dt, "isoformat") else str(dt),
             "source": d.get("source", "MANUAL"),
             "notes": d.get("notes"),

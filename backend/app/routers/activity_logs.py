@@ -21,7 +21,7 @@ async def create_activity_log(
         "intensity": dto.intensity or "MEDIUM",
         "distanceKm": dto.distanceKm,
     }
-    date_str = dto.loggedAt.split("T")[0] if dto.loggedAt else datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    date_str = dto.loggedAt.split("T")[0] if dto.loggedAt else TimeService.get_current_local_date_str()
     res = await ActivityService.process_and_log_activity(user_id, data, date_str)
     return res["log"]
 
@@ -52,6 +52,7 @@ async def list_activity_logs(
         items.append({
             "id": d.get("id") or str(d.get("_id")),
             "name": d.get("exercise_name"),
+            "activityName": d.get("exercise_name"),
             "durationMinutes": d.get("duration_minutes", 30),
             "caloriesBurned": d.get("calories_burned", 0),
             "intensity": d.get("intensity", "MEDIUM"),

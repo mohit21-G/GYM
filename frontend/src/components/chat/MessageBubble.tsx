@@ -2,6 +2,7 @@ import React from 'react';
 import { Bot, User } from 'lucide-react';
 import { format } from 'date-fns';
 import { StructuredCard } from './Cards';
+import { FoodLogEntryData } from '../food/FoodLogEntry';
 
 export interface ChatMessageItem {
   id?: string;
@@ -15,11 +16,15 @@ export interface ChatMessageItem {
 interface MessageBubbleProps {
   msg: ChatMessageItem;
   onSelectOption?: (text: string) => void;
+  onEditFoodLog?: (entry: FoodLogEntryData) => void;
+  onDeleteFoodLog?: (entry: FoodLogEntryData) => void;
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({
   msg,
   onSelectOption,
+  onEditFoodLog,
+  onDeleteFoodLog,
 }) => {
   const isUser = msg.sender === 'USER';
   const timestamp = msg.createdAt ? format(new Date(msg.createdAt), 'h:mm a') : '';
@@ -103,10 +108,16 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     return <div className="space-y-0.5 whitespace-pre-wrap">{renderedElements}</div>;
   };
 
+  const hasCards = !isUser && Boolean(msg.cardData);
+
   return (
     <div
-      className={`flex items-start space-x-3 max-w-3xl ${
-        isUser ? 'ml-auto flex-row-reverse space-x-reverse' : ''
+      className={`flex items-start space-x-3 ${
+        isUser
+          ? 'ml-auto flex-row-reverse space-x-reverse max-w-xl'
+          : hasCards
+          ? 'w-full max-w-2xl'
+          : 'max-w-xl'
       }`}
     >
       {/* Avatar */}
@@ -122,10 +133,12 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
       {/* Bubble Content */}
       <div
-        className={`relative rounded-2xl px-4 py-3 shadow-md max-w-xl ${
+        className={`relative rounded-2xl px-4 py-3 shadow-md ${
           isUser
-            ? 'bg-emerald-600 text-white rounded-tr-sm'
-            : 'bg-slate-800 text-slate-100 border border-slate-700/60 rounded-tl-sm'
+            ? 'bg-emerald-600 text-white rounded-tr-sm max-w-xl'
+            : hasCards
+            ? 'bg-slate-800 text-slate-100 border border-slate-700/60 rounded-tl-sm w-full max-w-2xl min-w-0 box-border'
+            : 'bg-slate-800 text-slate-100 border border-slate-700/60 rounded-tl-sm max-w-xl'
         }`}
       >
         {renderFormattedMessage(msg.message)}
@@ -136,6 +149,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             cardType={msg.cardType}
             data={msg.cardData}
             onSelectOption={onSelectOption}
+            onEditEntry={onEditFoodLog}
+            onDeleteEntry={onDeleteFoodLog}
           />
         )}
 

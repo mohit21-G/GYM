@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 from ..database import get_db
 from .agent_nlp import AgentNLP, INDIAN_FOOD_SYNONYMS
+from .time_service import TimeService
 from ..schemas.food_log import (
     FoodItemInput,
     GroupedFoodCard,
@@ -88,9 +89,16 @@ CANONICAL_INDIAN_FOOD_PROFILES: Dict[str, Dict[str, Any]] = {
     "Paneer Bhurji": {"food_id": "canon_paneer_bhurji", "food_name": "Paneer Bhurji", "calories": 220.0, "protein_g": 14.0, "carbs_g": 6.0, "fat_g": 16.0, "fiber_g": 1.5, "unit": "bowl"},
     "Curd (Dahi)": {"food_id": "canon_curd", "food_name": "Curd (Dahi)", "calories": 98.0, "protein_g": 4.5, "carbs_g": 6.0, "fat_g": 6.5, "fiber_g": 0.0, "unit": "bowl"},
     "Cow Milk (Toned)": {"food_id": "canon_milk", "food_name": "Cow Milk (Toned)", "calories": 120.0, "protein_g": 6.5, "carbs_g": 9.5, "fat_g": 6.0, "fiber_g": 0.0, "unit": "glass"},
+    "Milk": {"food_id": "canon_milk", "food_name": "Cow Milk (Toned)", "calories": 120.0, "protein_g": 6.5, "carbs_g": 9.5, "fat_g": 6.0, "fiber_g": 0.0, "unit": "cup"},
+    "Khapli Roti": {"food_id": "canon_khapli_roti", "food_name": "Khapli Wheat Rotli", "calories": 95.0, "protein_g": 3.2, "carbs_g": 18.0, "fat_g": 1.2, "fiber_g": 2.5, "unit": "piece"},
+    "Khapli Wheat Rotli": {"food_id": "canon_khapli_roti", "food_name": "Khapli Wheat Rotli", "calories": 95.0, "protein_g": 3.2, "carbs_g": 18.0, "fat_g": 1.2, "fiber_g": 2.5, "unit": "piece"},
     "Spiced Buttermilk (Chaas)": {"food_id": "canon_chaas", "food_name": "Spiced Buttermilk (Chaas)", "calories": 40.0, "protein_g": 2.2, "carbs_g": 3.5, "fat_g": 1.5, "fiber_g": 0.0, "unit": "glass"},
     "Tea With Milk": {"food_id": "canon_tea", "food_name": "Tea With Milk", "calories": 65.0, "protein_g": 2.0, "carbs_g": 9.0, "fat_g": 2.5, "fiber_g": 0.0, "unit": "cup"},
-    "Coffee With Milk": {"food_id": "canon_coffee", "food_name": "Coffee With Milk", "calories": 75.0, "protein_g": 2.2, "carbs_g": 10.0, "fat_g": 2.8, "fiber_g": 0.0, "unit": "cup"},
+    "Green Tea": {"food_id": "canon_green_tea", "food_name": "Green Tea", "calories": 2.0, "protein_g": 0.2, "carbs_g": 0.4, "fat_g": 0.0, "fiber_g": 0.0, "unit": "cup"},
+    "Black Coffee": {"food_id": "canon_black_coffee", "food_name": "Black Coffee", "calories": 5.0, "protein_g": 0.3, "carbs_g": 0.5, "fat_g": 0.0, "fiber_g": 0.0, "unit": "cup"},
+    "Lemon Water": {"food_id": "canon_lemon_water", "food_name": "Lemon Water", "calories": 15.0, "protein_g": 0.2, "carbs_g": 3.5, "fat_g": 0.1, "fiber_g": 0.2, "unit": "glass"},
+    "Pre Workout": {"food_id": "canon_pre_workout", "food_name": "Pre Workout", "calories": 10.0, "protein_g": 0.0, "carbs_g": 2.0, "fat_g": 0.0, "fiber_g": 0.0, "unit": "scoop"},
+    "Oats": {"food_id": "canon_oats", "food_name": "Oats", "calories": 150.0, "protein_g": 5.0, "carbs_g": 27.0, "fat_g": 2.5, "fiber_g": 4.0, "unit": "bowl"},
     "Water": {"food_id": "canon_water", "food_name": "Water", "calories": 0.0, "protein_g": 0.0, "carbs_g": 0.0, "fat_g": 0.0, "fiber_g": 0.0, "unit": "glass"},
 }
 
@@ -117,11 +125,128 @@ class FoodService:
         return "utensils"
 
     @staticmethod
-    def format_time(dt: datetime) -> str:
-        try:
-            return dt.strftime("%I:%M %p").lstrip("0")
-        except Exception:
-            return "12:00 PM"
+    def format_time(dt: Any) -> str:
+        return TimeService.format_time(dt)
+
+    @staticmethod
+    def get_quantity_clarification_question(food_name: str, lang: str = "en") -> str:
+        """
+        Generates food-specific quantity clarification questions matching user requirements.
+        Supports English, Gujarati, and Hindi with tailored serving units.
+        """
+        fn_lower = food_name.lower().strip()
+
+        # Water
+        if "water" in fn_lower or "pani" in fn_lower or "પાણી" in fn_lower or "पानी" in fn_lower:
+            if lang in ["gu", "gu-Latn"]:
+                return "તમે કેટલું પાણી પીધું? (દા.ત. 1 ગ્લાસ, 2 ગ્લાસ, 1 બોટલ)"
+            elif lang in ["hi", "hi-Latn"]:
+                return "आपने कितना पानी पिया? (जैसे 1 ग्लास, 2 ग्लास, 1 बोतल)"
+            return "How much water did you drink? (e.g. 1 glass, 2 glasses, 1 bottle)"
+
+        # Tea / Green Tea / Chai / Coffee
+        if any(w in fn_lower for w in ["green tea", "tea", "chai", "coffee", "chay", "ટી"]):
+            display_name = "green tea" if "green tea" in fn_lower else ("tea" if "tea" in fn_lower or "chai" in fn_lower else "coffee")
+            if lang in ["gu", "gu-Latn"]:
+                return f"તમે કેટલી {display_name} પીધી? (દા.ત. 1 કપ, 2 કપ)"
+            elif lang in ["hi", "hi-Latn"]:
+                return f"आपने कितनी {display_name} पी? (जैसे 1 कप, 2 कप)"
+            return f"How much {display_name} did you have? (e.g. 1 cup, 2 cups)"
+
+        # Milk / Chaas / Buttermilk
+        if any(w in fn_lower for w in ["milk", "doodh", "dudh", "chaas", "chhas", "buttermilk", "lassi", "juice"]):
+            display_name = "milk" if any(w in fn_lower for w in ["milk", "doodh", "dudh"]) else ("chaas" if "chaas" in fn_lower or "chhas" in fn_lower else fn_lower)
+            if lang in ["gu", "gu-Latn"]:
+                return f"તમે કેટલું {display_name} પીધું? (દા.ત. 1 ગ્લાસ, 2 ગ્લાસ)"
+            elif lang in ["hi", "hi-Latn"]:
+                return f"आपने कितना {display_name} पिया? (जैसे 1 ग्लास, 2 ग्लास)"
+            return f"How much {display_name} did you have? (e.g. 1 glass, 2 glasses)"
+
+        # Protein Shake
+        if "shake" in fn_lower or "smoothie" in fn_lower:
+            if lang in ["gu", "gu-Latn"]:
+                return "તમે કેટલો પ્રોટીન શેક લીધો? (દા.ત. 1 સ્કૂપ, 2 સ્કૂપ, 1 ગ્લાસ)"
+            elif lang in ["hi", "hi-Latn"]:
+                return "आपने कितना प्रोटीन शेक लिया? (जैसे 1 स्कूप, 2 स्कूप, 1 ग्लास)"
+            return "How much protein shake did you have? (e.g. 1 scoop, 2 scoops, 1 glass)"
+
+        # Protein Powder / Whey
+        if "powder" in fn_lower or "whey" in fn_lower or fn_lower == "protein":
+            if lang in ["gu", "gu-Latn"]:
+                return "તમે કેટલો પ્રોટીન પાવડર લીધો? (દા.ત. 1 સ્કૂપ, 2 સ્કૂપ)"
+            elif lang in ["hi", "hi-Latn"]:
+                return "आपने कितना प्रोटीन पाउडर लिया? (जैसे 1 स्कूप, 2 स्कूप)"
+            return "How much protein powder did you have? (e.g. 1 scoop, 2 scoops)"
+
+        # Flatbreads / Pieces (Roti, Chapati, Rotli, Thepla, Bhakri, Paratha, Naan, Puri)
+        if any(w in fn_lower for w in ["roti", "rotli", "chapati", "phulka", "thepla", "bhakri", "bhakhri", "paratha", "naan", "puri", "poori", "રોટલી", "ભાખરી", "થેપલા"]):
+            if "bhakri" in fn_lower or "bhakhri" in fn_lower or "ભાખરી" in fn_lower:
+                singular, plural = "bhakri", "bhakris"
+            elif "thepla" in fn_lower or "થેપલા" in fn_lower:
+                singular, plural = "thepla", "theplas"
+            elif "paratha" in fn_lower:
+                singular, plural = "paratha", "parathas"
+            elif "naan" in fn_lower:
+                singular, plural = "naan", "naans"
+            elif "chapati" in fn_lower:
+                singular, plural = "chapati", "chapatis"
+            else:
+                singular, plural = "roti", "rotis"
+
+            if lang in ["gu", "gu-Latn"]:
+                return f"તમે કેટલી {plural} ખાધી? (દા.ત. 1 {singular}, 2 {plural})"
+            elif lang in ["hi", "hi-Latn"]:
+                return f"आपने कितनी {plural} खाईं? (जैसे 1 {singular}, 2 {plural})"
+            return f"How many {plural} did you have? (e.g. 1 {singular}, 2 {plural})"
+
+        # Countable fruits & items (Egg, Banana, Apple, Samosa, Idli, Dhokla, etc.)
+        if any(w in fn_lower for w in ["egg", "anda", "banana", "kela", "apple", "safarjan", "samosa", "idli", "dhokla", "khaman", "cookie", "biscuit", "ઈંડા", "કેળા", "સફરજન"]):
+            if "egg" in fn_lower or "anda" in fn_lower or "ઈંડા" in fn_lower:
+                singular, plural = "egg", "eggs"
+            elif "banana" in fn_lower or "kela" in fn_lower or "કેળા" in fn_lower:
+                singular, plural = "banana", "bananas"
+            elif "apple" in fn_lower or "safarjan" in fn_lower or "સફરજન" in fn_lower:
+                singular, plural = "apple", "apples"
+            elif "samosa" in fn_lower:
+                singular, plural = "samosa", "samosas"
+            elif "idli" in fn_lower:
+                singular, plural = "idli", "idlis"
+            else:
+                singular, plural = fn_lower, f"{fn_lower}s"
+
+            if lang in ["gu", "gu-Latn"]:
+                return f"તમે કેટલા {plural} ખાધા? (દા.ત. 1 {singular}, 2 {plural})"
+            elif lang in ["hi", "hi-Latn"]:
+                return f"आपने कितने {plural} खाए? (जैसे 1 {singular}, 2 {plural})"
+            return f"How many {plural} did you have? (e.g. 1 {singular}, 2 {plural})"
+
+        # Bowls: Rice, Dal, Poha, Upma, Oats, Khichdi, Sabzi, Salad, Curry, Paneer, Chana, Rajma
+        if any(w in fn_lower for w in ["rice", "chawal", "dal", "daal", "poha", "upma", "oats", "khichdi", "sabzi", "shaak", "curry", "paneer", "chana", "rajma", "salad", "curd", "dahi", "sprouts", "દાળ", "ભાત", "ખીચડી", "શાક", "પોહા"]):
+            if "poha" in fn_lower or "પોહા" in fn_lower:
+                display_name = "poha"
+            elif "upma" in fn_lower:
+                display_name = "upma"
+            elif "oats" in fn_lower:
+                display_name = "oats"
+            elif "rice" in fn_lower or "chawal" in fn_lower or "ભાત" in fn_lower:
+                display_name = "rice"
+            elif "dal" in fn_lower or "daal" in fn_lower or "દાળ" in fn_lower:
+                display_name = "dal"
+            else:
+                display_name = fn_lower
+
+            if lang in ["gu", "gu-Latn"]:
+                return f"તમે કેટલું {display_name} ખાધું? (દા.ત. 1 વાટકી, 2 વાટકી)"
+            elif lang in ["hi", "hi-Latn"]:
+                return f"आपने कितना {display_name} खाया? (जैसे 1 कटोरी, 2 कटोरी)"
+            return f"How much {display_name} did you have? (e.g. 1 bowl, 2 bowls)"
+
+        # Generic fallback
+        if lang in ["gu", "gu-Latn"]:
+            return f"તમે કેટલું {fn_lower} લીધું? (દા.ત. 1 સર્વિંગ, 2 સર્વિંગ)"
+        elif lang in ["hi", "hi-Latn"]:
+            return f"आपने कितना {fn_lower} लिया? (जैसे 1 सर्विंग, 2 सर्विंग)"
+        return f"How much {fn_lower} did you have? (e.g. 1 serving, 2 servings)"
 
     @staticmethod
     async def _ensure_terms_cache():
@@ -272,6 +397,22 @@ class FoodService:
             if re.search(r"\b(?:protein\s*powder|whey|protein)\b", search_term, re.I) or "પ્રોટીન પાવડર" in search_term or "प्रोटीन पाउडर" in search_term:
                 return {**CANONICAL_INDIAN_FOOD_PROFILES["Whey Protein Powder"], "is_recognized": True, "requires_clarification": False}
 
+            # Lemon Water
+            if re.search(r"\b(?:lemon\s*water|nimbu\s*pani|leembu\s*pani)\b", search_term, re.I) or "લીંબુ પાણી" in search_term or "नींबू पानी" in search_term:
+                return {**CANONICAL_INDIAN_FOOD_PROFILES["Lemon Water"], "is_recognized": True, "requires_clarification": False}
+            # Pre Workout
+            if re.search(r"\b(?:pre\s*workout|pre-workout|preworkout)\b", search_term, re.I):
+                return {**CANONICAL_INDIAN_FOOD_PROFILES["Pre Workout"], "is_recognized": True, "requires_clarification": False}
+            # Black Coffee
+            if re.search(r"\b(?:black\s*coffee|black\s*cofee)\b", search_term, re.I):
+                return {**CANONICAL_INDIAN_FOOD_PROFILES["Black Coffee"], "is_recognized": True, "requires_clarification": False}
+            # Green Tea
+            if re.search(r"\b(?:green\s*tea)\b", search_term, re.I):
+                return {**CANONICAL_INDIAN_FOOD_PROFILES["Green Tea"], "is_recognized": True, "requires_clarification": False}
+            # Khapli Roti
+            if re.search(r"\b(?:khapli\s*roti|khapli\s*rotli|khapli)\b", search_term, re.I):
+                return {**CANONICAL_INDIAN_FOOD_PROFILES["Khapli Roti"], "is_recognized": True, "requires_clarification": False}
+
             # Bhakri
             if any(re.search(rf"\b{re.escape(w)}\b", search_term, re.I) for w in ["bhakri", "bhakhri"]):
                 return {**CANONICAL_INDIAN_FOOD_PROFILES["Bhakri"], "is_recognized": True, "requires_clarification": False}
@@ -412,11 +553,6 @@ class FoodService:
                 return 2.0 * qty
             if r_unit in ["tbsp", "spoon", "tablespoon"]:
                 return 0.1 * qty
-            if r_unit in ["tsp", "teaspoon"]:
-                return 0.03 * qty
-            if r_unit in ["g", "gram", "grams"]:
-                return (qty / 150.0)
-
         # Pieces: Roti, Chapati, Thepla, Bhakri, Eggs, Fruits (base unit: piece)
         if b_unit in ["piece", "nag", "slice"]:
             if r_unit in ["piece", "pieces", "nag", "slice", "slices"]:
@@ -434,19 +570,9 @@ class FoodService:
         log_date_str: Optional[str] = None,
     ) -> FoodLoggingResult:
         db = get_db()
+        local_now = TimeService.get_current_local_time()
         now = datetime.now(timezone.utc)
-        target_date_str = log_date_str or now.strftime("%Y-%m-%d")
-        
-        detected_meal = None
-        for it in items:
-            m = getattr(it, "mealType", None)
-            if m and m != "LUNCH":
-                detected_meal = m
-                break
-        if not detected_meal and items:
-            detected_meal = getattr(items[0], "mealType", None)
-
-        meal_type = meal_type_override or detected_meal or "LUNCH"
+        target_date_str = log_date_str or local_now.strftime("%Y-%m-%d")
 
         # Pre-resolution and clarification validation
         unrecognized_items = []
@@ -467,29 +593,17 @@ class FoodService:
             else:
                 validated_items.append((item, resolved))
 
-        if unrecognized_items:
-            names = ", ".join(f"'{n}'" for n in unrecognized_items)
-            msg = f"I couldn't identify the food {names}. Could you please confirm the exact food name?"
-            summary_result = await FoodService.get_daily_grouped_food_cards(user_id, target_date_str)
-            return FoodLoggingResult(
-                success=False,
-                requiresClarification=True,
-                clarificationQuestion=msg,
-                replyText=msg,
-                loggedItems=[],
-                groupedFoodCards=summary_result["groupedFoodCards"],
-                dailyNutritionSummary=summary_result["dailyNutritionSummary"],
-                mealTotals={"calories": 0.0, "proteinG": 0.0, "carbsG": 0.0, "fatG": 0.0, "fiberG": 0.0},
-                dailyProgress={
-                    "totalCaloriesLoggedToday": summary_result["dailyNutritionSummary"].totalCalories,
-                    "dailyCalorieTarget": summary_result["dailyNutritionSummary"].targetCalories,
-                    "remainingCalories": summary_result["dailyNutritionSummary"].remainingCalories,
-                },
-            )
+        # If NO items were validated and there are unrecognized/ambiguous items, return clarification immediately
+        if not validated_items and (unrecognized_items or ambiguous_qty_items):
+            clarif_parts = []
+            if unrecognized_items:
+                names = ", ".join(f"'{n}'" for n in unrecognized_items)
+                clarif_parts.append(f"I couldn't identify the food {names}. Could you please confirm the exact food name?")
+            if ambiguous_qty_items:
+                questions = [FoodService.get_quantity_clarification_question(n) for n in ambiguous_qty_items]
+                clarif_parts.extend(questions)
 
-        if ambiguous_qty_items:
-            names = ", ".join(f"'{n}'" for n in ambiguous_qty_items)
-            msg = f"How much {names} did you have? (e.g. 1 glass, 1 scoop, 1 bowl, 2 pieces)"
+            msg = " ".join(clarif_parts)
             summary_result = await FoodService.get_daily_grouped_food_cards(user_id, target_date_str)
             return FoodLoggingResult(
                 success=False,
@@ -497,7 +611,8 @@ class FoodService:
                 clarificationQuestion=msg,
                 replyText=msg,
                 loggedItems=[],
-                groupedFoodCards=summary_result["groupedFoodCards"],
+                groupedFoodCards=[],
+                currentGroupedFoodCards=[],
                 dailyNutritionSummary=summary_result["dailyNutritionSummary"],
                 mealTotals={"calories": 0.0, "proteinG": 0.0, "carbsG": 0.0, "fatG": 0.0, "fiberG": 0.0},
                 dailyProgress={
@@ -517,7 +632,42 @@ class FoodService:
         for item, resolved in validated_items:
             qty = float(item.quantity)
             unit = item.unit or resolved.get("unit", "serving")
-            item_meal_type = getattr(item, "mealType", None) or meal_type
+
+            # Resolve timestamp and whether explicit time was given
+            item_logged_at = local_now
+            has_explicit_time = bool(getattr(item, "has_explicit_time", False))
+
+            if getattr(item, "raw_text", None):
+                ext_dt, has_ext = TimeService.extract_time_from_text(item.raw_text, reference_time=local_now)
+                if has_ext:
+                    item_logged_at = ext_dt
+                    has_explicit_time = True
+            elif getattr(item, "logged_at", None):
+                if isinstance(item.logged_at, datetime):
+                    item_logged_at = item.logged_at
+                else:
+                    try:
+                        item_logged_at = datetime.fromisoformat(str(item.logged_at).replace("Z", "+00:00"))
+                    except Exception:
+                        ext_dt, has_ext = TimeService.extract_time_from_text(str(item.logged_at), reference_time=local_now)
+                        if has_ext:
+                            item_logged_at = ext_dt
+                            has_explicit_time = True
+
+            # Resolve meal type:
+            # A. If user explicitly specified meal type (override or contextual time)
+            # B. If absent, strictly "—" (NEVER clock meal)
+            raw_text_to_check = getattr(item, "raw_text", None) or item.food or ""
+            inferred_m = TimeService.infer_meal_type(raw_text_to_check, dt=item_logged_at if has_explicit_time else None)
+
+            if meal_type_override and meal_type_override != "—":
+                item_meal_type = meal_type_override
+            elif inferred_m and inferred_m != "—":
+                item_meal_type = inferred_m
+            else:
+                item_meal_type = "—"
+
+            item_date_str = item_logged_at.strftime("%Y-%m-%d") if item_logged_at else target_date_str
 
             multiplier = FoodService.calculate_portion_multiplier(
                 base_unit=resolved.get("unit", "serving"),
@@ -532,14 +682,17 @@ class FoodService:
             item_f = round(resolved["fat_g"] * multiplier, 1)
             item_fib = round(resolved["fiber_g"] * multiplier, 1)
 
-            # Idempotency check: prevent duplicate entry within 5 seconds
+            # Idempotency check: prevent duplicate entry within 5 seconds for same food, qty, and timestamp
             five_sec_ago = datetime.fromtimestamp(now.timestamp() - 5, timezone.utc)
-            duplicate = await db.daily_food_logs.find_one({
+            dup_query = {
                 "user_id": user_id,
                 "food_id": resolved["food_id"],
                 "quantity_amount": qty,
                 "created_at": {"$gte": five_sec_ago},
-            })
+            }
+            if item_logged_at:
+                dup_query["logged_at"] = item_logged_at
+            duplicate = await db.daily_food_logs.find_one(dup_query)
 
             if duplicate:
                 log_doc = duplicate
@@ -558,13 +711,16 @@ class FoodService:
                     "carbs_g": item_c,
                     "fat_g": item_f,
                     "fiber_g": item_fib,
-                    "log_date": target_date_str,
+                    "log_date": item_date_str,
                     "created_at": now,
-                    "logged_at": now,
+                    "logged_at": item_logged_at,
+                    "has_explicit_time": has_explicit_time,
                 }
                 await db.daily_food_logs.insert_one(log_doc)
 
             clean_log = {**log_doc, "id": str(log_doc.get("id") or log_doc.get("_id"))}
+            clean_log["food"] = clean_log.get("food_name")
+            clean_log["has_explicit_time"] = has_explicit_time
             clean_log.pop("_id", None)
             if hasattr(clean_log.get("created_at"), "isoformat"):
                 clean_log["created_at"] = clean_log["created_at"].isoformat()
@@ -578,6 +734,16 @@ class FoodService:
             total_meal_f += item_f
             total_meal_fib += item_fib
 
+        # Fetch user target calories
+        user = await db.users.find_one({"id": user_id}) or await db.users.find_one({"user_id": user_id}) or {}
+        profile = user.get("profile") or {}
+        target_calories = profile.get("dailyCalorieTarget", 2000)
+
+        # Current grouped cards (ONLY items logged in this transaction)
+        current_cards_res = FoodService.group_food_logs(logged_items, target_calories, target_date_str)
+        current_grouped_cards = current_cards_res["groupedFoodCards"]
+
+        # Full day's logs for dashboard/dailyNutritionSummary
         summary_result = await FoodService.get_daily_grouped_food_cards(user_id, target_date_str)
 
         if not logged_items:
@@ -586,7 +752,8 @@ class FoodService:
                 requiresClarification=False,
                 replyText="No food items were logged because quantity was zero or missing.",
                 loggedItems=[],
-                groupedFoodCards=summary_result["groupedFoodCards"],
+                groupedFoodCards=[],
+                currentGroupedFoodCards=[],
                 dailyNutritionSummary=summary_result["dailyNutritionSummary"],
                 mealTotals={"calories": 0.0, "proteinG": 0.0, "carbsG": 0.0, "fatG": 0.0, "fiberG": 0.0},
                 dailyProgress={
@@ -597,7 +764,7 @@ class FoodService:
             )
 
         items_parts = []
-        for inp_item, l in zip(items, logged_items):
+        for inp_item, l in zip([it for it, _ in validated_items], logged_items):
             qty_val = int(l['quantity_amount']) if l['quantity_amount'].is_integer() else l['quantity_amount']
             raw_q = (inp_item.food or "").strip()
             unit_str = (l['quantity_unit'] or "").strip()
@@ -616,18 +783,36 @@ class FoodService:
                     items_parts.append(f"{qty_val} {unit_str} {food_name} {cal_str}")
 
         bullet_items = "\n".join(f"* {part}" for part in items_parts)
+        m_type = logged_items[0].get("meal_type") or "—"
+        effective_meal_title = m_type if m_type == "—" else m_type.title()
         reply_text = (
             f"🍽️ **Food Logged**\n\n"
             f"{bullet_items}\n\n"
-            f"Meal total ({meal_type.title()}): {int(total_meal_cal)} kcal (P: {int(total_meal_p)}g, C: {int(total_meal_c)}g, F: {int(total_meal_f)}g)\n"
+            f"Meal total ({effective_meal_title}): {int(total_meal_cal)} kcal (P: {int(total_meal_p)}g, C: {int(total_meal_c)}g, F: {int(total_meal_f)}g)\n"
             f"Today's total: {int(summary_result['dailyNutritionSummary'].totalCalories)} / {int(summary_result['dailyNutritionSummary'].targetCalories)} kcal"
         )
 
+        # Append clarification question for partial items if any
+        has_partial_issues = bool(unrecognized_items or ambiguous_qty_items)
+        clarification_msg = None
+        if has_partial_issues:
+            issues = []
+            if unrecognized_items:
+                u_names = ", ".join(f"'{n}'" for n in unrecognized_items)
+                issues.append(f"I couldn't identify {u_names}. Could you please confirm the exact food name?")
+            if ambiguous_qty_items:
+                questions = [FoodService.get_quantity_clarification_question(n) for n in ambiguous_qty_items]
+                issues.extend(questions)
+            clarification_msg = "\n\n" + "\n".join(issues)
+            reply_text += f"\n\n⚠️ {clarification_msg.strip()}"
+
         return FoodLoggingResult(
             success=True,
-            requiresClarification=False,
+            requiresClarification=has_partial_issues,
+            clarificationQuestion=clarification_msg,
             loggedItems=logged_items,
-            groupedFoodCards=summary_result["groupedFoodCards"],
+            groupedFoodCards=current_grouped_cards,
+            currentGroupedFoodCards=current_grouped_cards,
             dailyNutritionSummary=summary_result["dailyNutritionSummary"],
             mealTotals={
                 "calories": round(total_meal_cal, 1),
@@ -672,17 +857,29 @@ class FoodService:
         }, sort=[("created_at", -1)])
 
         qty = max(0.25, float(new_quantity))
-        item_cal = round(resolved["calories"] * qty, 1)
-        item_p = round(resolved["protein_g"] * qty, 1)
-        item_c = round(resolved["carbs_g"] * qty, 1)
-        item_f = round(resolved["fat_g"] * qty, 1)
-        item_fib = round(resolved["fiber_g"] * qty, 1)
+        target_unit = unit or (existing.get("quantity_unit") if existing else resolved.get("unit", "serving"))
+
+        multiplier = FoodService.calculate_portion_multiplier(
+            base_unit=resolved.get("unit", "serving"),
+            requested_unit=target_unit,
+            quantity=qty,
+            food_name=resolved.get("food_name", ""),
+        )
+
+        item_cal = round(resolved["calories"] * multiplier, 1)
+        item_p = round(resolved["protein_g"] * multiplier, 1)
+        item_c = round(resolved["carbs_g"] * multiplier, 1)
+        item_f = round(resolved["fat_g"] * multiplier, 1)
+        item_fib = round(resolved["fiber_g"] * multiplier, 1)
 
         if existing:
             await db.daily_food_logs.update_one(
                 {"id": existing["id"]},
                 {"$set": {
+                    "food_name": target_food_name,
+                    "food_id": resolved["food_id"],
                     "quantity_amount": qty,
+                    "quantity_unit": target_unit,
                     "calories": item_cal,
                     "protein_g": item_p,
                     "carbs_g": item_c,
@@ -691,12 +888,12 @@ class FoodService:
                     "updated_at": now,
                 }}
             )
-            reply = f"Updated {target_food_name} to {int(qty) if qty.is_integer() else qty} {existing.get('quantity_unit', 'serving')} ({int(item_cal)} kcal)."
+            reply = f"Updated {target_food_name} to {int(qty) if qty.is_integer() else qty} {target_unit} ({int(item_cal)} kcal)."
         else:
             # If not found, log it afresh
             return await FoodService.process_and_log_food(
                 user_id,
-                [FoodItemInput(food=target_food, quantity=qty, unit=unit or resolved.get("unit", "serving"))],
+                [FoodItemInput(food=target_food, quantity=qty, unit=target_unit)],
                 log_date_str=target_date_str,
             )
 
@@ -706,6 +903,7 @@ class FoodService:
             requiresClarification=False,
             loggedItems=[],
             groupedFoodCards=summary_result["groupedFoodCards"],
+            currentGroupedFoodCards=summary_result["groupedFoodCards"],
             dailyNutritionSummary=summary_result["dailyNutritionSummary"],
             mealTotals={"calories": item_cal},
             dailyProgress={
@@ -751,6 +949,7 @@ class FoodService:
             requiresClarification=False,
             loggedItems=[],
             groupedFoodCards=summary_result["groupedFoodCards"],
+            currentGroupedFoodCards=summary_result["groupedFoodCards"],
             dailyNutritionSummary=summary_result["dailyNutritionSummary"],
             mealTotals={"calories": 0.0},
             dailyProgress={
@@ -762,16 +961,128 @@ class FoodService:
         )
 
     @staticmethod
-    async def get_daily_grouped_food_cards(user_id: str, date_str: str) -> Dict[str, Any]:
+    async def sync_food_log_to_conversation_messages(
+        user_id: str,
+        log_id: str,
+        updated_entry: Optional[Dict[str, Any]] = None,
+        is_deleted: bool = False,
+    ) -> None:
+        """
+        Synchronizes food log updates or deletions to all conversation messages containing this log ID.
+        Ensures page refreshes, session reloads, and multi-tab sync never revert to stale data.
+        """
         db = get_db()
-        cursor = db.daily_food_logs.find({"user_id": user_id, "log_date": date_str}).sort("created_at", 1)
-        logs = await cursor.to_list(length=500)
+        cursor = db.conversation_messages.find({"raw_entities": {"$ne": None}})
+        messages = await cursor.to_list(length=500)
 
-        # Fetch user target calories
-        user = await db.users.find_one({"id": user_id}) or await db.users.find_one({"user_id": user_id}) or {}
-        profile = user.get("profile") or {}
-        target_calories = profile.get("dailyCalorieTarget", 2000)
+        for m in messages:
+            raw_ent = m.get("raw_entities")
+            if not isinstance(raw_ent, dict):
+                continue
+            grouped_cards = raw_ent.get("groupedFoodCards")
+            if not grouped_cards or not isinstance(grouped_cards, list):
+                continue
 
+            card_modified = False
+            new_cards = []
+
+            for card in grouped_cards:
+                entries = card.get("entries", [])
+                new_entries = []
+                for entry in entries:
+                    entry_id = str(entry.get("id") or "")
+                    if entry_id == str(log_id):
+                        card_modified = True
+                        if is_deleted:
+                            continue  # drop deleted entry
+                        elif updated_entry:
+                            dt = updated_entry.get("logged_at") or updated_entry.get("created_at") or datetime.now(timezone.utc)
+                            has_exp = updated_entry.get("has_explicit_time", False)
+                            tf = FoodService.format_time(dt) if has_exp else ""
+                            new_entries.append({
+                                **entry,
+                                "foodName": updated_entry.get("food_name"),
+                                "foodMasterId": updated_entry.get("food_id"),
+                                "quantity": updated_entry.get("quantity_amount"),
+                                "unit": updated_entry.get("quantity_unit"),
+                                "calories": updated_entry.get("calories"),
+                                "mealType": updated_entry.get("meal_type", "—"),
+                                "timeFormatted": tf,
+                                "macros": {
+                                    "proteinG": updated_entry.get("protein_g", 0.0),
+                                    "carbsG": updated_entry.get("carbs_g", 0.0),
+                                    "fatG": updated_entry.get("fat_g", 0.0),
+                                    "fiberG": updated_entry.get("fiber_g", 0.0),
+                                },
+                            })
+                    else:
+                        new_entries.append(entry)
+
+                if new_entries:
+                    total_qty = sum(float(e.get("quantity", 0)) for e in new_entries)
+                    total_cal = sum(float(e.get("calories", 0)) for e in new_entries)
+                    total_p = sum(float(e.get("macros", {}).get("proteinG", 0)) for e in new_entries)
+                    total_c = sum(float(e.get("macros", {}).get("carbsG", 0)) for e in new_entries)
+                    total_f = sum(float(e.get("macros", {}).get("fatG", 0)) for e in new_entries)
+                    total_fib = sum(float(e.get("macros", {}).get("fiberG", 0)) for e in new_entries)
+
+                    first_entry = new_entries[0]
+                    new_cards.append({
+                        **card,
+                        "foodName": first_entry.get("foodName", card.get("foodName")),
+                        "foodMasterId": first_entry.get("foodMasterId", card.get("foodMasterId")),
+                        "foodKey": f"food_{first_entry.get('foodMasterId') or first_entry.get('foodName', '').lower()}",
+                        "icon": FoodService.resolve_food_icon(first_entry.get("foodName", "")),
+                        "totalQuantity": int(total_qty) if total_qty.is_integer() else round(total_qty, 1),
+                        "totalCalories": round(total_cal),
+                        "entryCount": len(new_entries),
+                        "unit": first_entry.get("unit", card.get("unit")),
+                        "macros": {
+                            "proteinG": round(total_p, 1),
+                            "carbsG": round(total_c, 1),
+                            "fatG": round(total_f, 1),
+                            "fiberG": round(total_fib, 1),
+                        },
+                        "entries": new_entries,
+                    })
+
+            if card_modified:
+                raw_ent["groupedFoodCards"] = new_cards
+                # Refresh daily summary
+                log_date = TimeService.get_current_local_date_str()
+                if updated_entry and updated_entry.get("log_date"):
+                    log_date = updated_entry["log_date"]
+                daily_sum_res = await FoodService.get_daily_grouped_food_cards(user_id, log_date)
+                raw_ent["dailyNutritionSummary"] = daily_sum_res["dailyNutritionSummary"].model_dump()
+
+                # Update message text if it has bullet items
+                if new_cards:
+                    bullet_items = []
+                    for c in new_cards:
+                        for e in c.get("entries", []):
+                            q_val = int(e["quantity"]) if float(e["quantity"]).is_integer() else e["quantity"]
+                            bullet_items.append(f"* {q_val} {e['unit']} {e['foodName']} ({int(e['calories'])} kcal)")
+                    b_str = "\n".join(bullet_items)
+                    m_type = new_cards[0]["entries"][0].get("mealType") or "—"
+                    meal_title = m_type if m_type == "—" else m_type.title()
+                    tot_cal = sum(float(c.get("totalCalories", 0)) for c in new_cards)
+                    d_sum = raw_ent["dailyNutritionSummary"]
+                    new_msg_text = (
+                        f"🍽️ **Food Logged**\n\n"
+                        f"{b_str}\n\n"
+                        f"Meal total ({meal_title}): {int(tot_cal)} kcal\n"
+                        f"Today's total: {int(d_sum.get('totalCalories', tot_cal))} / {int(d_sum.get('targetCalories', 2000))} kcal"
+                    )
+                else:
+                    new_msg_text = "All logged items for this meal were removed."
+
+                await db.conversation_messages.update_one(
+                    {"id": m["id"]},
+                    {"$set": {"raw_entities": raw_ent, "message": new_msg_text}}
+                )
+
+    @staticmethod
+    def group_food_logs(logs: List[Dict[str, Any]], target_calories: float = 2000.0, date_str: str = "") -> Dict[str, Any]:
         groups: Dict[str, Dict[str, Any]] = {}
         total_cal = 0.0
         total_p = 0.0
@@ -818,6 +1129,10 @@ class FoodService:
             total_fib += fib
 
             dt = log.get("logged_at") or log.get("created_at") or datetime.now(timezone.utc)
+            has_exp_time = log.get("has_explicit_time", False)
+            time_formatted = FoodService.format_time(dt) if has_exp_time else ""
+            meal_type = log.get("meal_type") or "—"
+
             g["entries"].append(
                 FoodLogEntrySummary(
                     id=str(log.get("id") or log.get("_id")),
@@ -827,8 +1142,9 @@ class FoodService:
                     unit=log.get("quantity_unit", "serving"),
                     calories=round(cal, 1),
                     loggedAt=dt.isoformat() if hasattr(dt, "isoformat") else str(dt),
-                    timeFormatted=FoodService.format_time(dt),
-                    mealType=log.get("meal_type", "LUNCH"),
+                    timeFormatted=time_formatted,
+                    hasExplicitTime=bool(has_exp_time),
+                    mealType=meal_type,
                     macros={
                         "proteinG": round(p, 1),
                         "carbsG": round(c, 1),
@@ -888,3 +1204,17 @@ class FoodService:
             "groupedFoodCards": grouped_cards,
             "dailyNutritionSummary": daily_summary,
         }
+
+    @staticmethod
+    async def get_daily_grouped_food_cards(user_id: str, date_str: str) -> Dict[str, Any]:
+        db = get_db()
+        cursor = db.daily_food_logs.find({"user_id": user_id, "log_date": date_str}).sort("created_at", 1)
+        logs = await cursor.to_list(length=500)
+
+        # Fetch user target calories
+        user = await db.users.find_one({"id": user_id}) or await db.users.find_one({"user_id": user_id}) or {}
+        profile = user.get("profile") or {}
+        target_calories = profile.get("dailyCalorieTarget", 2000)
+
+        return FoodService.group_food_logs(logs, target_calories, date_str)
+

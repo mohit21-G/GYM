@@ -10,6 +10,7 @@ import re
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone
 from ..database import get_db
+from .time_service import TimeService
 
 MEAL_SUGGESTIONS_DB = {
     "BREAKFAST": [
@@ -200,16 +201,8 @@ class FoodSuggestionService:
         if any(w in lower for w in ["lunch", "bapor", "bapore", "dopahar", "બપોર", "બપોરે", "दोपहर"]):
             return "LUNCH"
         
-        # Current time based fallback
-        hour = datetime.now(timezone.utc).hour + 5.5  # IST offset
-        if hour < 11:
-            return "BREAKFAST"
-        elif hour < 16:
-            return "LUNCH"
-        elif hour < 19:
-            return "SNACK"
-        else:
-            return "DINNER"
+        # Fallback to centralized TimeService
+        return TimeService.infer_meal_type(text)
 
     @staticmethod
     async def generate_food_suggestion(
@@ -219,7 +212,7 @@ class FoodSuggestionService:
         date_str: Optional[str] = None
     ) -> Dict[str, Any]:
         db = get_db()
-        today = date_str or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        today = date_str or TimeService.get_current_local_date_str()
         
         # 1. Fetch user profile and today's logged food
         user = await db.users.find_one({"id": user_id}) or await db.users.find_one({"user_id": user_id}) or {}

@@ -1,4 +1,5 @@
 import uuid
+import re
 import logging
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, Optional, List
@@ -10,6 +11,7 @@ from .dashboard_service import DashboardService
 from .food_suggestion_service import FoodSuggestionService
 from .fitness_advisory_service import FitnessAdvisoryService
 from .agent_nlp import AgentNLP
+from .time_service import TimeService
 from ..schemas.food_log import FoodItemInput
 
 logger = logging.getLogger("chat_service")
@@ -22,6 +24,16 @@ class ChatService:
             existing = await db.chat_sessions.find_one({"id": session_id, "user_id": user_id})
             if existing:
                 return existing["id"]
+            now = datetime.now(timezone.utc)
+            await db.chat_sessions.insert_one({
+                "id": session_id,
+                "user_id": user_id,
+                "title": "Fitness Conversation",
+                "is_archived": False,
+                "created_at": now,
+                "updated_at": now,
+            })
+            return session_id
 
         # Find latest active session
         latest = await db.chat_sessions.find_one({"user_id": user_id, "is_archived": False}, sort=[("updated_at", -1)])
@@ -164,39 +176,36 @@ class ChatService:
         user_message: str = "",
     ) -> Dict[str, Any]:
         db = get_db()
-        now = datetime.now(timezone.utc)
-        today_str = now.strftime("%Y-%m-%d")
+        now = TimeService.get_current_local_datetime()
+        today_str = TimeService.get_current_local_date_str()
 
         # Infer meal type from user message explicitly if present
-        msg_lower = (user_message or "").lower()
-        inferred_meal = None
-        if any(w in msg_lower for w in ["morning", "breakfast", "savar", "savare", "saware", "sawar", "savaar", "subah", "subha", "nasto", "nashta", "સવાર", "સવારે", "નાસ્તો", "सुबह", "नाश्ता"]):
-            inferred_meal = "BREAKFAST"
-        elif any(w in msg_lower for w in ["dinner", "sanj", "sanje", "saanj", "saanje", "sanju", "shaam", "sham", "raat", "raate", "raatri", "valoo", "valo", "vaalu", "વાળુ", "વાળું", "સાંજ", "સાંજે", "રાત", "રાત્રે", "रात", "शाम"]):
-            inferred_meal = "DINNER"
-        elif any(w in msg_lower for w in ["snack", "snacks", "chaai", "tea", "ચા"]):
-            inferred_meal = "SNACK"
-        elif any(w in msg_lower for w in ["lunch", "bapor", "bapore", "dopahar", "બપોર", "બપોરે"]):
-            inferred_meal = "LUNCH"
+        inferred_meal = TimeService.infer_meal_type(user_message or "")
 
         # Multi-log routing (foods + workouts or hydration)
         has_food = bool(entities.get("foodItems") or entities.get("food"))
-        has_act = bool(entities.get("activityItems") or entities.get("activity"))
-        has_water = bool(entities.get("waterAmount") or entities.get("hydration"))
+        has_act = bool(entities.get("activities") or entities.get("activityItems") or entities.get("activity"))
+        has_water = bool(entities.get("waterAmount") or entities.get("hydration") or entities.get("hydrationItems"))
 
-        if intent == "CREATE_MULTI_LOG" or (has_food and has_act):
+        if intent == "CREATE_MULTI_LOG" or (sum([bool(has_food), bool(has_act), bool(has_water)]) >= 2):
             return await ChatService.handle_multi_log(user_id, session_id, entities, ai_res, user_message=user_message, inferred_meal=inferred_meal)
 
         # 1. CREATE_FOOD_LOG
-        # 1. CREATE_FOOD_LOG
         if intent == "CREATE_FOOD_LOG":
+            res_dt, has_msg_time = TimeService.extract_time_from_text(user_message or "", reference_time=now)
+            inferred_meal = TimeService.infer_meal_type(user_message or "", dt=res_dt if has_msg_time else None)
+            detected_meal = inferred_meal or "—"
+
             raw_foods = entities.get("foodItems") or []
             if not raw_foods and entities.get("food"):
                 raw_foods = [{
                     "food": entities.get("food"),
                     "quantity": entities.get("quantity", 1),
                     "unit": entities.get("unit", "serving"),
-                    "mealType": inferred_meal or entities.get("mealType") or entities.get("meal_type") or "LUNCH",
+                    "mealType": detected_meal,
+                    "logged_at": res_dt.isoformat() if has_msg_time else entities.get("logged_at"),
+                    "has_explicit_time": has_msg_time,
+                    "raw_text": entities.get("raw_text") or user_message,
                     "is_recognized": entities.get("is_recognized", True),
                     "has_explicit_quantity": entities.get("has_explicit_quantity", True),
                     "requires_clarification": entities.get("requires_clarification", False),
@@ -208,7 +217,10 @@ class ChatService:
                     food=f.get("food") or f.get("name", "Food"),
                     quantity=f.get("quantity", 1),
                     unit=f.get("unit", "serving"),
-                    mealType=inferred_meal or f.get("mealType") or entities.get("mealType") or entities.get("meal_type") or "LUNCH",
+                    mealType=detected_meal if detected_meal != "—" else (f.get("mealType") or "—"),
+                    logged_at=f.get("logged_at") if f.get("has_explicit_time") else (res_dt.isoformat() if has_msg_time else None),
+                    has_explicit_time=bool(f.get("has_explicit_time") or has_msg_time),
+                    raw_text=f.get("raw_text") or user_message,
                     is_recognized=f.get("is_recognized", True),
                     has_explicit_quantity=f.get("has_explicit_quantity", True),
                     requires_clarification=f.get("requires_clarification", False),
@@ -216,21 +228,12 @@ class ChatService:
                 )
                 for f in raw_foods
             ]
-            detected_meal = inferred_meal
-            if not detected_meal:
-                for it in items:
-                    m = getattr(it, "mealType", None)
-                    if m and m != "LUNCH":
-                        detected_meal = m
-                        break
-            if not detected_meal and items:
-                detected_meal = getattr(items[0], "mealType", None) or "LUNCH"
 
             food_result = await FoodService.process_and_log_food(
                 user_id, items, meal_type_override=detected_meal, log_date_str=today_str
             )
 
-            if food_result.requiresClarification:
+            if food_result.requiresClarification and not food_result.loggedItems:
                 return {
                     "success": True,
                     "sessionId": session_id,
@@ -242,6 +245,8 @@ class ChatService:
                         "clarificationQuestion": food_result.clarificationQuestion,
                     },
                 }
+
+            dashboard_data = await DashboardService.get_today_dashboard(user_id, today_str)
 
             cards = [
                 {
@@ -258,15 +263,18 @@ class ChatService:
                 for item in food_result.loggedItems
             ]
 
+            active_cards = food_result.currentGroupedFoodCards or food_result.groupedFoodCards
             return {
                 "success": True,
                 "sessionId": session_id,
                 "message": food_result.replyText,
-                "data": food_result.model_dump(),
+                "data": {**food_result.model_dump(), "dashboard": dashboard_data},
+                "dashboard": dashboard_data,
                 "ui": {
                     "type": "FOOD_LOG_CARDS",
                     "cards": cards,
-                    "groupedFoodCards": [c.model_dump() for c in food_result.groupedFoodCards],
+                    "dashboard": dashboard_data,
+                    "groupedFoodCards": [c.model_dump() for c in active_cards],
                     "dailyNutritionSummary": food_result.dailyNutritionSummary.model_dump(),
                 },
             }
@@ -534,22 +542,28 @@ class ChatService:
         user_message: str = "",
         inferred_meal: Optional[str] = None,
     ) -> Dict[str, Any]:
-        now = datetime.now(timezone.utc)
-        today_str = now.strftime("%Y-%m-%d")
+        db = get_db()
+        now = TimeService.get_current_local_datetime()
+        today_str = TimeService.get_current_local_date_str()
         cards = []
         summary_lines = []
         latest_food_result = None
+        act_res = None
 
         # 1. Process foods
         raw_foods = entities.get("foodItems") or []
         food_items_to_log = [f for f in raw_foods if (f.get("food") or f.get("name", "")).lower() not in ["water", "pani"]]
         if food_items_to_log:
+            _, has_msg_time = TimeService.extract_time_from_text(user_message or "", reference_time=now)
             items = [
                 FoodItemInput(
                     food=f.get("food") or f.get("name"),
                     quantity=f.get("quantity", 1),
                     unit=f.get("unit", "serving"),
-                    mealType=inferred_meal or f.get("mealType") or "LUNCH",
+                    mealType=inferred_meal or f.get("mealType") or "—",
+                    logged_at=f.get("logged_at"),
+                    has_explicit_time=f.get("has_explicit_time", has_msg_time),
+                    raw_text=f.get("raw_text") or user_message,
                     is_recognized=f.get("is_recognized", True),
                     has_explicit_quantity=f.get("has_explicit_quantity", True),
                     requires_clarification=f.get("requires_clarification", False),
@@ -561,26 +575,25 @@ class ChatService:
             if not detected_meal:
                 for it in items:
                     m = getattr(it, "mealType", None)
-                    if m and m != "LUNCH":
+                    if m and m != "—":
                         detected_meal = m
                         break
-            if not detected_meal and items:
-                detected_meal = getattr(items[0], "mealType", None) or "LUNCH"
+            if not detected_meal:
+                detected_meal = "—"
 
             food_result = await FoodService.process_and_log_food(
                 user_id, items, meal_type_override=detected_meal, log_date_str=today_str
             )
             latest_food_result = food_result
 
-            if not food_result.requiresClarification:
-                for item in food_result.loggedItems:
-                    cards.append({
-                        "type": "FOOD",
-                        "title": item.get("food_name"),
-                        "subtitle": f"{item.get('quantity_amount')} {item.get('quantity_unit')}",
-                        "metric": f"{int(item.get('calories', 0))} kcal",
-                    })
-                summary_lines.append(f"{int(food_result.mealTotals.get('calories', 0))} kcal across {len(food_result.loggedItems)} foods")
+            for item in food_result.loggedItems:
+                cards.append({
+                    "type": "FOOD",
+                    "title": item.get("food_name"),
+                    "subtitle": f"{item.get('quantity_amount')} {item.get('quantity_unit')}",
+                    "metric": f"{int(item.get('calories', 0))} kcal",
+                })
+            summary_lines.append(f"{int(food_result.mealTotals.get('calories', 0))} kcal across {len(food_result.loggedItems)} foods")
 
         # 2. Process workouts
         raw_acts = entities.get("activities") or entities.get("activityItems") or ([entities.get("activity")] if entities.get("activity") else [])
@@ -592,16 +605,107 @@ class ChatService:
                 metric = f"{calc['reps']} reps" if calc.get("reps") else f"{int(calc['durationMinutes'])}m"
                 summary_lines.append(f"{calc['activityName']} ({metric}, {int(calc['caloriesBurned'])} kcal)")
 
-        # Build clean bullet-point summary if both foods and activities logged
-        reply = None
-        if latest_food_result and raw_acts:
-            reply = f"{latest_food_result.replyText}\n\n{act_res['replyText']}"
-        elif latest_food_result:
-            reply = latest_food_result.replyText
-        elif raw_acts:
-            reply = act_res["replyText"]
-        else:
-            reply = ai_res.get("replyText") or f"Logged your routine: {', '.join(summary_lines)}."
+        # 3. Process hydration if present in message
+        raw_hyds = entities.get("hydrationItems") or entities.get("hydration")
+        if not raw_hyds or not isinstance(raw_hyds, list):
+            raw_hyds = AgentNLP.extract_hydration_entities(user_message)
+        if isinstance(raw_hyds, dict):
+            raw_hyds = [raw_hyds]
+
+        hyd_bullets = []
+        for h in (raw_hyds or []):
+            h_ml = float(h.get("amount_ml") or h.get("amountMl") or h.get("waterAmount") or 0.0)
+            if h_ml <= 0:
+                continue
+
+            h_log_id = str(uuid.uuid4())
+            h_dt_iso = h.get("logged_at")
+            h_dt = None
+            if h_dt_iso:
+                try:
+                    h_dt = datetime.fromisoformat(str(h_dt_iso).replace("Z", "+00:00"))
+                except Exception:
+                    pass
+            if h_dt is None:
+                local_now = TimeService.get_current_local_datetime()
+                h_dt, _ = TimeService.extract_time_from_text(h.get("raw_text") or user_message, reference_time=local_now)
+                h_dt_iso = h_dt.isoformat()
+
+            h_date_str = h_dt.strftime("%Y-%m-%d") if hasattr(h_dt, "strftime") else today_str
+            bev_name = h.get("beverage_name") or h.get("beverageName") or "Water"
+            if bev_name == "Water" and h.get("raw_text"):
+                r_low = h.get("raw_text", "").lower()
+                if any(w in r_low for w in ["lemon", "lamon", "nimbu", "limbu", "leembu"]):
+                    bev_name = "Lemon Water"
+                elif any(w in r_low for w in ["coconut", "nariyal"]):
+                    bev_name = "Coconut Water"
+
+            if db is not None:
+                await db.hydration_logs.insert_one({
+                    "id": h_log_id,
+                    "user_id": user_id,
+                    "amount_ml": h_ml,
+                    "unit": "ml",
+                    "log_date": h_date_str,
+                    "created_at": now,
+                    "logged_at": h_dt_iso,
+                    "beverage_name": bev_name,
+                    "notes": bev_name,
+                })
+
+            time_sub = h.get("time_formatted") or (TimeService.format_time(h_dt) if h.get("has_explicit_time") else f"+{int(h_ml)} ml")
+            card_title = bev_name if bev_name != "Water" else "Water Intake"
+            cards.append({
+                "type": "HYDRATION",
+                "title": card_title,
+                "subtitle": time_sub,
+                "amountMl": int(h_ml),
+                "metric": f"{int(h_ml)} ml",
+            })
+            if bev_name != "Water":
+                summary_lines.append(f"{bev_name} ({int(h_ml)} ml)")
+                hyd_bullets.append(f"• {int(h_ml)} ml {bev_name.lower()} ({time_sub})")
+            else:
+                summary_lines.append(f"Water ({int(h_ml)} ml)")
+                hyd_bullets.append(f"• {int(h_ml)} ml water ({time_sub})")
+
+        # 4. Synchronize dashboard
+        dashboard_data = await DashboardService.get_today_dashboard(user_id, today_str)
+
+        # 5. Build clean, structured response summary (Requirement 15)
+        food_bullets = []
+        if latest_food_result and latest_food_result.loggedItems:
+            for it in latest_food_result.loggedItems:
+                qty = int(it['quantity_amount']) if it['quantity_amount'].is_integer() else it['quantity_amount']
+                unit_val = (it.get('quantity_unit') or '').strip()
+                unit_str = f" {unit_val}" if unit_val and unit_val.lower() not in ['serving', 'piece'] else ''
+                food_bullets.append(f"• {qty}{unit_str} {it.get('food_name')}")
+
+        act_bullets = []
+        if raw_acts and act_res:
+            for c in act_res.get("calculations", []):
+                metric = f"{c['reps']} reps" if c.get("reps") else f"{int(c['durationMinutes'])} min"
+                act_bullets.append(f"• {metric} {c['activityName']}")
+
+        summary_sections = ["Logged successfully:"]
+        if food_bullets:
+            summary_sections.append("Food:\n" + "\n".join(food_bullets))
+        if act_bullets:
+            summary_sections.append("Exercise:\n" + "\n".join(act_bullets))
+        if hyd_bullets:
+            summary_sections.append("Hydration:\n" + "\n".join(hyd_bullets))
+
+        summary_sections.append(
+            f"Dashboard updated:\n"
+            f"Calories Consumed: {int(dashboard_data['calories']['consumed'])} kcal\n"
+            f"Calories Burned: {int(dashboard_data['calories']['burned'])} kcal\n"
+            f"Net Calories: {int(dashboard_data['calories']['net'])} kcal"
+        )
+        reply = "\n\n".join(summary_sections)
+
+        if latest_food_result and latest_food_result.requiresClarification and latest_food_result.clarificationQuestion:
+            reply += f"\n\n⚠️ {latest_food_result.clarificationQuestion.strip()}"
+
         return {
             "success": True,
             "sessionId": session_id,
@@ -609,13 +713,16 @@ class ChatService:
             "data": {
                 "cards": cards,
                 "summary": summary_lines,
-                "groupedFoodCards": [c.model_dump() for c in latest_food_result.groupedFoodCards] if latest_food_result else None,
+                "dashboard": dashboard_data,
+                "groupedFoodCards": [c.model_dump() for c in (latest_food_result.currentGroupedFoodCards or latest_food_result.groupedFoodCards)] if latest_food_result else None,
                 "dailyNutritionSummary": latest_food_result.dailyNutritionSummary.model_dump() if latest_food_result else None,
             },
+            "dashboard": dashboard_data,
             "ui": {
                 "type": "LOG_RESULT",
                 "cards": cards,
-                "groupedFoodCards": [c.model_dump() for c in latest_food_result.groupedFoodCards] if latest_food_result else None,
+                "dashboard": dashboard_data,
+                "groupedFoodCards": [c.model_dump() for c in (latest_food_result.currentGroupedFoodCards or latest_food_result.groupedFoodCards)] if latest_food_result else None,
                 "dailyNutritionSummary": latest_food_result.dailyNutritionSummary.model_dump() if latest_food_result else None,
             },
         }

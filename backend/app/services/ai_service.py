@@ -64,7 +64,7 @@ PORTION & UNIT PARSING:
 - "teaspoon", "tsp" -> unit: "tsp"
 - "piece", "pcs", "nag", "roti", "rotli", "thepla", "slice" -> unit: "piece"
 - Gujarati/Hindi number words: "ek"=1, "be"/"do"=2, "tran"/"tin"=3, "char"=4, "panch"=5, "aadha"/"adho"=0.5, "dedh"=1.5, "dhai"=2.5.
-- Meal types: guess from sentence or default (BREAKFAST, LUNCH, DINNER, SNACK).
+- Meal types: Only set mealType if user explicitly specifies meal/time context (BREAKFAST, LUNCH, DINNER, SNACK). If not specified by user, mealType MUST be "—". Never guess or use clock.
 
 OUTPUT FORMAT:
 Respond with ONLY a single valid JSON block without additional markdown text or reasoning tags:
@@ -78,13 +78,13 @@ Respond with ONLY a single valid JSON block without additional markdown text or 
         "food": "Khapli Wheat Rotli",
         "quantity": 2.0,
         "unit": "piece",
-        "mealType": "LUNCH"
+        "mealType": "—"
       }
     ],
     "targetFood": null,
     "newQuantity": null
   },
-  "replyText": "Logged 2 pieces of Khapli Wheat Rotli for lunch."
+  "replyText": "Logged 2 pieces of Khapli Wheat Rotli."
 }
 ```
 
@@ -211,10 +211,12 @@ class AIService:
 
         if detected_intent == "CREATE_ACTIVITY_LOG":
             acts = AgentNLP.extract_activity_entities(message)
+            actions = AgentNLP.extract_structured_actions(message)
             if acts and acts[0].get("requiresClarification"):
                 return {
                     "intent": "CREATE_ACTIVITY_LOG",
                     "language": lang,
+                    "actions": actions,
                     "entities": {"activities": acts, "requiresClarification": True},
                     "requiresClarification": True,
                     "replyText": "Great job on being active! Could you please let me know how many minutes you exercised or how many reps and sets you completed, so I can accurately calculate your calories burned?",
@@ -222,6 +224,7 @@ class AIService:
             return {
                 "intent": "CREATE_ACTIVITY_LOG",
                 "language": lang,
+                "actions": actions,
                 "entities": {
                     "activities": acts,
                     "activity": acts[0]["activity"],
@@ -241,13 +244,37 @@ class AIService:
                 "replyText": f"Recorded {int(s_ent['durationMinutes']//60)}h of sleep."
             }
 
-        # 3. For Food Logging: Try high-precision deterministic extraction first
-        if detected_intent in ["CREATE_FOOD_LOG", "CREATE_MULTI_LOG"]:
+        # 3. For Multi-Log (Mixed Food + Workout / Water)
+        if detected_intent == "CREATE_MULTI_LOG":
             foods = AgentNLP.extract_food_entities_heuristically(message)
+            acts = AgentNLP.extract_activity_entities(message)
+            hydrations = AgentNLP.extract_hydration_entities(message)
+            actions = AgentNLP.extract_structured_actions(message)
+            real_acts = [a for a in acts if a.get("activity") and a["activity"] != "Workout"] or acts
+            return {
+                "intent": "CREATE_MULTI_LOG",
+                "language": lang,
+                "actions": actions,
+                "entities": {
+                    "foodItems": foods,
+                    "activities": real_acts,
+                    "activityItems": real_acts,
+                    "hydrationItems": hydrations,
+                    "hydration": hydrations,
+                    "waterAmount": sum(h.get("amount_ml", 0) for h in hydrations) if hydrations else None,
+                },
+                "replyText": f"Logged {len(foods)} food item(s), {len(real_acts)} workout(s), and {len(hydrations)} water entry(ies)."
+            }
+
+        # 4. For Food Logging: Try high-precision deterministic extraction first
+        if detected_intent == "CREATE_FOOD_LOG":
+            foods = AgentNLP.extract_food_entities_heuristically(message)
+            actions = AgentNLP.extract_structured_actions(message)
             if foods and len(foods) > 0:
                 return {
                     "intent": "CREATE_FOOD_LOG",
                     "language": lang,
+                    "actions": actions,
                     "entities": {"foodItems": foods},
                     "replyText": f"Logged {len(foods)} food item(s)."
                 }
@@ -438,12 +465,34 @@ class AIService:
                 "replyText": f"Logged {len(acts)} workout item(s).",
             }
 
-        # 6. FOOD_LOG fallback
-        if intent in ["CREATE_FOOD_LOG", "CREATE_MULTI_LOG"]:
+        # 6. MULTI_LOG fallback
+        if intent == "CREATE_MULTI_LOG":
+            foods = AgentNLP.extract_food_entities_heuristically(original_message)
+            acts = AgentNLP.extract_activity_entities(original_message)
+            hydrations = AgentNLP.extract_hydration_entities(original_message)
+            actions = AgentNLP.extract_structured_actions(original_message)
+            real_acts = [a for a in acts if a.get("activity") and a["activity"] != "Workout"] or acts
+            return {
+                "intent": "CREATE_MULTI_LOG",
+                "language": lang,
+                "actions": actions,
+                "entities": {
+                    "foodItems": foods,
+                    "activities": real_acts,
+                    "activityItems": real_acts,
+                    "hydrationItems": hydrations,
+                    "hydration": hydrations,
+                    "waterAmount": sum(h.get("amount_ml", 0) for h in hydrations) if hydrations else None,
+                },
+                "replyText": f"Logged {len(foods)} food item(s), {len(real_acts)} workout(s), and {len(hydrations)} water entry(ies)."
+            }
+
+        # 7. FOOD_LOG fallback
+        if intent == "CREATE_FOOD_LOG":
             food_items = AgentNLP.extract_food_entities_heuristically(pre_processed)
             if food_items:
                 return {
-                    "intent": intent,
+                    "intent": "CREATE_FOOD_LOG",
                     "language": lang,
                     "entities": {"foodItems": food_items},
                     "replyText": f"Logged {len(food_items)} food items.",

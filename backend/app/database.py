@@ -7,10 +7,27 @@ logger = logging.getLogger("database")
 class MockCursor:
     def __init__(self, data=None):
         self._data = list(data or [])
-    def sort(self, *args, **kwargs):
+    def sort(self, key_or_list=None, direction=1):
+        if not key_or_list:
+            return self
+        if isinstance(key_or_list, list) and key_or_list:
+            key, direction = key_or_list[0]
+        elif isinstance(key_or_list, str):
+            key = key_or_list
+        else:
+            return self
+        reverse = (direction == -1)
+        try:
+            self._data.sort(key=lambda d: (d.get(key) is None, d.get(key)), reverse=reverse)
+        except Exception:
+            pass
         return self
-    def limit(self, *args, **kwargs):
+    def skip(self, n=0):
+        self._data = self._data[n:]
         return self
+    def limit(self, n=100):
+        self._data = self._data[:n]
+        return self 
     async def to_list(self, length=100):
         return list(self._data[:length])
 
@@ -26,27 +43,67 @@ class MockCollection:
                 if not any(self._matches(doc, cond) for cond in v):
                     return False
                 continue
-            if k.startswith("$"):
+            if isinstance(v, dict):
+                doc_val = doc.get(k)
+                for op, op_val in v.items():
+                    if op == "$gte":
+                        if doc_val is None or doc_val < op_val:
+                            return False
+                    elif op == "$lte":
+                        if doc_val is None or doc_val > op_val:
+                            return False
+                    elif op == "$gt":
+                        if doc_val is None or doc_val <= op_val:
+                            return False
+                    elif op == "$lt":
+                        if doc_val is None or doc_val >= op_val:
+                            return False
+                    elif op == "$ne":
+                        if doc_val == op_val:
+                            return False
+                    elif op == "$in":
+                        if doc_val not in op_val:
+                            return False
                 continue
             if doc.get(k) != v:
                 return False
         return True
     async def find_one(self, query=None, sort=None):
-        for d in self.docs:
-            if self._matches(d, query):
-                return dict(d)
+        filtered = [d for d in self.docs if self._matches(d, query)]
+        if sort:
+            c = MockCursor(filtered)
+            c.sort(sort)
+            filtered = c._data
+        if filtered:
+            return dict(filtered[0])
         return None
     def find(self, query=None):
         filtered = [dict(d) for d in self.docs if self._matches(d, query)]
         return MockCursor(filtered)
+    async def count_documents(self, query=None):
+        return len([d for d in self.docs if self._matches(d, query)])
     async def insert_one(self, doc):
         self.docs.append(dict(doc))
         return type("InsertResult", (), {"inserted_id": doc.get("id") or doc.get("_id")})
     async def update_one(self, query, update, upsert=False):
-        doc = await self.find_one(query)
-        if doc and "$set" in update:
-            doc.update(update["$set"])
-        return type("UpdateResult", (), {"modified_count": 1 if doc else 0})
+        for i, d in enumerate(self.docs):
+            if self._matches(d, query):
+                if "$set" in update:
+                    self.docs[i].update(update["$set"])
+                return type("UpdateResult", (), {"matched_count": 1, "modified_count": 1})
+        if upsert and "$set" in update:
+            new_doc = {**query, **update["$set"]}
+            self.docs.append(new_doc)
+            return type("UpdateResult", (), {"matched_count": 0, "modified_count": 1, "upserted_id": new_doc.get("id")})
+        return type("UpdateResult", (), {"matched_count": 0, "modified_count": 0})
+
+    async def delete_one(self, query):
+        for i, d in enumerate(self.docs):
+            if self._matches(d, query):
+                del self.docs[i]
+                return type("DeleteResult", (), {"deleted_count": 1})
+        return type("DeleteResult", (), {"deleted_count": 0})
+
     async def create_index(self, *args, **kwargs):
         pass
 

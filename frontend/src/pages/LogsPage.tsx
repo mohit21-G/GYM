@@ -248,7 +248,11 @@ export const LogsPage: React.FC = () => {
                       <div className="font-semibold text-slate-200 text-sm">
                         {item.foodName ||
                           item.activityName ||
-                          (activeTab === 'HYDRATION' && `${item.amountMl} ml Water`) ||
+                          item.name ||
+                          (activeTab === 'HYDRATION' &&
+                            (item.beverageName && item.beverageName.toLowerCase() !== 'water'
+                              ? `${item.beverageName} (${item.amountMl} ml)`
+                              : `${item.amountMl} ml Water`)) ||
                           (activeTab === 'SLEEP' && `${Math.round((item.durationMinutes / 60) * 10) / 10} hrs Sleep`) ||
                           (activeTab === 'WEIGHT' && `${item.weightKg} kg`)}
                       </div>

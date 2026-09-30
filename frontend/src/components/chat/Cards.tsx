@@ -14,17 +14,22 @@ import {
 } from 'lucide-react';
 import { FoodLogList } from '../food/FoodLogList';
 import { FoodLogCard } from '../food/FoodLogCard';
+import { FoodLogEntryData } from '../food/FoodLogEntry';
 
 interface CardProps {
   cardType?: string;
   data: any;
   onSelectOption?: (text: string) => void;
+  onEditEntry?: (entry: FoodLogEntryData) => void;
+  onDeleteEntry?: (entry: FoodLogEntryData) => void;
 }
 
 export const StructuredCard: React.FC<CardProps> = ({
   cardType,
   data,
   onSelectOption,
+  onEditEntry,
+  onDeleteEntry,
 }) => {
   if (!data) return null;
 
@@ -36,19 +41,23 @@ export const StructuredCard: React.FC<CardProps> = ({
       : [];
 
     return (
-      <div className="mt-3 space-y-3">
+      <div className="mt-3 space-y-3 w-full">
         <FoodLogList
           cards={data.groupedFoodCards}
           dailySummary={data.dailyNutritionSummary}
+          onEditEntry={onEditEntry}
+          onDeleteEntry={onDeleteEntry}
         />
         {otherCards.length > 0 && (
-          <div className="space-y-2">
+          <div className="space-y-2 w-full">
             {otherCards.map((c: any, i: number) => (
               <StructuredCard
                 key={i}
                 cardType="LOG_RESULT"
                 data={c}
                 onSelectOption={onSelectOption}
+                onEditEntry={onEditEntry}
+                onDeleteEntry={onDeleteEntry}
               />
             ))}
           </div>
@@ -60,8 +69,12 @@ export const StructuredCard: React.FC<CardProps> = ({
   // 2. Direct array of GroupedFoodCards with cardType === 'FOOD_LOG_CARDS'
   if (cardType === 'FOOD_LOG_CARDS' && Array.isArray(data)) {
     return (
-      <div className="mt-3">
-        <FoodLogList cards={data} />
+      <div className="mt-3 w-full">
+        <FoodLogList
+          cards={data}
+          onEditEntry={onEditEntry}
+          onDeleteEntry={onDeleteEntry}
+        />
       </div>
     );
   }
@@ -69,8 +82,12 @@ export const StructuredCard: React.FC<CardProps> = ({
   // 3. Single Grouped Food Card
   if (data.foodKey && data.entries && data.totalQuantity !== undefined) {
     return (
-      <div className="mt-3">
-        <FoodLogCard card={data} />
+      <div className="mt-3 w-full">
+        <FoodLogCard
+          card={data}
+          onEditEntry={onEditEntry}
+          onDeleteEntry={onDeleteEntry}
+        />
       </div>
     );
   }
@@ -103,16 +120,22 @@ export const StructuredCard: React.FC<CardProps> = ({
 
   // Food Card (Legacy or Single Food Object)
   if (cardType === 'LOG_RESULT' && data.type === 'FOOD') {
-    const { food, calculatedNutrition } = data;
+    const food = data.food || data;
+    const calculatedNutrition = data.calculatedNutrition || data.nutrition;
+    const foodName = food?.name || food?.foodName || data?.foodName || 'Food Item';
+    const mealType = food?.mealType || data?.mealType || 'SNACK';
+    const quantity = food?.quantity ?? data?.quantity ?? 1;
+    const unit = food?.unit || data?.unit || 'serving';
+    const calories = calculatedNutrition?.calories ?? food?.calories ?? data?.calories ?? 0;
     return (
       <div className="mt-3 bg-slate-900/90 border border-emerald-500/30 rounded-xl p-4 shadow-lg backdrop-blur-sm">
         <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-3">
           <div className="flex items-center space-x-2 text-emerald-400 font-semibold text-sm">
             <Utensils className="w-4 h-4" />
-            <span>Food Logged: {food.name}</span>
+            <span>Food Logged: {foodName}</span>
           </div>
           <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium uppercase">
-            {food.mealType || 'SNACK'}
+            {mealType}
           </span>
         </div>
 
@@ -120,13 +143,13 @@ export const StructuredCard: React.FC<CardProps> = ({
           <div>
             <span className="text-slate-400">Portion:</span>{' '}
             <span className="text-slate-200 font-medium">
-              {food.quantity} {food.unit || 'serving'}
+              {quantity} {unit}
             </span>
           </div>
           <div>
             <span className="text-slate-400">Calories:</span>{' '}
             <span className="text-emerald-400 font-bold text-sm">
-              {calculatedNutrition?.calories ?? food.calories} kcal
+              {calories} kcal
             </span>
           </div>
         </div>
@@ -136,25 +159,25 @@ export const StructuredCard: React.FC<CardProps> = ({
           <div className="bg-slate-800/80 rounded-lg p-1.5 border border-slate-700/50">
             <div className="text-slate-400">Protein</div>
             <div className="text-blue-400 font-semibold mt-0.5">
-              {calculatedNutrition?.proteinG ?? 0}g
+              {calculatedNutrition?.proteinG ?? food?.proteinG ?? 0}g
             </div>
           </div>
           <div className="bg-slate-800/80 rounded-lg p-1.5 border border-slate-700/50">
             <div className="text-slate-400">Carbs</div>
             <div className="text-amber-400 font-semibold mt-0.5">
-              {calculatedNutrition?.carbsG ?? 0}g
+              {calculatedNutrition?.carbsG ?? food?.carbsG ?? 0}g
             </div>
           </div>
           <div className="bg-slate-800/80 rounded-lg p-1.5 border border-slate-700/50">
             <div className="text-slate-400">Fat</div>
             <div className="text-rose-400 font-semibold mt-0.5">
-              {calculatedNutrition?.fatG ?? 0}g
+              {calculatedNutrition?.fatG ?? food?.fatG ?? 0}g
             </div>
           </div>
           <div className="bg-slate-800/80 rounded-lg p-1.5 border border-slate-700/50">
             <div className="text-slate-400">Fiber</div>
             <div className="text-emerald-400 font-semibold mt-0.5">
-              {calculatedNutrition?.fiberG ?? 0}g
+              {calculatedNutrition?.fiberG ?? food?.fiberG ?? 0}g
             </div>
           </div>
         </div>
@@ -164,16 +187,22 @@ export const StructuredCard: React.FC<CardProps> = ({
 
   // Activity Card
   if (cardType === 'LOG_RESULT' && data.type === 'ACTIVITY') {
-    const { activity, calculation } = data;
+    const activity = data.activity || data;
+    const calculation = data.calculation;
+    const activityName = activity?.name || activity?.activityName || data?.title || data?.name || data?.activityName || 'Activity';
+    const met = calculation?.metValue ?? activity?.metValue ?? data?.metValue ?? 3.5;
+    const duration = calculation?.durationMinutes ?? activity?.durationMinutes ?? data?.durationMinutes ?? 0;
+    const burned = calculation?.caloriesBurned ?? activity?.caloriesBurned ?? data?.caloriesBurned ?? (data.metric ? data.metric : 0);
+    const burnedDisplay = typeof burned === 'string' ? burned : `${burned} kcal`;
     return (
-      <div className="mt-3 bg-slate-900/90 border border-amber-500/30 rounded-xl p-4 shadow-lg backdrop-blur-sm">
+      <div className="mt-3 bg-slate-900/90 border border-amber-500/30 rounded-xl p-4 shadow-lg backdrop-blur-sm w-full">
         <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-3">
           <div className="flex items-center space-x-2 text-amber-400 font-semibold text-sm">
             <Flame className="w-4 h-4" />
-            <span>Activity Logged: {activity.name}</span>
+            <span>Activity Logged: {activityName}</span>
           </div>
           <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-medium">
-            MET {calculation?.metValue ?? activity.metValue ?? 3.5}
+            {data.subtitle || `MET ${met}`}
           </span>
         </div>
 
@@ -181,13 +210,13 @@ export const StructuredCard: React.FC<CardProps> = ({
           <div>
             <span className="text-slate-400">Duration:</span>{' '}
             <span className="text-slate-200 font-medium">
-              {calculation?.durationMinutes ?? activity.durationMinutes} mins
+              {duration ? `${duration} mins` : (data.subtitle || 'Completed')}
             </span>
           </div>
           <div>
             <span className="text-slate-400">Burned:</span>{' '}
             <span className="text-amber-400 font-bold text-sm">
-              {calculation?.caloriesBurned ?? activity.caloriesBurned} kcal
+              {burnedDisplay}
             </span>
           </div>
         </div>
@@ -197,26 +226,34 @@ export const StructuredCard: React.FC<CardProps> = ({
 
   // Hydration Card
   if (cardType === 'LOG_RESULT' && data.type === 'HYDRATION') {
-    const { log, dailySummary } = data;
+    const log = data.log || data;
+    const dailySummary = data.dailySummary;
+    const amountMl = log?.amountMl ?? data?.amountMl ?? data?.amount ?? 0;
+    const totalMl = dailySummary?.totalMl ?? data?.totalMl ?? amountMl;
+    const targetMl = dailySummary?.targetMl ?? data?.targetMl ?? 2500;
     const percent = Math.min(
       100,
-      Math.round(((dailySummary?.totalMl ?? log.amountMl) / (dailySummary?.targetMl ?? 2500)) * 100),
+      Math.round(((totalMl) / (targetMl)) * 100),
     );
+    const subtitle = data.subtitle;
     return (
-      <div className="mt-3 bg-slate-900/90 border border-cyan-500/30 rounded-xl p-4 shadow-lg backdrop-blur-sm">
+      <div className="mt-3 bg-slate-900/90 border border-cyan-500/30 rounded-xl p-4 shadow-lg backdrop-blur-sm w-full">
         <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-3">
           <div className="flex items-center space-x-2 text-cyan-400 font-semibold text-sm">
             <Droplets className="w-4 h-4" />
             <span>Hydration Logged</span>
+            {subtitle && subtitle.includes(':') && (
+              <span className="text-xs text-slate-400 font-normal">({subtitle})</span>
+            )}
           </div>
-          <span className="text-cyan-400 font-bold text-sm">+{log.amountMl} ml</span>
+          <span className="text-cyan-400 font-bold text-sm">+{amountMl} ml</span>
         </div>
 
         <div className="space-y-2">
           <div className="flex justify-between text-xs text-slate-300">
             <span>Today's Total:</span>
             <span className="font-semibold text-cyan-300">
-              {dailySummary?.totalMl ?? log.amountMl} / {dailySummary?.targetMl ?? 2500} ml ({percent}%)
+              {totalMl} / {targetMl} ml ({percent}%)
             </span>
           </div>
           <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
@@ -232,7 +269,12 @@ export const StructuredCard: React.FC<CardProps> = ({
 
   // Sleep Card
   if (cardType === 'LOG_RESULT' && data.type === 'SLEEP') {
-    const { log, analysis } = data;
+    const log = data.log || data;
+    const analysis = data.analysis;
+    const quality = analysis?.quality || log?.quality || data?.quality || 'GOOD';
+    const durationMinutes = log?.durationMinutes ?? data?.durationMinutes ?? 0;
+    const hours = analysis?.hours ?? Math.floor(durationMinutes / 60);
+    const mins = analysis?.remainingMinutes ?? (durationMinutes % 60);
     return (
       <div className="mt-3 bg-slate-900/90 border border-indigo-500/30 rounded-xl p-4 shadow-lg backdrop-blur-sm">
         <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-2">
@@ -241,15 +283,14 @@ export const StructuredCard: React.FC<CardProps> = ({
             <span>Sleep Recorded</span>
           </div>
           <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 font-medium">
-            {analysis?.quality || log.quality || 'GOOD'}
+            {quality}
           </span>
         </div>
 
         <div className="text-xs text-slate-300 flex justify-between items-center mt-2">
           <span>Duration:</span>
           <span className="text-sm font-bold text-indigo-300">
-            {analysis?.hours ?? Math.floor(log.durationMinutes / 60)}h{' '}
-            {analysis?.remainingMinutes ?? (log.durationMinutes % 60)}m
+            {hours}h {mins}m
           </span>
         </div>
       </div>
@@ -258,7 +299,9 @@ export const StructuredCard: React.FC<CardProps> = ({
 
   // Weight Card
   if (cardType === 'LOG_RESULT' && data.type === 'WEIGHT') {
-    const { log, trend } = data;
+    const log = data.log || data;
+    const trend = data.trend;
+    const weightKg = log?.weightKg ?? data?.weightKg ?? data?.weight ?? 0;
     return (
       <div className="mt-3 bg-slate-900/90 border border-emerald-500/30 rounded-xl p-4 shadow-lg backdrop-blur-sm">
         <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-2">
@@ -276,7 +319,7 @@ export const StructuredCard: React.FC<CardProps> = ({
 
         <div className="text-xs text-slate-300 flex justify-between items-center mt-2">
           <span>Current Weight:</span>
-          <span className="text-sm font-bold text-emerald-400">{log.weightKg} kg</span>
+          <span className="text-sm font-bold text-emerald-400">{weightKg} kg</span>
         </div>
       </div>
     );

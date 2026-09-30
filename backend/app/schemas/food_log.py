@@ -5,11 +5,14 @@ class FoodItemInput(BaseModel):
     food: str
     quantity: Optional[float] = 1.0
     unit: Optional[str] = "serving"
-    mealType: Optional[str] = "SNACK"
+    mealType: Optional[str] = "—"
     is_recognized: Optional[bool] = True
     has_explicit_quantity: Optional[bool] = True
+    has_explicit_time: Optional[bool] = False
     requires_clarification: Optional[bool] = False
     clarification_reason: Optional[str] = None
+    logged_at: Optional[str] = None
+    raw_text: Optional[str] = None
 
 class CreateFoodLogDto(BaseModel):
     foodName: str
@@ -49,6 +52,7 @@ class FoodLogEntrySummary(BaseModel):
     mealType: str
     loggedAt: str
     timeFormatted: str
+    hasExplicitTime: bool = False
     macros: Dict[str, float] = Field(default_factory=dict)
 
 class GroupedFoodCard(BaseModel):
@@ -85,6 +89,7 @@ class FoodLoggingResult(BaseModel):
     requiresClarification: bool = False
     clarificationQuestion: Optional[str] = None
     loggedItems: List[Dict[str, Any]] = Field(default_factory=list)
+    currentGroupedFoodCards: List[GroupedFoodCard] = Field(default_factory=list)
     groupedFoodCards: List[GroupedFoodCard] = Field(default_factory=list)
     dailyNutritionSummary: DailyNutritionSummaryData
     mealTotals: Dict[str, float] = Field(default_factory=dict)

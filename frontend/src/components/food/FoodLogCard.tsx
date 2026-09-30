@@ -10,6 +10,8 @@ import {
   Droplets,
   Utensils,
   History,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 import { FoodLogEntry, FoodLogEntryData } from './FoodLogEntry';
 
@@ -37,12 +39,16 @@ interface FoodLogCardProps {
   card: GroupedFoodCardData;
   isExpanded?: boolean;
   onToggle?: () => void;
+  onEditEntry?: (entry: FoodLogEntryData) => void;
+  onDeleteEntry?: (entry: FoodLogEntryData) => void;
 }
 
 export const FoodLogCard: React.FC<FoodLogCardProps> = ({
   card,
   isExpanded = false,
   onToggle,
+  onEditEntry,
+  onDeleteEntry,
 }) => {
   // Select icon based on category or food keyword
   const renderFoodIcon = () => {
@@ -135,21 +141,22 @@ export const FoodLogCard: React.FC<FoodLogCardProps> = ({
         isExpanded
           ? 'border-emerald-500/40 shadow-lg shadow-emerald-950/20'
           : 'border-slate-800 hover:border-slate-700/80 shadow-md'
-      } backdrop-blur-sm overflow-hidden`}
+      } backdrop-blur-sm overflow-hidden w-full max-w-full box-border`}
     >
       {/* Clickable Header (Summary) */}
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={onToggle}
         onKeyDown={handleKeyDown}
         aria-expanded={isExpanded}
         aria-controls={`entries-${card.foodKey}`}
-        className="w-full text-left p-3.5 sm:p-4 flex items-center justify-between gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 rounded-2xl cursor-pointer select-none transition-colors hover:bg-slate-800/40"
+        className="w-full text-left p-3.5 sm:p-4 flex items-center justify-between gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 rounded-2xl cursor-pointer select-none transition-colors hover:bg-slate-800/40 min-w-0"
       >
-        <div className="flex items-center space-x-3 min-w-0">
+        <div className="flex items-center space-x-3 min-w-0 flex-1">
           {renderFoodIcon()}
 
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h4 className="text-sm font-semibold text-slate-100 truncate group-hover:text-emerald-300 transition-colors">
               {card.foodName}
             </h4>
@@ -159,7 +166,7 @@ export const FoodLogCard: React.FC<FoodLogCardProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center space-x-2.5 shrink-0">
+        <div className="flex items-center space-x-2 shrink-0">
           <div className="text-right hidden sm:block">
             <div className="text-xs font-bold text-emerald-400">
               {card.totalCalories} kcal
@@ -168,6 +175,40 @@ export const FoodLogCard: React.FC<FoodLogCardProps> = ({
               {card.totalQuantity} {card.unit}
             </div>
           </div>
+
+          {card.entryCount === 1 && card.entries && card.entries.length === 1 && (onEditEntry || onDeleteEntry) && (
+            <div
+              className="flex items-center space-x-1 pl-1 border-l border-slate-800"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {onEditEntry && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEditEntry(card.entries[0]);
+                  }}
+                  className="p-1 rounded text-slate-400 hover:text-emerald-400 hover:bg-slate-800 transition-colors"
+                  title="Edit food log"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+              )}
+              {onDeleteEntry && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteEntry(card.entries[0]);
+                  }}
+                  className="p-1 rounded text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-colors"
+                  title="Delete food log"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          )}
 
           <div
             className={`w-7 h-7 rounded-lg flex items-center justify-center transition-transform duration-300 text-slate-400 group-hover:text-slate-200 ${
@@ -179,13 +220,13 @@ export const FoodLogCard: React.FC<FoodLogCardProps> = ({
             <ChevronDown className="w-4 h-4" />
           </div>
         </div>
-      </button>
+      </div>
 
       {/* Expanded State (Individual History & Nutrition Totals) */}
       {isExpanded && (
         <div
           id={`entries-${card.foodKey}`}
-          className="border-t border-slate-800/80 px-3.5 sm:px-4 py-3 bg-slate-950/40 animate-fadeIn"
+          className="border-t border-slate-800/80 px-3.5 sm:px-4 py-3 bg-slate-950/40 animate-fadeIn w-full box-border"
         >
           {/* History Header */}
           <div className="flex items-center justify-between mb-2.5 text-xs text-slate-400 font-medium">
@@ -199,12 +240,14 @@ export const FoodLogCard: React.FC<FoodLogCardProps> = ({
           </div>
 
           {/* List of Entries */}
-          <div className="space-y-1.5 mb-3">
+          <div className="space-y-1.5 mb-3 w-full">
             {card.entries.map((entry, index) => (
               <FoodLogEntry
                 key={entry.id || `${card.foodKey}-entry-${index}`}
                 entry={entry}
                 index={index}
+                onEdit={onEditEntry}
+                onDelete={onDeleteEntry}
               />
             ))}
           </div>

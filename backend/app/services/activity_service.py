@@ -2,11 +2,14 @@ import uuid
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List
 from ..database import get_db
+from .time_service import TimeService
 
 class ActivityService:
     @staticmethod
     def get_met_value(activity_name: str) -> float:
         lower = activity_name.lower()
+        if "strength" in lower or "weight" in lower or "lift" in lower:
+            return 5.5
         if "squat" in lower:
             return 5.0
         if "pushup" in lower or "push-up" in lower or "push up" in lower:
@@ -37,7 +40,7 @@ class ActivityService:
             return 6.0
         if "swim" in lower:
             return 7.0
-        if "gym" in lower or "weight" in lower or "workout" in lower or "exercise" in lower or "kasrat" in lower:
+        if "gym" in lower or "workout" in lower or "exercise" in lower or "kasrat" in lower:
             return 5.0
         if "yoga" in lower:
             return 3.0
@@ -57,6 +60,8 @@ class ActivityService:
             return "Pull-ups"
         if lower in ["sit-ups", "situps", "sit up", "sit-up"]:
             return "Sit-ups"
+        if lower in ["strength training", "strength-training", "strength"]:
+            return "Strength Training"
         return n.title()
 
     @staticmethod
@@ -88,8 +93,9 @@ class ActivityService:
         Returns markdown bullet-point formatted summary with separate lines.
         """
         db = get_db()
+        local_now = TimeService.get_current_local_time()
         now = datetime.now(timezone.utc)
-        target_date_str = log_date_str or now.strftime("%Y-%m-%d")
+        target_date_str = log_date_str or local_now.strftime("%Y-%m-%d")
 
         # User weight lookup
         weight_kg = 70.0
@@ -126,6 +132,21 @@ class ActivityService:
             burned = round(met * weight_kg * (duration_val / 60.0), 1)
             total_burned += burned
 
+            # Timestamp resolution
+            act_time_input = act.get("logged_at") or act.get("time") or act.get("raw_text")
+            if act_time_input:
+                if isinstance(act_time_input, datetime):
+                    act_logged_at = act_time_input
+                else:
+                    try:
+                        act_logged_at = datetime.fromisoformat(str(act_time_input).replace("Z", "+00:00"))
+                    except Exception:
+                        act_logged_at, _ = TimeService.extract_time_from_text(str(act_time_input), reference_time=local_now)
+            else:
+                act_logged_at = local_now
+
+            time_formatted = TimeService.format_time(act_logged_at)
+
             # Format bullet point text
             if reps is not None and int(reps) > 0:
                 if sets and int(sets) > 1:
@@ -138,6 +159,8 @@ class ActivityService:
             bullet_lines.append(f"* {display_name} — {metric_str}")
 
             log_id = str(uuid.uuid4())
+            act_date_str = act_logged_at.strftime("%Y-%m-%d") if hasattr(act_logged_at, "strftime") else target_date_str
+            act_iso = act_logged_at.isoformat() if hasattr(act_logged_at, "isoformat") else str(act_logged_at)
             doc = {
                 "id": log_id,
                 "user_id": user_id,
@@ -148,16 +171,21 @@ class ActivityService:
                 "calories_burned": burned,
                 "met_value": met,
                 "intensity": act.get("intensity", "MEDIUM"),
-                "log_date": target_date_str,
+                "log_date": act_date_str,
                 "created_at": now,
-                "logged_at": now,
+                "logged_at": act_iso,
             }
 
             if db is not None:
                 await db.daily_exercise_logs.insert_one(doc)
-            doc.pop("_id", None)
+            doc_copy = dict(doc)
+            doc_copy.pop("_id", None)
+            if hasattr(doc_copy.get("created_at"), "isoformat"):
+                doc_copy["created_at"] = doc_copy["created_at"].isoformat()
+            if hasattr(doc_copy.get("logged_at"), "isoformat"):
+                doc_copy["logged_at"] = doc_copy["logged_at"].isoformat()
 
-            inserted_docs.append(doc)
+            inserted_docs.append(doc_copy)
             calc_data = {
                 "activityName": display_name,
                 "durationMinutes": duration_val,
@@ -165,6 +193,8 @@ class ActivityService:
                 "sets": sets,
                 "caloriesBurned": burned,
                 "metValue": met,
+                "loggedAt": doc_copy["logged_at"],
+                "timeFormatted": time_formatted,
             }
             calculations.append(calc_data)
 
