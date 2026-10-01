@@ -1,8 +1,10 @@
 import re
 import uuid
 import difflib
+import logging
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
+from rapidfuzz import process as _fuzz_process, fuzz as _fuzz
 from ..database import get_db
 from .agent_nlp import AgentNLP, INDIAN_FOOD_SYNONYMS
 from .time_service import TimeService
@@ -101,6 +103,51 @@ CANONICAL_INDIAN_FOOD_PROFILES: Dict[str, Dict[str, Any]] = {
     "Oats": {"food_id": "canon_oats", "food_name": "Oats", "calories": 150.0, "protein_g": 5.0, "carbs_g": 27.0, "fat_g": 2.5, "fiber_g": 4.0, "unit": "bowl"},
     "Water": {"food_id": "canon_water", "food_name": "Water", "calories": 0.0, "protein_g": 0.0, "carbs_g": 0.0, "fat_g": 0.0, "fiber_g": 0.0, "unit": "glass"},
 }
+
+_logger = logging.getLogger("food_service")
+
+# ---------------------------------------------------------------------------
+# Fuzzy vocabulary — built once from canonical profiles + ASCII synonym keys
+# ---------------------------------------------------------------------------
+_FUZZY_VOCAB: Dict[str, str] = {}
+
+
+def _get_fuzzy_vocab() -> Dict[str, str]:
+    """Return (and lazily build) the flat lower-cased vocab used by fuzzy_canonical.
+
+    Keys are lower-cased food name strings; values are the target canonical food
+    name as it appears in CANONICAL_INDIAN_FOOD_PROFILES.
+    """
+    if not _FUZZY_VOCAB:
+        for name in CANONICAL_INDIAN_FOOD_PROFILES:
+            _FUZZY_VOCAB[name.lower()] = name
+        for key, target in INDIAN_FOOD_SYNONYMS.items():
+            if key.isascii():
+                _FUZZY_VOCAB.setdefault(key.lower(), target)
+    return _FUZZY_VOCAB
+
+
+def fuzzy_canonical(term: str, cutoff: float = 80.0) -> Optional[str]:
+    """Typo-tolerant lookup against canonical food names and ASCII synonym keys.
+
+    Uses ``fuzz.ratio`` (not WRatio) to prevent short tokens such as "pan"
+    from matching multi-word names like "Paneer Bhurji".
+
+    Args:
+        term:   Raw or pre-cleaned food name (ASCII, lower-cased internally).
+        cutoff: Minimum ratio score (0–100) to accept a match. Default 80.
+
+    Returns:
+        The target canonical food name string, or ``None`` if no match exceeds
+        the cutoff or the term is too short / non-ASCII.
+    """
+    term = term.strip().lower()
+    if len(term) < 4 or not term.isascii():
+        return None
+    vocab = _get_fuzzy_vocab()
+    hit = _fuzz_process.extractOne(term, vocab.keys(), scorer=_fuzz.ratio, score_cutoff=cutoff)
+    return vocab[hit[0]] if hit else None
+
 
 class FoodService:
     @staticmethod
@@ -275,8 +322,8 @@ class FoodService:
             FoodTermsCache.terms = list(terms_map.keys())
             FoodTermsCache.term_to_food_id = terms_map
             FoodTermsCache.is_loaded = True
-        except Exception:
-            pass
+        except Exception as exc:
+            _logger.warning("Food terms cache load failed: %s", exc)
 
     @staticmethod
     async def resolve_food(food_query: str) -> Dict[str, Any]:
@@ -345,6 +392,15 @@ class FoodService:
         for c_name, c_prof in CANONICAL_INDIAN_FOOD_PROFILES.items():
             if c_name.lower() == clean_q or c_name.lower() == q:
                 return {**c_prof, "is_recognized": True, "requires_clarification": False}
+
+        # Step 1b: typo-tolerant match on canonical names + synonym keys
+        if not synonym_target:
+            fuzzy_target = fuzzy_canonical(clean_q)
+            if fuzzy_target:
+                if fuzzy_target in CANONICAL_INDIAN_FOOD_PROFILES:
+                    return {**CANONICAL_INDIAN_FOOD_PROFILES[fuzzy_target],
+                            "is_recognized": True, "requires_clarification": False}
+                synonym_target = fuzzy_target
 
         search_term = synonym_target.lower() if synonym_target else clean_q
 

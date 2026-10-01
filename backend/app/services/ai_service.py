@@ -1,7 +1,9 @@
 import json
 import re
+import asyncio
 import aiohttp
 import logging
+from pathlib import Path
 from typing import Dict, Any, Optional, List
 from ..config import settings
 from .agent_nlp import AgentNLP
@@ -9,6 +11,28 @@ from .fitness_advisory_service import FitnessAdvisoryService
 
 logger = logging.getLogger("ai_service")
 
+# ---------------------------------------------------------------------------
+# FitBot system prompt — loaded once at import time from the prompts file.
+# The file content can be swapped without code changes.
+# ---------------------------------------------------------------------------
+_PROMPT_FILE = Path(__file__).parent.parent.parent / "prompts" / "fitbot_system_prompt.txt"
+
+def _load_fitbot_system_prompt() -> str:
+    """Load the FitBot system prompt from disk, falling back to an inline stub."""
+    try:
+        text = _PROMPT_FILE.read_text(encoding="utf-8").strip()
+        logger.info("FitBot system prompt loaded: %d characters from %s", len(text), _PROMPT_FILE)
+        return text
+    except Exception as exc:
+        logger.warning("Could not load fitbot_system_prompt.txt (%s); using inline stub.", exc)
+        return (
+            "You are FitBot, a precise fitness assistant. "
+            "Help users log food and exercise. Never invent kcal values."
+        )
+
+FITBOT_SYSTEM_PROMPT: str = _load_fitbot_system_prompt()
+
+# Keep legacy name so any existing internal references still work
 SYSTEM_PROMPT = """You are Google Fitness AI, an elite multilingual fitness and nutrition agent.
 Your mission is to understand user health messages with 100% accuracy, even when users:
 - Make severe spelling mistakes or typos (e.g., "khapli rti", "banaana", "chiken", "pneer", "dudh", "chawal", "bhindi")
@@ -323,34 +347,156 @@ class AIService:
         return result
 
     @staticmethod
-    async def _call_cloudflare(message: str, history: Optional[List[Dict[str, str]]] = None) -> Optional[Dict[str, Any]]:
-        url = f"https://api.cloudflare.com/client/v4/accounts/{settings.CF_ACCOUNT_ID}/ai/run/{settings.CF_MODEL}"
+    async def _call_cloudflare(
+        message: str,
+        history: Optional[List[Dict[str, str]]] = None,
+        *,
+        model: Optional[str] = None,
+        system_prompt: Optional[str] = None,
+        temperature: float = 0.2,
+        max_tokens: int = 800,
+        timeout_secs: int = 60,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Call Cloudflare Workers AI (default: GLM 4.7 Flash).
+
+        Supports both response shapes:
+          - data["result"]["response"]                          (Workers AI text models)
+          - data["result"]["choices"][0]["message"]["content"]  (OpenAI-compat models)
+
+        Strips <think>...</think> reasoning blocks before JSON parsing.
+        Retries once on transient errors (5xx, timeout, connection error).
+
+        Args:
+            message:      The user turn content to send.
+            history:      Previous conversation turns (last 6 used).
+            model:        Override CF_MODEL; defaults to settings.CF_MODEL which
+                          should be set to @cf/zai-org/glm-4.7-flash in .env.
+            system_prompt: Override the system prompt; defaults to FITBOT_SYSTEM_PROMPT.
+            temperature:  Sampling temperature (default 0.2 for precision).
+            max_tokens:   Max reply tokens (default 800).
+            timeout_secs: Request timeout in seconds (default 60).
+
+        Returns:
+            Parsed dict from the JSON response, or None on failure.
+        """
+        active_model = model or settings.CF_MODEL
+        active_system = system_prompt or FITBOT_SYSTEM_PROMPT
+
+        url = (
+            f"https://api.cloudflare.com/client/v4/accounts/"
+            f"{settings.CF_ACCOUNT_ID}/ai/run/{active_model}"
+        )
         headers = {
             "Authorization": f"Bearer {settings.CF_API_TOKEN}",
             "Content-Type": "application/json",
         }
-        
-        messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+
+        messages = [{"role": "system", "content": active_system}]
         if history:
-            for h in history[-4:]:
+            for h in history[-6:]:
                 messages.append({"role": h.get("role", "user"), "content": h.get("content", "")})
         messages.append({"role": "user", "content": message})
 
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, headers=headers, json={"messages": messages, "max_tokens": 1024, "temperature": 0.1}, timeout=15) as res:
-                if res.status != 200:
-                    text = await res.text()
-                    logger.warning(f"Cloudflare returned status {res.status}: {text}")
-                data = await res.json()
-                result_data = data.get("result", {})
-                if isinstance(result_data, dict):
-                    if "choices" in result_data and len(result_data["choices"]) > 0:
-                        raw_reply = result_data["choices"][0].get("message", {}).get("content", "")
-                    else:
-                        raw_reply = result_data.get("response", "")
-                else:
-                    raw_reply = str(result_data)
-                return AIService._parse_json(raw_reply)
+        payload = {
+            "messages": messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+        }
+
+        last_exc: Optional[Exception] = None
+        for attempt in range(2):   # one retry on failure
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(
+                        url,
+                        headers=headers,
+                        json=payload,
+                        timeout=aiohttp.ClientTimeout(total=timeout_secs),
+                    ) as res:
+                        if res.status >= 500:
+                            body = await res.text()
+                            logger.warning(
+                                "Cloudflare %s attempt %d: HTTP %d — %s",
+                                active_model, attempt + 1, res.status, body[:200],
+                            )
+                            last_exc = RuntimeError(f"HTTP {res.status}")
+                            if attempt == 0:
+                                await asyncio.sleep(1)
+                            continue
+                        if res.status != 200:
+                            body = await res.text()
+                            logger.warning(
+                                "Cloudflare %s: HTTP %d — %s",
+                                active_model, res.status, body[:200],
+                            )
+                            return None
+
+                        data = await res.json()
+                        raw_reply = AIService._extract_cf_response_text(data)
+                        if raw_reply is None:
+                            logger.warning("Cloudflare response had no text content: %s", str(data)[:300])
+                            return None
+                        return AIService._parse_json(raw_reply)
+
+            except (aiohttp.ClientError, asyncio.TimeoutError) as exc:
+                logger.warning(
+                    "Cloudflare %s attempt %d failed: %s", active_model, attempt + 1, exc
+                )
+                last_exc = exc
+                if attempt == 0:
+                    await asyncio.sleep(1)
+
+        logger.error("Cloudflare call failed after 2 attempts: %s", last_exc)
+        return None
+
+    @staticmethod
+    def _extract_cf_response_text(data: Dict[str, Any]) -> Optional[str]:
+        """
+        Extract the text content from a Cloudflare Workers AI response.
+
+        Handles both response shapes and strips <think>...</think> blocks
+        that reasoning models (GLM 4.7, DeepSeek-R1) emit.
+
+        Args:
+            data: Parsed JSON response from the Cloudflare API.
+
+        Returns:
+            The cleaned text string, or None if not found.
+        """
+        result_data = data.get("result", {})
+
+        if isinstance(result_data, dict):
+            # Shape 1: OpenAI-compat — choices[0].message.content
+            choices = result_data.get("choices") or []
+            if choices and isinstance(choices[0], dict):
+                raw = choices[0].get("message", {}).get("content", "")
+                if raw:
+                    return AIService._strip_reasoning(raw)
+
+            # Shape 2: Workers AI text — result.response
+            raw = result_data.get("response", "")
+            if raw:
+                return AIService._strip_reasoning(raw)
+
+        elif isinstance(result_data, str) and result_data:
+            return AIService._strip_reasoning(result_data)
+
+        return None
+
+    @staticmethod
+    def _strip_reasoning(text: str) -> str:
+        """
+        Remove <think>...</think> reasoning blocks emitted by GLM / DeepSeek models.
+
+        Args:
+            text: Raw LLM output string.
+
+        Returns:
+            Cleaned string with reasoning blocks removed and whitespace trimmed.
+        """
+        cleaned = re.sub(r"<think>[\s\S]*?</think>", "", text, flags=re.IGNORECASE)
+        return cleaned.strip()
 
     @staticmethod
     async def _call_groq(message: str, history: Optional[List[Dict[str, str]]] = None) -> Optional[Dict[str, Any]]:
@@ -376,23 +522,23 @@ class AIService:
 
     @staticmethod
     def _parse_json(raw: str) -> Optional[Dict[str, Any]]:
-        cleaned = re.sub(r"<think>[\s\S]*?</think>", "", raw, flags=re.IGNORECASE).strip()
-        match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", cleaned)
-        if match:
-            cleaned = match.group(1).strip()
-        elif "{" in cleaned:
-            start = cleaned.find("{")
-            end = cleaned.rfind("}")
-            if start != -1 and end != -1:
-                cleaned = cleaned[start:end+1]
-        
-        try:
-            parsed = json.loads(cleaned)
-            if "entities" not in parsed:
-                parsed["entities"] = {}
-            return parsed
-        except Exception:
-            return None
+        """
+        Extract and parse the first JSON object from a raw LLM response.
+
+        Delegates to food_matcher.parse_llm_json which handles:
+          - <think>...</think> stripping
+          - ```json fences
+          - First { ... } extraction
+          - Safe json.loads with fallback to None
+
+        Args:
+            raw: Raw string output from the LLM.
+
+        Returns:
+            Parsed dict, or None on failure.
+        """
+        from .food_matcher import parse_llm_json  # avoid circular import at module level
+        return parse_llm_json(raw)
 
     @staticmethod
     def _rule_based_fallback(original_message: str, pre_processed: str) -> Dict[str, Any]:

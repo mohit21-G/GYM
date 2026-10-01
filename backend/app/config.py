@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
     CF_ACCOUNT_ID: str = os.getenv("CF_ACCOUNT_ID", "")
     CF_API_TOKEN: str = os.getenv("CF_API_TOKEN", "")
-    CF_MODEL: str = os.getenv("CF_MODEL", "@cf/meta/llama-3.1-8b-instruct")
+    CF_MODEL: str = os.getenv("CF_MODEL", "@cf/zai-org/glm-4.7-flash")
     SARVAM_API_KEY: str = os.getenv("SARVAM_API_KEY", "")
     AI_PROVIDER: str = os.getenv("AI_PROVIDER", "auto")  # options: auto, groq, cloudflare, rule_based
     
