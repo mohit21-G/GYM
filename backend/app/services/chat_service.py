@@ -545,26 +545,13 @@ class ChatService:
             remaining_water = hydration.get("remainingMl")
             is_met = hydration.get("targetMet", False)
 
-            # Query today's hydration logs FOR THIS SESSION to show isolated timeline/details
-            cursor = db.hydration_logs.find({"user_id": user_id, "session_id": session_id, "log_date": today_str}).sort("created_at", 1)
-            all_today_hyd = await cursor.to_list(length=100) if db is not None else []
-            card_entries = []
-            if all_today_hyd:
-                for entry_doc in all_today_hyd:
-                    doc_dt = entry_doc.get("logged_at") or entry_doc.get("created_at")
-                    t_str = TimeService.format_time(doc_dt)
-                    doc_bev = entry_doc.get("beverage_name") or entry_doc.get("notes") or "Water"
-                    card_entries.append({
-                        "time": t_str,
-                        "amountMl": int(entry_doc.get("amount_ml", 0)),
-                        "beverageName": doc_bev,
-                    })
-            else:
-                card_entries = [{
-                    "time": time_label,
-                    "amountMl": int(amount),
-                    "beverageName": bev_name,
-                }]
+            # Show ONLY the entry just logged in this message — not the whole day's
+            # timeline. The running daily total is still shown in the progress bar.
+            card_entries = [{
+                "time": time_label,
+                "amountMl": int(amount),
+                "beverageName": bev_name,
+            }]
 
             if has_target and target_water:
                 if is_met:
@@ -603,7 +590,7 @@ class ChatService:
                     "cards": [{
                         "type": "HYDRATION",
                         "title": "Daily Hydration Progress",
-                        "subtitle": f"{len(card_entries)} {'entry' if len(card_entries) == 1 else 'entries'} logged today",
+                        "subtitle": f"Just logged {int(amount)} ml {bev_name}",
                         "metric": f"{int(total_water)} ml",
                         "amountMl": int(amount),
                         "totalMl": int(total_water),
@@ -881,27 +868,15 @@ class ChatService:
             today_water_target = dashboard_data["hydration"].get("targetMl")
             has_water_target = bool(dashboard_data["hydration"].get("hasTarget"))
 
-            # Query today's hydration logs FOR THIS SESSION to show isolated timeline/details
-            cursor = db.hydration_logs.find({"user_id": user_id, "session_id": session_id, "log_date": today_str}).sort("created_at", 1)
-            all_today_hyd = await cursor.to_list(length=100) if db is not None else []
-            card_entries = []
-            if all_today_hyd:
-                for entry_doc in all_today_hyd:
-                    doc_dt = entry_doc.get("logged_at") or entry_doc.get("created_at")
-                    t_str = TimeService.format_time(doc_dt)
-                    doc_bev = entry_doc.get("beverage_name") or entry_doc.get("notes") or "Water"
-                    card_entries.append({
-                        "time": t_str,
-                        "amountMl": int(entry_doc.get("amount_ml", 0)),
-                        "beverageName": doc_bev,
-                    })
-            else:
-                card_entries = hyd_entries
+            # Show ONLY the entries from THIS message — not the whole day's timeline.
+            # (A single message may contain multiple water entries, e.g. "300ml + 400ml".)
+            # The running daily total is still shown in the progress bar.
+            card_entries = hyd_entries
 
             cards.append({
                 "type": "HYDRATION",
                 "title": "Daily Hydration Progress",
-                "subtitle": f"{len(card_entries)} {'entry' if len(card_entries) == 1 else 'entries'} logged today",
+                "subtitle": f"{len(card_entries)} {'entry' if len(card_entries) == 1 else 'entries'} just logged",
                 "amountMl": int(batch_water_total),
                 "totalMl": int(today_water_total),
                 "targetMl": int(today_water_target) if today_water_target else None,

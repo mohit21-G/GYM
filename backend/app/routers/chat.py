@@ -173,12 +173,12 @@ async def get_session_messages(
             except Exception:
                 pass
 
-        if raw_ent and isinstance(raw_ent, dict) and "groupedFoodCards" in raw_ent:
+        if raw_ent and isinstance(raw_ent, dict) and raw_ent.get("groupedFoodCards"):
             from datetime import datetime, timezone
             from ..services.food_service import FoodService
             from ..services.time_service import TimeService
 
-            cards = raw_ent.get("groupedFoodCards", [])
+            cards = raw_ent.get("groupedFoodCards") or []
             new_cards = []
             for card in cards:
                 entries = card.get("entries", [])
