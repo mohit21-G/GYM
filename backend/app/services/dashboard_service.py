@@ -7,11 +7,15 @@ class DashboardService:
     async def get_today_dashboard(user_id: str, date_str: str) -> Dict[str, Any]:
         db = get_db()
         
-        # User & profile target calories
+        # User & profile targets
         user = await db.users.find_one({"id": user_id}) or await db.users.find_one({"user_id": user_id}) or {}
         profile = user.get("profile") or {}
         target_cal = float(profile.get("dailyCalorieTarget") or 2000.0)
-        target_water = float(profile.get("dailyWaterMlTarget") or 2500.0)
+        
+        explicit_water_target = profile.get("dailyWaterMlTarget")
+        has_water_target = bool(explicit_water_target is not None and float(explicit_water_target) > 0)
+        target_water = float(explicit_water_target) if has_water_target else None
+
         target_sleep = float(profile.get("dailySleepMinutesTarget") or 480.0)
 
         # 1. Food logs
@@ -73,11 +77,12 @@ class DashboardService:
             "hydration": {
                 "amountMl": round(water_total),
                 "consumedMl": round(water_total),
-                "targetMl": target_water,
-                "percent": min(100, int((water_total / target_water) * 100)) if target_water > 0 else 0,
-                "percentTarget": min(100, int((water_total / target_water) * 100)) if target_water > 0 else 0,
-                "remainingMl": max(0, round(target_water - water_total)),
-                "targetMet": water_total >= target_water,
+                "targetMl": round(target_water) if target_water else None,
+                "hasTarget": has_water_target,
+                "percent": min(100, int((water_total / target_water) * 100)) if (target_water and target_water > 0) else None,
+                "percentTarget": min(100, int((water_total / target_water) * 100)) if (target_water and target_water > 0) else None,
+                "remainingMl": max(0, round(target_water - water_total)) if target_water else None,
+                "targetMet": (water_total >= target_water) if target_water else False,
             },
             "sleep": {
                 "totalMinutes": round(sleep_total),

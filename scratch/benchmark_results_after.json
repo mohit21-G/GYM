@@ -1,0 +1,308 @@
+{
+  "total_cases": 1085,
+  "intent_accuracy": 86.27,
+  "overall_accuracy": 81.57,
+  "precision": 89.13,
+  "recall": 84.94,
+  "f1": 86.98,
+  "multi_item_recall": 70.82,
+  "false_positive_rate": 0.0,
+  "latencies": {
+    "avg": 41.05,
+    "p50": 37.34,
+    "p95": 86.57,
+    "p99": 121.5
+  },
+  "level_breakdown": {
+    "L0": {
+      "total": 296,
+      "correct": 254,
+      "accuracy": 85.81
+    },
+    "L1": {
+      "total": 285,
+      "correct": 213,
+      "accuracy": 74.74
+    },
+    "L2": {
+      "total": 200,
+      "correct": 180,
+      "accuracy": 90.0
+    },
+    "L3": {
+      "total": 176,
+      "correct": 110,
+      "accuracy": 62.5
+    },
+    "L5": {
+      "total": 128,
+      "correct": 128,
+      "accuracy": 100.0
+    }
+  },
+  "llm_stats": {
+    "total_requests": 1085,
+    "deterministic_only": 1085,
+    "fuzzy_matcher_invoked": 0,
+    "llm_attempted": 0,
+    "cloudflare": 0,
+    "groq": 0
+  },
+  "representatives": [
+    {
+      "input": "2 roti and 1 bowl dal",
+      "expected": "Intent: CREATE_FOOD_LOG, Entities: ['Roti', 'Dal']",
+      "after_intent": "CREATE_FOOD_LOG",
+      "after_entities": [
+        "Roti",
+        "Toor Dal"
+      ],
+      "route_decision": "DETERMINISTIC_HIGH_CONFIDENCE",
+      "llm_used": false,
+      "is_success": true,
+      "level": "L0"
+    },
+    {
+      "input": "2 roti and 1 bowl dal",
+      "expected": "Intent: CREATE_FOOD_LOG, Entities: ['Roti', 'Dal']",
+      "after_intent": "CREATE_FOOD_LOG",
+      "after_entities": [
+        "Roti",
+        "Toor Dal"
+      ],
+      "route_decision": "DETERMINISTIC_HIGH_CONFIDENCE",
+      "llm_used": false,
+      "is_success": true,
+      "level": "L0"
+    },
+    {
+      "input": "2 roti and 1 bowl dal",
+      "expected": "Intent: CREATE_FOOD_LOG, Entities: ['Roti', 'Dal']",
+      "after_intent": "CREATE_FOOD_LOG",
+      "after_entities": [
+        "Roti",
+        "Toor Dal"
+      ],
+      "route_decision": "DETERMINISTIC_HIGH_CONFIDENCE",
+      "llm_used": false,
+      "is_success": true,
+      "level": "L0"
+    },
+    {
+      "input": "30 minutes walking",
+      "expected": "Intent: CREATE_ACTIVITY_LOG, Entities: ['Walking']",
+      "after_intent": "CREATE_ACTIVITY_LOG",
+      "after_entities": [
+        "Walking"
+      ],
+      "route_decision": "DETERMINISTIC_HIGH_CONFIDENCE",
+      "llm_used": false,
+      "is_success": true,
+      "level": "L0"
+    },
+    {
+      "input": "30 minutes walking",
+      "expected": "Intent: CREATE_ACTIVITY_LOG, Entities: ['Walking']",
+      "after_intent": "CREATE_ACTIVITY_LOG",
+      "after_entities": [
+        "Walking"
+      ],
+      "route_decision": "DETERMINISTIC_HIGH_CONFIDENCE",
+      "llm_used": false,
+      "is_success": true,
+      "level": "L0"
+    },
+    {
+      "input": "2 rotli khadhi",
+      "expected": "Intent: CREATE_FOOD_LOG, Entities: ['Roti']",
+      "after_intent": "CREATE_FOOD_LOG",
+      "after_entities": [
+        "Roti"
+      ],
+      "route_decision": "DETERMINISTIC_HIGH_CONFIDENCE",
+      "llm_used": false,
+      "is_success": true,
+      "level": "L1"
+    },
+    {
+      "input": "2 rotli khadhi",
+      "expected": "Intent: CREATE_FOOD_LOG, Entities: ['Roti']",
+      "after_intent": "CREATE_FOOD_LOG",
+      "after_entities": [
+        "Roti"
+      ],
+      "route_decision": "DETERMINISTIC_HIGH_CONFIDENCE",
+      "llm_used": false,
+      "is_success": true,
+      "level": "L1"
+    },
+    {
+      "input": "2 rotli khadhi",
+      "expected": "Intent: CREATE_FOOD_LOG, Entities: ['Roti']",
+      "after_intent": "CREATE_FOOD_LOG",
+      "after_entities": [
+        "Roti"
+      ],
+      "route_decision": "DETERMINISTIC_HIGH_CONFIDENCE",
+      "llm_used": false,
+      "is_success": true,
+      "level": "L1"
+    },
+    {
+      "input": "2rotli and 1bowl dahl",
+      "expected": "Intent: CREATE_FOOD_LOG, Entities: ['Roti', 'Dal']",
+      "after_intent": "CREATE_FOOD_LOG",
+      "after_entities": [
+        "Roti",
+        "Toor Dal"
+      ],
+      "route_decision": "DETERMINISTIC_HIGH_CONFIDENCE",
+      "llm_used": false,
+      "is_success": true,
+      "level": "L2"
+    },
+    {
+      "input": "2rotli and 1bowl dahl",
+      "expected": "Intent: CREATE_FOOD_LOG, Entities: ['Roti', 'Dal']",
+      "after_intent": "CREATE_FOOD_LOG",
+      "after_entities": [
+        "Roti",
+        "Toor Dal"
+      ],
+      "route_decision": "DETERMINISTIC_HIGH_CONFIDENCE",
+      "llm_used": false,
+      "is_success": true,
+      "level": "L2"
+    },
+    {
+      "input": "aaj savare 2 boiled egg and 1 toast pachi 1 glass dudh lidhu",
+      "expected": "Intent: CREATE_FOOD_LOG, Entities: ['Boiled Egg', 'Brown Bread Toast', 'Cow Milk (Toned)']",
+      "after_intent": "CREATE_FOOD_LOG",
+      "after_entities": [
+        "Boiled Egg",
+        "Toast",
+        "Cow Milk (Toned)"
+      ],
+      "route_decision": "DETERMINISTIC_HIGH_CONFIDENCE",
+      "llm_used": false,
+      "is_success": true,
+      "level": "L3"
+    },
+    {
+      "input": "aaj savare 2 boiled egg and 1 toast pachi 1 glass dudh lidhu",
+      "expected": "Intent: CREATE_FOOD_LOG, Entities: ['Boiled Egg', 'Brown Bread Toast', 'Cow Milk (Toned)']",
+      "after_intent": "CREATE_FOOD_LOG",
+      "after_entities": [
+        "Boiled Egg",
+        "Toast",
+        "Cow Milk (Toned)"
+      ],
+      "route_decision": "DETERMINISTIC_HIGH_CONFIDENCE",
+      "llm_used": false,
+      "is_success": true,
+      "level": "L3"
+    },
+    {
+      "input": "3 roti, paneer, dal, rice, chaas, papad",
+      "expected": "Intent: CREATE_FOOD_LOG, Entities: ['Roti', 'Paneer', 'Dal', 'Cooked White Rice', 'Spiced Buttermilk (Chaas)', 'Papad (Roasted)']",
+      "after_intent": "CREATE_FOOD_LOG",
+      "after_entities": [
+        "Roti",
+        "Paneer",
+        "Toor Dal",
+        "Cooked White Rice",
+        "Spiced Buttermilk (Chaas)",
+        "Papad"
+      ],
+      "route_decision": "DETERMINISTIC_HIGH_CONFIDENCE",
+      "llm_used": false,
+      "is_success": true,
+      "level": "L3"
+    },
+    {
+      "input": "3 roti, paneer, dal, rice, chaas, papad",
+      "expected": "Intent: CREATE_FOOD_LOG, Entities: ['Roti', 'Paneer', 'Dal', 'Cooked White Rice', 'Spiced Buttermilk (Chaas)', 'Papad (Roasted)']",
+      "after_intent": "CREATE_FOOD_LOG",
+      "after_entities": [
+        "Roti",
+        "Paneer",
+        "Toor Dal",
+        "Cooked White Rice",
+        "Spiced Buttermilk (Chaas)",
+        "Papad"
+      ],
+      "route_decision": "DETERMINISTIC_HIGH_CONFIDENCE",
+      "llm_used": false,
+      "is_success": true,
+      "level": "L3"
+    },
+    {
+      "input": "chkn bresst 150gm and brwn rce 1 bwl",
+      "expected": "Intent: CREATE_FOOD_LOG, Entities: ['Chicken Breast (Cooked)', 'Cooked White Rice']",
+      "after_intent": "CREATE_FOOD_LOG",
+      "after_entities": [
+        "Chicken Breast",
+        "Cooked White Rice"
+      ],
+      "route_decision": "DETERMINISTIC_HIGH_CONFIDENCE",
+      "llm_used": false,
+      "is_success": true,
+      "level": "L5"
+    },
+    {
+      "input": "wlaked for 45 mins",
+      "expected": "Intent: CREATE_ACTIVITY_LOG, Entities: ['Walking']",
+      "after_intent": "CREATE_ACTIVITY_LOG",
+      "after_entities": [
+        "Walking"
+      ],
+      "route_decision": "DETERMINISTIC_HIGH_CONFIDENCE",
+      "llm_used": false,
+      "is_success": true,
+      "level": "L5"
+    },
+    {
+      "input": "skwats 25 reps n 3 st bnk prss",
+      "expected": "Intent: CREATE_ACTIVITY_LOG, Entities: ['Squats', 'Bench Press']",
+      "after_intent": "CREATE_ACTIVITY_LOG",
+      "after_entities": [
+        "Squats",
+        "Bench Press"
+      ],
+      "route_decision": "DETERMINISTIC_HIGH_CONFIDENCE",
+      "llm_used": false,
+      "is_success": true,
+      "level": "L5"
+    },
+    {
+      "input": "Should I take whey protein daily?",
+      "expected": "Intent: NUTRITION_QUESTION, Entities: []",
+      "after_intent": "GENERAL_CHAT",
+      "after_entities": [],
+      "route_decision": "DETERMINISTIC_HIGH_CONFIDENCE",
+      "llm_used": false,
+      "is_success": true,
+      "level": "L0"
+    },
+    {
+      "input": "dal ma ketli protein hoy chhe?",
+      "expected": "Intent: NUTRITION_QUESTION, Entities: []",
+      "after_intent": "GENERAL_CHAT",
+      "after_entities": [],
+      "route_decision": "DETERMINISTIC_HIGH_CONFIDENCE",
+      "llm_used": false,
+      "is_success": true,
+      "level": "L1"
+    },
+    {
+      "input": "thakor nu dabbu khali",
+      "expected": "Intent: GENERAL_CHAT, Entities: []",
+      "after_intent": "GENERAL_CHAT",
+      "after_entities": [],
+      "route_decision": "DETERMINISTIC_HIGH_CONFIDENCE",
+      "llm_used": false,
+      "is_success": true,
+      "level": "L1"
+    }
+  ]
+}

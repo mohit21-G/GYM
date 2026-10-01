@@ -1,10 +1,13 @@
 import json
+import uuid as _uuid_module
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List, Dict, Any, Optional
 from ..database import get_db
 from ..schemas.chat import SendMessageDto, ChatResponsePayload
 from ..services.auth_service import get_current_user
 from ..services.chat_service import ChatService
+from ..services.time_service import TimeService
 
 router = APIRouter(prefix="/chat", tags=["Chatbot"])
 
@@ -21,6 +24,98 @@ async def send_message(
     )
     return result
 
+
+@router.get("/today")
+async def get_or_create_today_session(
+    current_user: dict = Depends(get_current_user),
+):
+    """Return the session for today's Asia/Kolkata date, creating one if needed.
+
+    Guarantees at most one session per user per calendar day.  The title is set
+    to "Fitness Chat — {MMM D, YYYY}" so the sidebar shows the human date.
+    """
+    db = get_db()
+    user_id = current_user.get("id") or str(current_user.get("_id"))
+    today_str = TimeService.get_current_local_date_str()   # "YYYY-MM-DD" in IST
+
+    # Try to find an existing today session (stored by log_date tag)
+    existing = await db.chat_sessions.find_one(
+        {"user_id": user_id, "log_date": today_str, "is_archived": False}
+    )
+    if existing:
+        return {
+            "id": existing["id"],
+            "title": existing.get("title", "Fitness Conversation"),
+            "log_date": today_str,
+            "created": False,
+        }
+
+    # Create a new session for today
+    now_utc = datetime.now(timezone.utc)
+    local_dt = TimeService.get_current_local_datetime()
+    human_date = local_dt.strftime("%b %d, %Y").replace(" 0", " ") if hasattr(local_dt, "strftime") else today_str
+    session_id = str(_uuid_module.uuid4())
+    title = f"Fitness Chat — {human_date}"
+
+    await db.chat_sessions.insert_one({
+        "id": session_id,
+        "user_id": user_id,
+        "title": title,
+        "log_date": today_str,
+        "is_archived": False,
+        "created_at": now_utc,
+        "updated_at": now_utc,
+    })
+    return {
+        "id": session_id,
+        "title": title,
+        "log_date": today_str,
+        "created": True,
+    }
+
+
+@router.patch("/sessions/{session_id}/title")
+async def update_session_title(
+    session_id: str,
+    body: Dict[str, Any],
+    current_user: dict = Depends(get_current_user),
+):
+    """Update the human-readable title of a conversation session."""
+    db = get_db()
+    user_id = current_user.get("id") or str(current_user.get("_id"))
+    title = (body.get("title") or "").strip()
+    if not title:
+        raise HTTPException(status_code=422, detail="title must not be empty")
+
+    result = await db.chat_sessions.update_one(
+        {"id": session_id, "user_id": user_id},
+        {"$set": {"title": title, "is_custom_title": True, "updated_at": datetime.now(timezone.utc)}},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return {"id": session_id, "title": title}
+
+
+@router.delete("/sessions/{session_id}")
+async def delete_session(
+    session_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    """Delete / archive a single conversation session and its messages."""
+    db = get_db()
+    user_id = current_user.get("id") or str(current_user.get("_id"))
+
+    result = await db.chat_sessions.update_one(
+        {"id": session_id, "user_id": user_id},
+        {"$set": {"is_archived": True, "updated_at": datetime.now(timezone.utc)}},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    await db.conversation_messages.delete_many({"session_id": session_id})
+    return {"success": True, "id": session_id}
+
+
 @router.get("/sessions")
 async def get_user_sessions(
     current_user: dict = Depends(get_current_user),
@@ -35,6 +130,7 @@ async def get_user_sessions(
         results.append({
             "id": s["id"],
             "title": s.get("title", "New Conversation"),
+            "logDate": s.get("log_date"),
             "createdAt": s.get("created_at").isoformat() if hasattr(s.get("created_at"), "isoformat") else str(s.get("created_at")),
             "updatedAt": s.get("updated_at").isoformat() if hasattr(s.get("updated_at"), "isoformat") else str(s.get("updated_at")),
         })

@@ -18,35 +18,98 @@ logger = logging.getLogger("chat_service")
 
 class ChatService:
     @staticmethod
+    def derive_session_title(intent: str, message: str, entities: Dict[str, Any]) -> str:
+        """Derive a concise, accurate session title from the first message and detected entities."""
+        has_food = bool(
+            intent in ["CREATE_FOOD_LOG", "UPDATE_FOOD_LOG"] or
+            entities.get("foodItems") or entities.get("food")
+        )
+        has_act = bool(
+            intent in ["CREATE_ACTIVITY_LOG"] or
+            entities.get("activities") or entities.get("activityItems") or entities.get("activity")
+        )
+        has_water = bool(
+            intent in ["CREATE_HYDRATION_LOG"] or
+            entities.get("waterAmount") or entities.get("hydration") or entities.get("hydrationItems")
+        )
+        has_weight = bool(intent == "CREATE_WEIGHT_LOG" or entities.get("weight") or entities.get("weightKg"))
+        has_sleep = bool(intent == "CREATE_SLEEP_LOG" or entities.get("sleep") or entities.get("durationMinutes"))
+
+        lower = (message or "").lower()
+        if not has_food:
+            has_food = bool(re.search(r"\b(ate|had|eat|khai|khadhi|khadha|roti|rotli|dal|rice|paneer|egg|chicken|banana|poha|upma|thepla|bhakri|chaas|doodh|breakfast|lunch|dinner|snack)\b", lower))
+        if not has_act:
+            has_act = bool(re.search(r"\b(walk|run|gym|workout|kasrat|exercise|cycling|pushup|squat|jogging|hiit|cardio|running|walking|swimming)\b", lower))
+        if not has_water:
+            has_water = bool(re.search(r"\b(water|pani|hydrat|drink|chaas|juice|smoothie|ml|liters|litre)\b", lower))
+        if not has_weight:
+            has_weight = bool(re.search(r"\b(weight|vajan|kg|kilo)\b", lower))
+        if not has_sleep:
+            has_sleep = bool(re.search(r"\b(sleep|slept|neend|oongh|soya|soti)\b", lower))
+
+        if has_food and has_act:
+            return "Food & Workout"
+        if has_food and has_water:
+            return "Food & Hydration"
+        if has_act and has_water:
+            return "Workout & Hydration"
+        if has_food:
+            return "Food Log"
+        if has_act:
+            return "Workout"
+        if has_water:
+            return "Hydration"
+        if has_weight:
+            return "Weight Log"
+        if has_sleep:
+            return "Sleep Log"
+        if "summary" in intent.lower() or "summary" in lower:
+            return "Daily Summary"
+        if "advice" in intent.lower() or "advisory" in intent.lower() or "suggest" in lower:
+            return "Fitness Advisory"
+        return "Fitness Chat"
+
+    @staticmethod
     async def get_or_create_session(user_id: str, session_id: Optional[str] = None) -> str:
         db = get_db()
+        today_str = TimeService.get_current_local_date_str()
+        local_dt = TimeService.get_current_local_datetime()
+        human_date = local_dt.strftime("%b %d, %Y").replace(" 0", " ") if hasattr(local_dt, "strftime") else today_str
+        default_title = f"Fitness Chat — {human_date}"
+        now = datetime.now(timezone.utc)
+
         if session_id:
-            existing = await db.chat_sessions.find_one({"id": session_id, "user_id": user_id})
+            existing = await db.chat_sessions.find_one({"id": session_id, "user_id": user_id, "is_archived": False})
             if existing:
                 return existing["id"]
-            now = datetime.now(timezone.utc)
             await db.chat_sessions.insert_one({
                 "id": session_id,
                 "user_id": user_id,
-                "title": "Fitness Conversation",
+                "title": default_title,
+                "log_date": today_str,
                 "is_archived": False,
+                "is_custom_title": False,
                 "created_at": now,
                 "updated_at": now,
             })
             return session_id
 
-        # Find latest active session
-        latest = await db.chat_sessions.find_one({"user_id": user_id, "is_archived": False}, sort=[("updated_at", -1)])
-        if latest:
-            return latest["id"]
+        # Find today's active session first
+        today_session = await db.chat_sessions.find_one(
+            {"user_id": user_id, "log_date": today_str, "is_archived": False},
+            sort=[("updated_at", -1)]
+        )
+        if today_session:
+            return today_session["id"]
 
         new_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc)
         await db.chat_sessions.insert_one({
             "id": new_id,
             "user_id": user_id,
-            "title": "Fitness Conversation",
+            "title": default_title,
+            "log_date": today_str,
             "is_archived": False,
+            "is_custom_title": False,
             "created_at": now,
             "updated_at": now,
         })
@@ -135,18 +198,36 @@ class ChatService:
 
         result_payload = await ChatService.route_intent(user_id, session_id, intent, entities, ai_res, user_message=message)
 
-        # 4. Save Assistant Message with structured cards for session reload
+        # 4. Check and update session title automatically on first message
+        session_doc = await db.chat_sessions.find_one({"id": session_id})
+        current_title = session_doc.get("title", "") if session_doc else ""
+        is_custom = session_doc.get("is_custom_title", False) if session_doc else False
+        user_msg_count = await db.conversation_messages.count_documents({"session_id": session_id, "sender": "USER"})
+
+        if not is_custom and (user_msg_count <= 1 or current_title.startswith("Fitness Chat") or current_title in ["Fitness Conversation", "New Conversation"]):
+            derived_title = ChatService.derive_session_title(intent, message, entities)
+            if derived_title and derived_title != current_title:
+                current_title = derived_title
+                await db.chat_sessions.update_one(
+                    {"id": session_id},
+                    {"$set": {"title": derived_title, "updated_at": datetime.now(timezone.utc)}}
+                )
+
+        result_payload["sessionId"] = session_id
+        result_payload["sessionTitle"] = current_title
+
+        # 5. Save Assistant Message with structured cards for session reload
         assistant_msg_id = str(uuid.uuid4())
-        raw_entities = {}
-        if result_payload.get("ui", {}).get("groupedFoodCards"):
-            raw_entities = {
-                "intent": intent,
-                "groupedFoodCards": result_payload["ui"]["groupedFoodCards"],
-                "dailyNutritionSummary": result_payload["ui"].get("dailyNutritionSummary"),
-                "cards": result_payload["ui"].get("cards"),
-            }
-        else:
-            raw_entities = entities
+        ui_obj = result_payload.get("ui") or {}
+        raw_entities = {
+            "intent": intent,
+            "entities": entities,
+            "ui": ui_obj,
+            "groupedFoodCards": ui_obj.get("groupedFoodCards"),
+            "dailyNutritionSummary": ui_obj.get("dailyNutritionSummary"),
+            "cards": ui_obj.get("cards") or ([ui_obj.get("data")] if isinstance(ui_obj.get("data"), dict) and "type" in ui_obj.get("data") else None),
+            "data": ui_obj.get("data") or result_payload.get("data"),
+        }
 
         await db.conversation_messages.insert_one({
             "id": assistant_msg_id,
@@ -179,6 +260,17 @@ class ChatService:
         now = TimeService.get_current_local_datetime()
         today_str = TimeService.get_current_local_date_str()
 
+        # Resolve temporal context from the message: which calendar date the user
+        # is referring to, and whether that date is in the past or future.
+        #   "kal maine khaya"  -> yesterday  (is_past=True)   -> log on yesterday
+        #   "kale khaysh"       -> tomorrow   (is_future=True)  -> do NOT log (planned)
+        #   normal message      -> today
+        log_date_str, is_past, is_future = TimeService.get_message_date_context(user_message or "")
+
+        # ── FUTURE / PLANNED: never create a completed log ──────────────────────
+        if intent == "FUTURE_LOG" or (is_future and intent.startswith("CREATE_")):
+            return ChatService._handle_future_intent(session_id, user_message, log_date_str)
+
         # Infer meal type from user message explicitly if present
         inferred_meal = TimeService.infer_meal_type(user_message or "")
 
@@ -188,7 +280,11 @@ class ChatService:
         has_water = bool(entities.get("waterAmount") or entities.get("hydration") or entities.get("hydrationItems"))
 
         if intent == "CREATE_MULTI_LOG" or (sum([bool(has_food), bool(has_act), bool(has_water)]) >= 2):
-            return await ChatService.handle_multi_log(user_id, session_id, entities, ai_res, user_message=user_message, inferred_meal=inferred_meal)
+            return await ChatService.handle_multi_log(
+                user_id, session_id, entities, ai_res,
+                user_message=user_message, inferred_meal=inferred_meal,
+                log_date_str=log_date_str,
+            )
 
         # 1. CREATE_FOOD_LOG
         if intent == "CREATE_FOOD_LOG":
@@ -230,7 +326,7 @@ class ChatService:
             ]
 
             food_result = await FoodService.process_and_log_food(
-                user_id, items, meal_type_override=detected_meal, log_date_str=today_str
+                user_id, items, meal_type_override=detected_meal, log_date_str=log_date_str
             )
 
             if food_result.requiresClarification and not food_result.loggedItems:
@@ -392,7 +488,7 @@ class ChatService:
                 }
                 activities = [act_data]
 
-            res = await ActivityService.process_and_log_activities(user_id, activities, today_str)
+            res = await ActivityService.process_and_log_activities(user_id, activities, log_date_str)
             dashboard_data = await DashboardService.get_today_dashboard(user_id, today_str)
             return {
                 "success": True,
@@ -431,6 +527,7 @@ class ChatService:
             await db.hydration_logs.insert_one({
                 "id": log_id,
                 "user_id": user_id,
+                "session_id": session_id,
                 "amount_ml": amount,
                 "unit": "ml",
                 "log_date": today_str,
@@ -443,12 +540,13 @@ class ChatService:
             dashboard_data = await DashboardService.get_today_dashboard(user_id, today_str)
             hydration = dashboard_data["hydration"]
             total_water = hydration["amountMl"]
-            target_water = hydration["targetMl"]
-            remaining_water = hydration["remainingMl"]
-            is_met = hydration["targetMet"]
+            target_water = hydration.get("targetMl")
+            has_target = bool(hydration.get("hasTarget"))
+            remaining_water = hydration.get("remainingMl")
+            is_met = hydration.get("targetMet", False)
 
-            # Query all today's hydration logs to show complete timeline/details
-            cursor = db.hydration_logs.find({"user_id": user_id, "log_date": today_str}).sort("created_at", 1)
+            # Query today's hydration logs FOR THIS SESSION to show isolated timeline/details
+            cursor = db.hydration_logs.find({"user_id": user_id, "session_id": session_id, "log_date": today_str}).sort("created_at", 1)
             all_today_hyd = await cursor.to_list(length=100) if db is not None else []
             card_entries = []
             if all_today_hyd:
@@ -468,42 +566,59 @@ class ChatService:
                     "beverageName": bev_name,
                 }]
 
-            if is_met:
-                if lang in ["gu", "gu-Latn"]:
-                    reply = f"💧 **{int(amount)} ml** પાણી લોગ કર્યું! આજનું કુલ પાણી: **{int(total_water)} / {int(target_water)} ml** (100%). અભિનંદન! તમે આજનો વોટર ટાર્ગેટ સફળતાપૂર્વક પૂર્ણ કર્યો છે! 🎉"
-                elif lang in ["hi", "hi-Latn"]:
-                    reply = f"💧 **{int(amount)} ml** पानी लॉग किया गया! आज का कुल पानी: **{int(total_water)} / {int(target_water)} ml** (100%). बधाई हो! आपका आज का वॉटर टारगेट सफलतापूर्वक पूरा हुआ! 🎉"
+            if has_target and target_water:
+                if is_met:
+                    if lang in ["gu", "gu-Latn"]:
+                        reply = f"💧 **{int(amount)} ml** પાણી લોગ કર્યું! આજનું કુલ પાણી: **{int(total_water)} / {int(target_water)} ml** (100%). અભિનંદન! તમે આજનો વોટર ટાર્ગેટ સફળતાપૂર્વક પૂર્ણ કર્યો છે! 🎉"
+                    elif lang in ["hi", "hi-Latn"]:
+                        reply = f"💧 **{int(amount)} ml** पानी लॉग किया गया! आज का कुल पानी: **{int(total_water)} / {int(target_water)} ml** (100%). बधाई हो! आपका आज का वॉटर टारगेट सफलतापूर्वक पूरा हुआ! 🎉"
+                    else:
+                        reply = f"💧 Logged **{int(amount)} ml** water! Today's total: **{int(total_water)} / {int(target_water)} ml** (100%). Congratulations! You have successfully reached your daily hydration goal! 🎉"
                 else:
-                    reply = f"💧 Logged **{int(amount)} ml** water! Today's total: **{int(total_water)} / {int(target_water)} ml** (100%). Congratulations! You have successfully reached your daily hydration goal! 🎉"
+                    pct = hydration.get("percentTarget", 0)
+                    glasses_left = max(1, round(remaining_water / 250)) if remaining_water else 1
+                    if lang in ["gu", "gu-Latn"]:
+                        reply = f"💧 **{int(amount)} ml** પાણી લોગ કર્યું! આજનું કુલ પાણી: **{int(total_water)} / {int(target_water)} ml** ({pct}%). લક્ષ્યાંક સુધી પહોંચવા હજી **{remaining_water} ml** (~{glasses_left} ગ્લાસ) પાણી બાકી છે. હાઇડ્રેટેડ રહેવા કૃપા કરીને સમયસર પાણી પીતા રહો! 🚰"
+                    elif lang in ["hi", "hi-Latn"]:
+                        reply = f"💧 **{int(amount)} ml** पानी लॉग किया गया! आज का कुल पानी: **{int(total_water)} / {int(target_water)} ml** ({pct}%). लक्ष्य तक पहुँचने के लिए अभी **{remaining_water} ml** (~{glasses_left} ग्लास) पानी बाकी है। हाइड्रेटेड रहने के लिए कृपया समय-समय पर पानी पीते रहें! 🚰"
+                    else:
+                        reply = f"💧 Logged **{int(amount)} ml** water! Today's total: **{int(total_water)} / {int(target_water)} ml** ({pct}%). You need **{remaining_water} ml** more (~{glasses_left} glasses) to reach your daily goal! Please keep hydrating throughout the day! 🚰"
             else:
-                pct = hydration["percentTarget"]
-                glasses_left = max(1, round(remaining_water / 250))
+                bev_display = bev_name.lower() if bev_name != "Water" else "water"
                 if lang in ["gu", "gu-Latn"]:
-                    reply = f"💧 **{int(amount)} ml** પાણી લોગ કર્યું! આજનું કુલ પાણી: **{int(total_water)} / {int(target_water)} ml** ({pct}%). લક્ષ્યાંક સુધી પહોંચવા હજી **{remaining_water} ml** (~{glasses_left} ગ્લાસ) પાણી બાકી છે. હાઇડ્રેટેડ રહેવા કૃપા કરીને સમયસર પાણી પીતા રહો! 🚰"
+                    reply = f"💧 **{int(amount)} ml** {bev_display} લોગ કર્યું! આજનું કુલ પાણી: **{int(total_water)} ml**."
                 elif lang in ["hi", "hi-Latn"]:
-                    reply = f"💧 **{int(amount)} ml** पानी लॉग किया गया! आज का कुल पानी: **{int(total_water)} / {int(target_water)} ml** ({pct}%). लक्ष्य तक पहुँचने के लिए अभी **{remaining_water} ml** (~{glasses_left} ग्लास) पानी बाकी है। हाइड्रेटेड रहने के लिए कृपया समय-समय पर पानी पीते रहें! 🚰"
+                    reply = f"💧 **{int(amount)} ml** {bev_display} लॉग किया गया! आज का कुल पानी: **{int(total_water)} ml**."
                 else:
-                    reply = f"💧 Logged **{int(amount)} ml** water! Today's total: **{int(total_water)} / {int(target_water)} ml** ({pct}%). You need **{remaining_water} ml** more (~{glasses_left} glasses) to reach your daily goal! Please keep hydrating throughout the day! 🚰"
+                    reply = f"💧 Logged **{int(amount)} ml** {bev_display}! Today's total: **{int(total_water)} ml**."
 
             return {
                 "success": True,
                 "sessionId": session_id,
                 "message": reply,
-                "data": {"amountMl": amount, "totalMl": total_water, "targetMl": target_water, "remainingMl": remaining_water},
+                "data": {"amountMl": amount, "totalMl": total_water, "targetMl": target_water, "hasTarget": has_target, "remainingMl": remaining_water},
                 "dashboard": dashboard_data,
                 "ui": {
                     "type": "LOG_RESULT",
                     "cards": [{
                         "type": "HYDRATION",
-                        "title": "Hydration",
-                        "subtitle": f"Total: {int(total_water)} / {int(target_water)} ml",
+                        "title": "Daily Hydration Progress",
+                        "subtitle": f"{len(card_entries)} {'entry' if len(card_entries) == 1 else 'entries'} logged today",
                         "metric": f"{int(total_water)} ml",
                         "amountMl": int(amount),
                         "totalMl": int(total_water),
-                        "targetMl": int(target_water),
+                        "targetMl": int(target_water) if target_water else None,
+                        "hasTarget": has_target,
+                        "percent": hydration.get("percentTarget") if has_target else None,
+                        "remainingMl": remaining_water if has_target else None,
                         "entries": card_entries,
-                        "log": {"amountMl": amount},
-                        "dailySummary": {"totalMl": total_water, "targetMl": target_water},
+                        "log": {"amountMl": amount, "beverageName": bev_name},
+                        "dailySummary": {
+                            "totalMl": total_water,
+                            "targetMl": target_water if has_target else None,
+                            "hasTarget": has_target,
+                            "remainingMl": remaining_water if has_target else None,
+                        },
                     }],
                 },
             }
@@ -581,6 +696,40 @@ class ChatService:
         }
 
     @staticmethod
+    def _handle_future_intent(session_id: str, user_message: str, planned_date_str: str) -> Dict[str, Any]:
+        """Respond to a FUTURE/PLANNED statement without creating any completed log.
+
+        The user described something they *will* do (e.g. "kale hu gym karish",
+        "tomorrow I will eat paneer").  We acknowledge the plan and explicitly do
+        NOT write a food/activity/hydration log.  Date resolution uses Asia/Kolkata.
+        """
+        lang = AgentNLP.detect_language(user_message or "")
+        if lang in ["gu", "gu-Latn"]:
+            msg = (
+                "સમજી ગયો — આ તમારી આવતીકાલની યોજના છે. "
+                "હું ભવિષ્યની વસ્તુઓ પૂર્ણ થયેલ લોગમાં ઉમેરતો નથી. "
+                "જ્યારે તમે ખરેખર કરો/ખાઓ ત્યારે મને જણાવો, હું તરત લોગ કરીશ. 👍"
+            )
+        elif lang in ["hi", "hi-Latn"]:
+            msg = (
+                "समझ गया — यह आपकी कल की योजना है. "
+                "मैं भविष्य की चीज़ों को पूर्ण लॉग में नहीं जोड़ता. "
+                "जब आप वास्तव में करें/खाएं तब बताइए, मैं तुरंत लॉग कर दूंगा. 👍"
+            )
+        else:
+            msg = (
+                "Got it — that's a plan for later, so I haven't added it to your "
+                "completed logs. Tell me once you've actually done it and I'll log it right away. 👍"
+            )
+        return {
+            "success": True,
+            "sessionId": session_id,
+            "message": msg,
+            "data": {"planned": True, "plannedDate": planned_date_str},
+            "ui": {"type": "TEXT"},
+        }
+
+    @staticmethod
     async def handle_multi_log(
         user_id: str,
         session_id: str,
@@ -588,10 +737,14 @@ class ChatService:
         ai_res: Dict[str, Any],
         user_message: str = "",
         inferred_meal: Optional[str] = None,
+        log_date_str: Optional[str] = None,
     ) -> Dict[str, Any]:
         db = get_db()
         now = TimeService.get_current_local_datetime()
         today_str = TimeService.get_current_local_date_str()
+        # Date the user is referring to (yesterday for past statements, today otherwise).
+        # Future statements are intercepted earlier in route_intent and never reach here.
+        effective_date_str = log_date_str or today_str
         cards = []
         summary_lines = []
         latest_food_result = None
@@ -629,7 +782,7 @@ class ChatService:
                 detected_meal = "—"
 
             food_result = await FoodService.process_and_log_food(
-                user_id, items, meal_type_override=detected_meal, log_date_str=today_str
+                user_id, items, meal_type_override=detected_meal, log_date_str=effective_date_str
             )
             latest_food_result = food_result
 
@@ -646,7 +799,7 @@ class ChatService:
         raw_acts = entities.get("activities") or entities.get("activityItems") or ([entities.get("activity")] if entities.get("activity") else [])
         if raw_acts:
             acts_to_log = [a if isinstance(a, dict) else {"activity": str(a), "durationMinutes": 30} for a in raw_acts]
-            act_res = await ActivityService.process_and_log_activities(user_id, acts_to_log, today_str)
+            act_res = await ActivityService.process_and_log_activities(user_id, acts_to_log, effective_date_str)
             cards.extend(act_res["cards"])
             for calc in act_res["calculations"]:
                 metric = f"{calc['reps']} reps" if calc.get("reps") else f"{int(calc['durationMinutes'])}m"
@@ -693,6 +846,7 @@ class ChatService:
                 await db.hydration_logs.insert_one({
                     "id": h_log_id,
                     "user_id": user_id,
+                    "session_id": session_id,
                     "amount_ml": h_ml,
                     "unit": "ml",
                     "log_date": h_date_str,
@@ -724,10 +878,11 @@ class ChatService:
         # Single aggregated hydration card for today
         if hyd_entries:
             today_water_total = dashboard_data["hydration"]["amountMl"]
-            today_water_target = dashboard_data["hydration"]["targetMl"]
+            today_water_target = dashboard_data["hydration"].get("targetMl")
+            has_water_target = bool(dashboard_data["hydration"].get("hasTarget"))
 
-            # Query all today's hydration logs to show complete chronological timeline
-            cursor = db.hydration_logs.find({"user_id": user_id, "log_date": today_str}).sort("created_at", 1)
+            # Query today's hydration logs FOR THIS SESSION to show isolated timeline/details
+            cursor = db.hydration_logs.find({"user_id": user_id, "session_id": session_id, "log_date": today_str}).sort("created_at", 1)
             all_today_hyd = await cursor.to_list(length=100) if db is not None else []
             card_entries = []
             if all_today_hyd:
@@ -745,14 +900,22 @@ class ChatService:
 
             cards.append({
                 "type": "HYDRATION",
-                "title": "Hydration",
-                "subtitle": f"Total: {int(today_water_total)} / {int(today_water_target)} ml",
+                "title": "Daily Hydration Progress",
+                "subtitle": f"{len(card_entries)} {'entry' if len(card_entries) == 1 else 'entries'} logged today",
                 "amountMl": int(batch_water_total),
                 "totalMl": int(today_water_total),
-                "targetMl": int(today_water_target),
-                "metric": f"{int(today_water_total)} / {int(today_water_target)} ml",
+                "targetMl": int(today_water_target) if today_water_target else None,
+                "hasTarget": has_water_target,
+                "percent": dashboard_data["hydration"].get("percentTarget") if has_water_target else None,
+                "remainingMl": dashboard_data["hydration"].get("remainingMl") if has_water_target else None,
+                "metric": f"{int(today_water_total)} ml",
                 "entries": card_entries,
-                "dailySummary": {"totalMl": today_water_total, "targetMl": today_water_target},
+                "dailySummary": {
+                    "totalMl": today_water_total,
+                    "targetMl": today_water_target if has_water_target else None,
+                    "hasTarget": has_water_target,
+                    "remainingMl": dashboard_data["hydration"].get("remainingMl") if has_water_target else None,
+                },
             })
 
         # 5. Build clean, structured response summary (Requirement 15)
@@ -827,15 +990,20 @@ class ChatService:
         is_hi = lang in ["hi", "hi-Latn"]
 
         # Water reminder string according to requirement 6
-        if hyd["targetMet"]:
+        rem_ml = hyd.get("remainingMl")
+        if hyd.get("targetMet"):
             water_rem_guj = "🎉 અદ્ભુત! તમે આજનો દૈનિક પાણીનો ટાર્ગેટ સફળતાપૂર્વક પૂર્ણ કર્યો છે!"
             water_rem_hi = "🎉 शानदार! आपने आज का दैनिक पानी का लक्ष्य सफलतापूर्वक पूरा कर लिया है!"
             water_rem_en = "🎉 Fantastic! You have successfully reached your daily hydration target!"
+        elif rem_ml is not None:
+            rem_glasses = max(1, round(rem_ml / 250))
+            water_rem_guj = f"લક્ષ્યાંક સુધી પહોંચવા હજી **{rem_ml} ml** (~{rem_glasses} ગ્લાસ) પાણી બાકી છે. હાઇડ્રેટેડ રહેવા વધુ પાણી પીતા રહો! 🚰"
+            water_rem_hi = f"लक्ष्य तक पहुँचने के लिए अभी **{rem_ml} ml** (~{rem_glasses} ग्लास) पानी बाकी है। हाइड्रेटेड रहने के लिए अधिक पानी पिएं! 🚰"
+            water_rem_en = f"You are **{rem_ml} ml** away from your goal (~{rem_glasses} glasses). Remember to drink more water to stay well-hydrated! 🚰"
         else:
-            rem_glasses = max(1, round(hyd["remainingMl"] / 250))
-            water_rem_guj = f"લક્ષ્યાંક સુધી પહોંચવા હજી **{hyd['remainingMl']} ml** (~{rem_glasses} ગ્લાસ) પાણી બાકી છે. હાઇડ્રેટેડ રહેવા વધુ પાણી પીતા રહો! 🚰"
-            water_rem_hi = f"लक्ष्य तक पहुँचने के लिए अभी **{hyd['remainingMl']} ml** (~{rem_glasses} ग्लास) पानी बाकी है। हाइड्रेटेड रहने के लिए अधिक पानी पिएं! 🚰"
-            water_rem_en = f"You are **{hyd['remainingMl']} ml** away from your goal (~{rem_glasses} glasses). Remember to drink more water to stay well-hydrated! 🚰"
+            water_rem_guj = f"આજે તમે કુલ **{hyd['amountMl']} ml** પાણી પીધું છે. હાઇડ્રેટેડ રહેવા નિયમિત પાણી પીતા રહો! 🚰"
+            water_rem_hi = f"आज आपने कुल **{hyd['amountMl']} ml** पानी पिया है। हाइड्रेटेड रहने के लिए नियमित पानी पिएं! 🚰"
+            water_rem_en = f"You have logged **{hyd['amountMl']} ml** of water today. Remember to stay well-hydrated! 🚰"
 
         # Exercise summary text
         if act["caloriesBurned"] > 0:
@@ -847,6 +1015,10 @@ class ChatService:
             act_text_hi = "* आज अभी तक कोई कसरत लॉग नहीं हुई है। 20-30 मिनट की वॉक भी ~100-150 कैलोरी बर्न करने में मदद करेगी!"
             act_text_en = "* No workouts logged yet today. Even a 20-30 minute brisk walk can burn ~100–150 kcal!"
 
+        hyd_line_guj = f"* પીધેલું પાણી: **{hyd['amountMl']} / {int(hyd['targetMl'])} ml** ({hyd.get('percentTarget', 0)}%)" if hyd.get("targetMl") else f"* પીધેલું પાણી: **{hyd['amountMl']} ml**"
+        hyd_line_hi = f"* पिया गया पानी: **{hyd['amountMl']} / {int(hyd['targetMl'])} ml** ({hyd.get('percentTarget', 0)}%)" if hyd.get("targetMl") else f"* पिया गया पानी: **{hyd['amountMl']} ml**"
+        hyd_line_en = f"* Intake: **{hyd['amountMl']} / {int(hyd['targetMl'])} ml** ({hyd.get('percentTarget', 0)}%)" if hyd.get("targetMl") else f"* Intake: **{hyd['amountMl']} ml**"
+
         if is_guj:
             reply = (
                 f"📊 **આજનો દૈનિક હેલ્થ & ફિટનેસ રિપોર્ટ (Today's Summary)**:\n\n"
@@ -855,7 +1027,7 @@ class ChatService:
                 f"* બાકી બજેટ: **{cal['remaining']} kcal**\n"
                 f"* મેક્રોઝ: પ્રોટીન **{mac['proteinG']}g** | કાર્બ્સ **{mac['carbsG']}g** | ફેટ **{mac['fatG']}g**\n\n"
                 f"💧 **પાણીનું પ્રમાણ (Water Intake)**:\n"
-                f"* પીધેલું પાણી: **{hyd['amountMl']} / {int(hyd['targetMl'])} ml** ({hyd['percentTarget']}%)\n"
+                f"{hyd_line_guj}\n"
                 f"* {water_rem_guj}\n\n"
                 f"🏃 **કસરત & શારીરિક પ્રવૃત્તિ (Exercise)**:\n"
                 f"{act_text_guj}\n\n"
@@ -870,7 +1042,7 @@ class ChatService:
                 f"* बची हुई कैलोरी: **{cal['remaining']} kcal**\n"
                 f"* मैक्रोज़: प्रोटीन **{mac['proteinG']}g** | कार्ब्स **{mac['carbsG']}g** | फैट **{mac['fatG']}g**\n\n"
                 f"💧 **पानी की मात्रा (Water Intake)**:\n"
-                f"* पिया गया पानी: **{hyd['amountMl']} / {int(hyd['targetMl'])} ml** ({hyd['percentTarget']}%)\n"
+                f"{hyd_line_hi}\n"
                 f"* {water_rem_hi}\n\n"
                 f"🏃 **कसरत और गतिविधियां (Exercise)**:\n"
                 f"{act_text_hi}\n\n"
@@ -885,7 +1057,7 @@ class ChatService:
                 f"* Remaining Budget: **{cal['remaining']} kcal**\n"
                 f"* Macros: Protein **{mac['proteinG']}g** | Carbs **{mac['carbsG']}g** | Fat **{mac['fatG']}g**\n\n"
                 f"💧 **Water Intake**:\n"
-                f"* Intake: **{hyd['amountMl']} / {int(hyd['targetMl'])} ml** ({hyd['percentTarget']}%)\n"
+                f"{hyd_line_en}\n"
                 f"* {water_rem_en}\n\n"
                 f"🏃 **Workouts & Activities**:\n"
                 f"{act_text_en}\n\n"
@@ -917,21 +1089,32 @@ class ChatService:
         is_guj = lang in ["gu", "gu-Latn"]
         is_hi = lang in ["hi", "hi-Latn"]
 
-        if hyd["targetMet"]:
+        target_ml = hyd.get("targetMl")
+        pct_target = hyd.get("percentTarget")
+        rem_ml = hyd.get("remainingMl")
+
+        if hyd.get("targetMet") and target_ml:
             if is_guj:
-                reply = f"💧 આજે તમે કુલ **{hyd['amountMl']} ml** પાણી પીધું છે (ટાર્ગેટ: {int(hyd['targetMl'])} ml - 100%). અભિનંદન! તમે આજનો વોટર ગોલ પૂરો કર્યો છે! 🎉"
+                reply = f"💧 આજે તમે કુલ **{hyd['amountMl']} ml** પાણી પીધું છે (ટાર્ગેટ: {int(target_ml)} ml - 100%). અભિનંદન! તમે આજનો વોટર ગોલ પૂરો કર્યો છે! 🎉"
             elif is_hi:
-                reply = f"💧 आज आपने कुल **{hyd['amountMl']} ml** पानी पिया है (टारगेट: {int(hyd['targetMl'])} ml - 100%). बधाई हो! आपने आज का वॉटर गोल पूरा कर लिया है! 🎉"
+                reply = f"💧 आज आपने कुल **{hyd['amountMl']} ml** पानी पिया है (टारगेट: {int(target_ml)} ml - 100%). बधाई हो! आपने आज का वॉटर गोल पूरा कर लिया है! 🎉"
             else:
-                reply = f"💧 You have logged **{hyd['amountMl']} / {int(hyd['targetMl'])} ml** of water today (100%). Congratulations! You reached your daily hydration goal! 🎉"
+                reply = f"💧 You have logged **{hyd['amountMl']} / {int(target_ml)} ml** of water today (100%). Congratulations! You reached your daily hydration goal! 🎉"
+        elif rem_ml is not None and target_ml:
+            rem_glasses = max(1, round(rem_ml / 250))
+            if is_guj:
+                reply = f"💧 આજે તમે કુલ **{hyd['amountMl']} ml** પાણી પીધું છે (ટાર્ગેટ: {int(target_ml)} ml - {pct_target}%). દૈનિક ટાર્ગેટ સુધી પહોંચવા હજી **{rem_ml} ml** (~{rem_glasses} ગ્લાસ) પાણી બાકી છે. હાઇડ્રેટેડ રહેવા વધુ પાણી પીતા રહો! 🚰"
+            elif is_hi:
+                reply = f"💧 आज आपने कुल **{hyd['amountMl']} ml** पानी पिया है (टारगेट: {int(target_ml)} ml - {pct_target}%). दैनिक लक्ष्य तक पहुँचने के लिए अभी **{rem_ml} ml** (~{rem_glasses} ग्लास) पानी बाकी है। हाइड्रेटेड रहने के लिए कृपया अधिक पानी पिएं! 🚰"
+            else:
+                reply = f"💧 You have logged **{hyd['amountMl']} / {int(target_ml)} ml** of water today ({pct_target}%). You need **{rem_ml} ml** more (~{rem_glasses} glasses) to reach your daily target! Please remember to drink more water to stay well-hydrated! 🚰"
         else:
-            rem_glasses = max(1, round(hyd["remainingMl"] / 250))
             if is_guj:
-                reply = f"💧 આજે તમે કુલ **{hyd['amountMl']} ml** પાણી પીધું છે (ટાર્ગેટ: {int(hyd['targetMl'])} ml - {hyd['percentTarget']}%). દૈનિક ટાર્ગેટ સુધી પહોંચવા હજી **{hyd['remainingMl']} ml** (~{rem_glasses} ગ્લાસ) પાણી બાકી છે. હાઇડ્રેટેડ રહેવા વધુ પાણી પીતા રહો! 🚰"
+                reply = f"💧 આજે તમે કુલ **{hyd['amountMl']} ml** પાણી પીધું છે. 🚰"
             elif is_hi:
-                reply = f"💧 आज आपने कुल **{hyd['amountMl']} ml** पानी पिया है (टारगेट: {int(hyd['targetMl'])} ml - {hyd['percentTarget']}%). दैनिक लक्ष्य तक पहुँचने के लिए अभी **{hyd['remainingMl']} ml** (~{rem_glasses} ग्लास) पानी बाकी है। हाइड्रेटेड रहने के लिए कृपया अधिक पानी पिएं! 🚰"
+                reply = f"💧 आज आपने कुल **{hyd['amountMl']} ml** पानी पिया है। 🚰"
             else:
-                reply = f"💧 You have logged **{hyd['amountMl']} / {int(hyd['targetMl'])} ml** of water today ({hyd['percentTarget']}%). You need **{hyd['remainingMl']} ml** more (~{rem_glasses} glasses) to reach your daily target! Please remember to drink more water to stay well-hydrated! 🚰"
+                reply = f"💧 You have logged **{hyd['amountMl']} ml** of water today. 🚰"
 
         return {
             "success": True,

@@ -58,6 +58,16 @@ CRITICAL MULTI-ITEM RULE:
 GUJARATI & HINDI EATING VERBS RULE:
 - Words like "khadho", "khadha", "khadhi", "khadhu", "pidho", "pidhi", "pidhu", "lidho", "lidhi", "lidhu" are Gujarati verbs meaning ATE / DRANK -> ALWAYS treat as CREATE_FOOD_LOG! NEVER classify them as DELETE_FOOD_LOG!
 
+TEMPORAL / DATE CONTEXT RULE (CRITICAL — affects which date a log belongs to):
+- PAST actions are completed logs. Resolve to the correct past date (Asia/Kolkata), NOT today.
+  * Past markers: "yesterday", "kal maine ... khaya/kiya", "kale ... khadhi/kari" (with PAST verb), "gaya kale", "gai kale", "ગઈકાલે", "कल खाया". Example: "kal maine 2 roti khadhi" -> CREATE_FOOD_LOG dated YESTERDAY.
+- FUTURE / PLANNED actions must NOT be logged as completed.
+  * Future markers (verb conjugations): "khaysh", "khaish", "karish", "karis", "jaish", "piysh", "khaunga", "karunga", "jaunga", "will eat", "will do", "will go", "aavti kale", "આવતીકાલે", "कल करूंगा". Example: "kale hu gym karish" -> this is a PLAN, do NOT create an activity log.
+  * For a future/planned statement, respond with intent "GENERAL_CHAT" and a replyText that acknowledges the plan without logging it.
+- The word "kal"/"kale" alone is ambiguous. Decide PAST vs FUTURE from the verb tense in the same sentence. Do NOT assume "kal/kale" always means past.
+- SUGGESTION QUESTIONS are never logs. "kale su khavu joiye?", "mare kale su exercise karvi?", "sanje su khavu?", "what should I eat tomorrow?" -> GENERAL_CHAT (suggestion), create NO log.
+- Present/today actions (no date word, or "aaj"/"aaje"/"today") -> log on TODAY.
+
 SPELLING CORRECTION & FOOD RECOGNITION:
 - Correct typos to clean, canonical food names:
   * "protein shake", "protein drink" -> "Protein Shake"
@@ -178,6 +188,16 @@ class AIService:
                 "replyText": "Here are some healthy food suggestions tailored to your day.",
             }
 
+        # FUTURE / PLANNED statement — pass intent straight through so route_intent
+        # can acknowledge the plan WITHOUT creating any completed log.
+        if detected_intent == "FUTURE_LOG":
+            return {
+                "intent": "FUTURE_LOG",
+                "language": lang,
+                "entities": {},
+                "replyText": "Noted as a plan for later — not logging it as completed.",
+            }
+
         if detected_intent == "DAILY_SUMMARY":
             return {
                 "intent": "DAILY_SUMMARY",
@@ -216,86 +236,90 @@ class AIService:
             }
 
         # 2. Domain logging intents with high-precision parsers
-        if detected_intent == "CREATE_WEIGHT_LOG":
-            w_ent = AgentNLP.extract_weight_entity(message)
-            return {
-                "intent": "CREATE_WEIGHT_LOG",
-                "language": lang,
-                "entities": w_ent,
-                "replyText": f"Logged body weight of {w_ent['weightKg']} kg."
-            }
+        # 2. Extract candidate entities deterministically
+        foods = AgentNLP.extract_food_entities_heuristically(message) if detected_intent in ("CREATE_FOOD_LOG", "CREATE_MULTI_LOG") else []
+        acts = AgentNLP.extract_activity_entities(message) if detected_intent in ("CREATE_ACTIVITY_LOG", "CREATE_MULTI_LOG") else []
+        hyds = AgentNLP.extract_hydration_entities(message) if detected_intent in ("CREATE_HYDRATION_LOG", "CREATE_MULTI_LOG") else []
 
-        if detected_intent == "CREATE_HYDRATION_LOG":
-            h_ent = AgentNLP.extract_hydration_entity(message)
-            return {
-                "intent": "CREATE_HYDRATION_LOG",
-                "language": lang,
-                "entities": h_ent,
-                "replyText": f"Logged {int(h_ent['amountMl'])} ml of Water."
-            }
+        # Step 2: Evaluate Extraction Completeness & Confidence Routing
+        decision = AgentNLP.evaluate_extraction_completeness(
+            message, extracted_foods=foods, extracted_acts=acts, extracted_hyd=hyds, detected_intent=detected_intent
+        )
+        logger.info("Extraction completeness: decision=%s intent=%s foods=%d acts=%d hyds=%d", decision, detected_intent, len(foods), len(acts), len(hyds))
 
-        if detected_intent == "CREATE_ACTIVITY_LOG":
-            acts = AgentNLP.extract_activity_entities(message)
+        # Fast path: High-confidence deterministic results
+        if decision == "DETERMINISTIC_HIGH_CONFIDENCE":
             actions = AgentNLP.extract_structured_actions(message)
-            if acts and acts[0].get("requiresClarification"):
+
+            if detected_intent == "CREATE_WEIGHT_LOG":
+                w_ent = AgentNLP.extract_weight_entity(message)
+                return {
+                    "intent": "CREATE_WEIGHT_LOG",
+                    "language": lang,
+                    "entities": w_ent,
+                    "replyText": f"Logged body weight of {w_ent['weightKg']} kg."
+                }
+
+            if detected_intent == "CREATE_HYDRATION_LOG":
+                h_ent = hyds[0] if hyds else AgentNLP.extract_hydration_entity(message)
+                return {
+                    "intent": "CREATE_HYDRATION_LOG",
+                    "language": lang,
+                    "entities": h_ent,
+                    "replyText": f"Logged {int(h_ent['amountMl'])} ml of Water."
+                }
+
+            if detected_intent == "CREATE_ACTIVITY_LOG":
+                if acts and acts[0].get("requiresClarification"):
+                    return {
+                        "intent": "CREATE_ACTIVITY_LOG",
+                        "language": lang,
+                        "actions": actions,
+                        "entities": {"activities": acts, "requiresClarification": True},
+                        "requiresClarification": True,
+                        "replyText": "Great job on being active! Could you please let me know how many minutes you exercised or how many reps and sets you completed, so I can accurately calculate your calories burned?",
+                    }
                 return {
                     "intent": "CREATE_ACTIVITY_LOG",
                     "language": lang,
                     "actions": actions,
-                    "entities": {"activities": acts, "requiresClarification": True},
-                    "requiresClarification": True,
-                    "replyText": "Great job on being active! Could you please let me know how many minutes you exercised or how many reps and sets you completed, so I can accurately calculate your calories burned?",
+                    "entities": {
+                        "activities": acts,
+                        "activity": acts[0]["activity"] if acts else "Workout",
+                        "durationMinutes": acts[0]["durationMinutes"] if acts else 30.0,
+                        "reps": acts[0].get("reps") if acts else None,
+                        "sets": acts[0].get("sets") if acts else None,
+                    },
+                    "replyText": f"Logged {len(acts)} workout item(s).",
                 }
-            return {
-                "intent": "CREATE_ACTIVITY_LOG",
-                "language": lang,
-                "actions": actions,
-                "entities": {
-                    "activities": acts,
-                    "activity": acts[0]["activity"],
-                    "durationMinutes": acts[0]["durationMinutes"],
-                    "reps": acts[0].get("reps"),
-                    "sets": acts[0].get("sets"),
-                },
-                "replyText": f"Logged {len(acts)} workout item(s).",
-            }
 
-        if detected_intent == "CREATE_SLEEP_LOG":
-            s_ent = AgentNLP.extract_sleep_entity(message)
-            return {
-                "intent": "CREATE_SLEEP_LOG",
-                "language": lang,
-                "entities": s_ent,
-                "replyText": f"Recorded {int(s_ent['durationMinutes']//60)}h of sleep."
-            }
+            if detected_intent == "CREATE_SLEEP_LOG":
+                s_ent = AgentNLP.extract_sleep_entity(message)
+                return {
+                    "intent": "CREATE_SLEEP_LOG",
+                    "language": lang,
+                    "entities": s_ent,
+                    "replyText": f"Recorded {int(s_ent['durationMinutes']//60)}h of sleep."
+                }
 
-        # 3. For Multi-Log (Mixed Food + Workout / Water)
-        if detected_intent == "CREATE_MULTI_LOG":
-            foods = AgentNLP.extract_food_entities_heuristically(message)
-            acts = AgentNLP.extract_activity_entities(message)
-            hydrations = AgentNLP.extract_hydration_entities(message)
-            actions = AgentNLP.extract_structured_actions(message)
-            real_acts = [a for a in acts if a.get("activity") and a["activity"] != "Workout"] or acts
-            return {
-                "intent": "CREATE_MULTI_LOG",
-                "language": lang,
-                "actions": actions,
-                "entities": {
-                    "foodItems": foods,
-                    "activities": real_acts,
-                    "activityItems": real_acts,
-                    "hydrationItems": hydrations,
-                    "hydration": hydrations,
-                    "waterAmount": sum(h.get("amount_ml", 0) for h in hydrations) if hydrations else None,
-                },
-                "replyText": f"Logged {len(foods)} food item(s), {len(real_acts)} workout(s), and {len(hydrations)} water entry(ies)."
-            }
+            if detected_intent == "CREATE_MULTI_LOG":
+                real_acts = [a for a in acts if a.get("activity") and a["activity"] != "Workout"] or acts
+                return {
+                    "intent": "CREATE_MULTI_LOG",
+                    "language": lang,
+                    "actions": actions,
+                    "entities": {
+                        "foodItems": foods,
+                        "activities": real_acts,
+                        "activityItems": real_acts,
+                        "hydrationItems": hyds,
+                        "hydration": hyds,
+                        "waterAmount": sum(h.get("amount_ml", 0) for h in hyds) if hyds else None,
+                    },
+                    "replyText": f"Logged {len(foods)} food item(s), {len(real_acts)} workout(s), and {len(hyds)} water entry(ies)."
+                }
 
-        # 4. For Food Logging: Try high-precision deterministic extraction first
-        if detected_intent == "CREATE_FOOD_LOG":
-            foods = AgentNLP.extract_food_entities_heuristically(message)
-            actions = AgentNLP.extract_structured_actions(message)
-            if foods and len(foods) > 0:
+            if detected_intent == "CREATE_FOOD_LOG":
                 return {
                     "intent": "CREATE_FOOD_LOG",
                     "language": lang,
@@ -304,33 +328,28 @@ class AIService:
                     "replyText": f"Logged {len(foods)} food item(s)."
                 }
 
-        # 4. For Ambiguous messages or Updates/Deletes: Call configured AI provider (Groq / Cloudflare / rule-based)
-        # IMPORTANT: pass SYSTEM_PROMPT (which contains the full JSON schema, intent list, and spelling-correction
-        # table) to Cloudflare/GLM.  FITBOT_SYSTEM_PROMPT is the conversational persona prompt and does NOT
-        # instruct the model to emit structured JSON — using it for intent extraction caused silent parse failures.
-        pre_processed = AgentNLP.normalize_text(message)
+        # Step 3: For Incomplete / Fuzzy / Ambiguous or Updates/Deletes: Call configured AI provider with RAW message
         logger.info(
-            "LLM intent extraction: lang=%s intent=%s provider=%s original_len=%d normalized_len=%d",
-            lang, detected_intent, settings.AI_PROVIDER or "auto", len(message), len(pre_processed),
+            "LLM fallback triggered: lang=%s intent=%s decision=%s provider=%s msg_len=%d",
+            lang, detected_intent, decision, settings.AI_PROVIDER or "auto", len(message)
         )
         result: Optional[Dict[str, Any]] = None
         provider = (settings.AI_PROVIDER or "auto").lower()
 
         if provider == "groq" and settings.GROQ_API_KEY:
             try:
-                res = await AIService._call_groq(pre_processed, conversation_history)
+                res = await AIService._call_groq(message, conversation_history)
                 if res and res.get("intent"):
-                    result = res
+                    result = AIService._normalize_llm_result(res, message)
             except Exception as e:
                 logger.warning(f"Groq AI failed: {e}")
         elif provider == "cloudflare" and settings.CF_ACCOUNT_ID and settings.CF_API_TOKEN:
             try:
-                # Use SYSTEM_PROMPT (JSON-schema + spelling rules), not FITBOT_SYSTEM_PROMPT
                 res = await AIService._call_cloudflare(
-                    pre_processed, conversation_history, system_prompt=SYSTEM_PROMPT
+                    message, conversation_history, system_prompt=SYSTEM_PROMPT
                 )
                 if res and res.get("intent"):
-                    result = res
+                    result = AIService._normalize_llm_result(res, message)
                 else:
                     logger.warning(
                         "Cloudflare returned non-JSON or missing intent; raw result: %s",
@@ -339,16 +358,15 @@ class AIService:
             except Exception as e:
                 logger.warning(f"Cloudflare AI failed: {e}")
         elif provider == "rule_based":
-            result = AIService._rule_based_fallback(message, pre_processed)
+            result = AIService._rule_based_fallback(message, message)
         else:  # "auto" (default)
             if settings.CF_ACCOUNT_ID and settings.CF_API_TOKEN:
                 try:
-                    # Use SYSTEM_PROMPT (JSON-schema + spelling rules), not FITBOT_SYSTEM_PROMPT
                     res = await AIService._call_cloudflare(
-                        pre_processed, conversation_history, system_prompt=SYSTEM_PROMPT
+                        message, conversation_history, system_prompt=SYSTEM_PROMPT
                     )
                     if res and res.get("intent"):
-                        result = res
+                        result = AIService._normalize_llm_result(res, message)
                     else:
                         logger.warning(
                             "Cloudflare returned non-JSON or missing intent (auto); trying Groq. raw=%s",
@@ -359,18 +377,29 @@ class AIService:
 
             if not result and settings.GROQ_API_KEY:
                 try:
-                    res = await AIService._call_groq(pre_processed, conversation_history)
+                    res = await AIService._call_groq(message, conversation_history)
                     if res and res.get("intent"):
-                        result = res
+                        result = AIService._normalize_llm_result(res, message)
                 except Exception as e:
                     logger.warning(f"Groq AI failed: {e}")
 
         if not result or not result.get("intent"):
             logger.info(
-                "All LLM providers failed or returned no intent — using rule-based fallback. "
+                "All LLM providers failed or returned no intent — using deterministic/rule-based fallback. "
                 "message=%.80s", message,
             )
-            result = AIService._rule_based_fallback(message, pre_processed)
+            # If deterministic foods were found, use them
+            if foods:
+                actions = AgentNLP.extract_structured_actions(message)
+                result = {
+                    "intent": "CREATE_FOOD_LOG",
+                    "language": lang,
+                    "actions": actions,
+                    "entities": {"foodItems": foods},
+                    "replyText": f"Logged {len(foods)} food item(s)."
+                }
+            else:
+                result = AIService._rule_based_fallback(message, message)
 
         return result
 
@@ -479,26 +508,50 @@ class AIService:
         return None
 
     @staticmethod
+    def _normalize_llm_result(res: Dict[str, Any], raw_message: str) -> Dict[str, Any]:
+        """Post-process LLM structured output to ensure canonical food names and valid units."""
+        if not res or not isinstance(res, dict):
+            return res
+        entities = res.get("entities", {})
+        if "foodItems" in entities and isinstance(entities["foodItems"], list):
+            from .agent_nlp import INDIAN_FOOD_SYNONYMS
+            for item in entities["foodItems"]:
+                food_name = item.get("food") or item.get("food_name", "")
+                if food_name:
+                    fn_low = food_name.lower().strip()
+                    if fn_low in INDIAN_FOOD_SYNONYMS:
+                        canonical = INDIAN_FOOD_SYNONYMS[fn_low]
+                        item["food"] = canonical
+                        item["food_name"] = canonical
+                    else:
+                        try:
+                            from .food_matcher import match_food
+                            m = match_food(food_name)
+                            if m.status == "matched" and m.matched_name:
+                                item["food"] = m.matched_name
+                                item["food_name"] = m.matched_name
+                        except Exception:
+                            pass
+        return res
+
+    @staticmethod
     def _extract_cf_response_text(data: Dict[str, Any]) -> Optional[str]:
         """
         Extract the text content from a Cloudflare Workers AI response.
 
-        Handles both response shapes and strips <think>...</think> blocks
-        that reasoning models (GLM 4.7, DeepSeek-R1) emit.
-
-        Args:
-            data: Parsed JSON response from the Cloudflare API.
-
-        Returns:
-            The cleaned text string, or None if not found.
+        Handles both response shapes (choices[0].message.content, message.reasoning,
+        and result.response) and strips <think>...</think> blocks.
         """
         result_data = data.get("result", {})
 
         if isinstance(result_data, dict):
-            # Shape 1: OpenAI-compat — choices[0].message.content
+            # Shape 1: OpenAI-compat — choices[0].message.content or choices[0].message.reasoning
             choices = result_data.get("choices") or []
             if choices and isinstance(choices[0], dict):
-                raw = choices[0].get("message", {}).get("content", "")
+                msg = choices[0].get("message", {})
+                raw = msg.get("content") or ""
+                if not raw and (msg.get("reasoning") or msg.get("reasoning_content")):
+                    raw = msg.get("reasoning") or msg.get("reasoning_content") or ""
                 if raw:
                     return AIService._strip_reasoning(raw)
 

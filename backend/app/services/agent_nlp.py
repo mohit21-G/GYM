@@ -41,19 +41,20 @@ NUMBER_WORDS = {
 # Unit normalizations
 UNIT_MAP = {
     "katori": "bowl", "katoris": "bowl", "vatki": "bowl", "vatkis": "bowl",
-    "vaatki": "bowl", "bowl": "bowl", "bowls": "bowl", "katora": "bowl", "bwl": "bowl",
+    "vaatki": "bowl", "bowl": "bowl", "bowls": "bowl", "katora": "bowl", "bwl": "bowl", "bwll": "bowl",
+    "ktori": "bowl", "vtk": "bowl",
     "cup": "cup", "cups": "cup", "kapp": "cup", "kap": "cup",
-    "glass": "glass", "glasses": "glass", "glaas": "glass", "gls": "glass", "pyala": "glass",
-    "plate": "plate", "plates": "plate", "dish": "plate", "thaali": "plate", "plet": "plate",
+    "glass": "glass", "glasses": "glass", "glaas": "glass", "gllass": "glass", "gls": "glass", "pyala": "glass",
+    "plate": "plate", "plates": "plate", "dish": "plate", "thaali": "plate", "plet": "plate", "plt": "plate",
     "piece": "piece", "pieces": "piece", "pcs": "piece", "pc": "piece", "pice": "piece", "pices": "piece",
     "nag": "piece", "tukda": "piece",
-    "slice": "slice", "slices": "slice", "scoop": "scoop", "scoops": "scoop",
+    "slice": "slice", "slices": "slice", "scoop": "scoop", "scoops": "scoop", "scp": "scoop", "skup": "scoop",
     "spoon": "tbsp", "spoons": "tbsp", "spoonful": "tbsp",
     "chamach": "tbsp", "chamacha": "tbsp", "chamchi": "tbsp", "chammach": "tbsp", "chamcho": "tbsp",
     "tablespoon": "tbsp", "tablespoons": "tbsp", "teaspoon": "tsp", "teaspoons": "tsp",
-    "tbsp": "tbsp", "tsp": "tsp", "ml": "ml", "liter": "l", "litre": "l",
-    "l": "l", "ltr": "l", "gram": "g", "grams": "g", "g": "g", "kg": "kg",
-    "bottle": "bottle", "bottles": "bottle", "botle": "bottle",
+    "tbsp": "tbsp", "tsp": "tsp", "ml": "ml", "mll": "ml", "liter": "l", "litre": "l",
+    "l": "l", "ltr": "l", "gram": "g", "grams": "g", "gm": "g", "gms": "g", "g": "g", "kg": "kg",
+    "bottle": "bottle", "bottles": "bottle", "botle": "bottle", "btl": "bottle",
     "serving": "serving", "servings": "serving",
     # Gujarati script units
     "વાટકી": "bowl", "કટોરી": "bowl", "ગ્લાસ": "glass", "કપ": "cup", "પ્લેટ": "plate", "ડીશ": "plate", "નંગ": "piece", "ટુકડો": "piece",
@@ -66,7 +67,7 @@ UNIT_MAP = {
 FOOD_NOUNS = [
     "roti", "rotli", "rotis", "rotlis", "chapati", "chapatis", "phulka", "phulkas", "khapli", "apple", "banana", "kela", "milk", "doodh", "dudh",
     "dal", "daal", "rice", "chawal", "poha", "upma", "egg", "anda", "bread",
-    "salad", "sabzi", "shaak", "shak", "thepla", "theplas", "paratha", "chaas", "chhas", "chach", "dahi", "bhakri", "bhakhri",
+    "salad", "sabzi", "shaak", "shak", "sabji", "subji", "thepla", "theplas", "paratha", "chaas", "chhas", "chach", "dahi", "bhakri", "bhakhri",
     "chai", "chay", "tea", "coffee", "lassi", "paneer", "pneer", "pneeeer", "almonds",
     "lemon water", "nimbu pani", "black coffee", "pre workout", "preworkout",
     "whey", "protein powder", "protein shake", "protein", "whey protein", "shake", "protein drink",
@@ -78,7 +79,7 @@ FOOD_NOUNS = [
     "shrikhand", "basundi", "kheer", "gulab jamun", "bhatura", "puran poli", "varan phal",
     "chitranna", "thayir sadam", "aloo gobi", "okra", "khichdo", "sev tameta", "wada pav",
     "hopper", "idly", "jilapi", "matho", "phulka", "butter naan", "naan", "handwa",
-    "khakhra", "rajma", "bhindi", "pav bhaji", "pavbhaji", "vedmi", "mohanthal",
+    "khakhra", "rajma", "bhindi", "pav bhaji", "pavbhaji", "vedmi", "mohanthal", "papad",
     # Gujarati script food nouns
     "રોટલી", "રોટલો", "ભાખરી", "ચા", "દાળ", "ભાત", "દૂધ", "છાશ", "કેળા", "કેળું", "શાક", "ખીચડી",
     "ઢોકળા", "હાંડવો", "થેપલા", "ઊંધિયું", "બાસુંદી", "ભીંડી", "મુઠીયા", "પાત્રા", "સેવ ટમેટા", "સેવ ટામેટા",
@@ -98,25 +99,29 @@ FOOD_NOUNS = [
 
 EATING_VERBS = [
     "ate", "had", "eaten", "consumed", "taking", "took", "eating", "logged", "finished", "having",
-    "khadha", "khadhi", "khadhu", "khaye", "khaya", "khayi", "khalo",
-    "lidhi", "lidhu", "lidho", "leedhi", "leedhu", "liya", "li",
-    "ખાધી", "ખાધું", "ખાધા", "લીધું", "લીધી",
-    "खाया", "खाई", "खाए", "लिया", "ली"
+    "khadha", "khadhi", "khadhu", "khadho", "khado", "khaye", "khaya", "khayi", "khalo",
+    "lidhi", "lidhu", "lidho", "lido", "leedhi", "leedhu", "leedho", "liya", "li",
+    "karyu", "karya", "kari", "kri",
+    "ખાધી", "ખાધું", "ખાધા", "લીધું", "લીધી", "કર્યું", "કર્યા",
+    "खाया", "खाई", "खाए", "लिया", "ली", "किया"
 ]
 
 DRINKING_VERBS = [
-    "pidhi", "pidhu", "pidha", "piya", "peeli", "peena", "drink", "drank", "drunk", "peeya",
+    "pidhi", "pidhu", "pidha", "pidho", "pido", "pitu", "pithi", "piya", "piyi", "peeli", "peena", "drink", "drank", "drunk", "peeya",
     "પીધું", "પીધી", "पिया", "पी"
 ]
 
 WORKOUT_PATTERNS = [
-    r"\bwalk\b", r"\bwalked\b", r"\bwalking\b", r"\brun\b", r"\brunning\b", r"\bran\b",
-    r"\bgym\b", r"(?<!pre[-\s])\bworkout\b", r"\bexercise\b", r"\bcycling\b", r"\bpush-?ups?\b", r"\bpull-?ups?\b",
+    r"\bwalk\b", r"\bwalked\b", r"\bwalking\b", r"\bwlak\b", r"\bwlaked\b", r"\bwlkng\b", r"\bwalkng\b", r"\bwaking\b",
+    r"\brun\b", r"\brunning\b", r"\bran\b", r"\bjog\b", r"\bjogged\b", r"\bjogging\b",
+    r"\bgym\b", r"(?<!pre[-\s])\bworkout\b", r"\bexercise\b", r"\bexersise\b", r"\bexcersise\b",
+    r"\bcycl(?:e|ed|ing)?\b", r"\bcycld\b", r"\bbike\b", r"\bpush-?ups?\b", r"\bpusups?\b", r"\bpushupz\b", r"\bpull-?ups?\b",
     r"\bback\b(?!\s+(?:tea|coffee))", r"\bbiceps?\b", r"\btriceps?\b", r"\bchest\b", r"\blegs?\b", r"\bshoulders?\b", r"\babs\b",
-    r"\byoga\b", r"\bbadminton\b", r"\bcricket\b", r"\bswimming\b", r"\bfootball\b",
-    r"\bjump rope\b", r"\bhiit\b", r"\bpilates\b", r"\bzumba\b", r"\bdance\b",
-    r"\bsquats?\b", r"\blunges?\b", r"\bcrunches?\b", r"\bplanks?\b", r"\bburpees?\b",
-    r"\bbench press\b", r"\bdeadlifts?\b", r"\bstretching\b", r"\bstrength\s*training\b", r"\bdhodhyo\b", r"\bkasrat\b", r"\bchalyo\b",
+    r"\byoga\b", r"\byga\b", r"\bbadminton\b", r"\bcricket\b", r"\bswim(?:ming)?\b", r"\bswam\b", r"\bswm\b", r"\bfootball\b",
+    r"\bjump rope\b", r"\bskipping\b", r"\bskipped\b", r"\bhiit\b", r"\bpilates\b", r"\bzumba\b", r"\bdance\b",
+    r"\bsquats?\b", r"\bsqats?\b", r"\bskwats?\b", r"\blunges?\b", r"\bcrunches?\b", r"\bplanks?\b", r"\bburpees?\b",
+    r"\bbench press\b", r"\bbnk\s*prss\b", r"\bbnch\s*prss\b", r"\bbnch\b", r"\bdeadlifts?\b", r"\belliptical\b", r"\btreadmill\b",
+    r"\bstretching\b", r"\bstrength\s*training\b", r"\bdhodhyo\b", r"\bkasrat\b", r"\bchalyo\b",
     r"દૌડ્યા", r"દૌડ્યો", r"દોડ્યો", r"ચાલ્યો", r"કસરત", r"વર્કઆઉટ", r"યોગા", r"સ્ક્વોટ્સ?", r"પુશઅપ્સ?", r"સ્ટ્રેન્થ\s*ટ્રેનિંગ",
     r"दौड़ा", r"दौड़ी", "कसरत", "वर्कआउट", "योगा", "व्यायाम", r"स्क्वैट्स?", r"पुशअप्स?", r"स्ट्रेंथ\s*ट्रेनिंग"
 ]
@@ -128,13 +133,17 @@ INDIAN_FOOD_SYNONYMS: Dict[str, str] = {
     "khapli roti": "Khapli Wheat Rotli",
     "khapli rotli": "Khapli Wheat Rotli",
     "khapli": "Khapli Wheat Rotli",
+    "khaply": "Khapli Wheat Rotli",
+    "khaply rwtli": "Khapli Wheat Rotli",
     "rotli": "Roti",
     "rotlis": "Roti",
     "roti": "Roti",
     "rotis": "Roti",
+    "rti": "Roti",
     "rotliyo": "Roti",
     "rotlee": "Roti",       # phonetic variant: rotlee sounds like rotli
     "rotlii": "Roti",       # double-i phonetic variant
+    "rwtli": "Roti",
     "chapati": "Chapati",
     "chapatis": "Chapati",
     "phulka": "Phulka",
@@ -142,11 +151,13 @@ INDIAN_FOOD_SYNONYMS: Dict[str, str] = {
     "phulkas": "Phulka",
     "theplas": "Methi Thepla",
     "theple": "Methi Thepla",
+    "mthii thepla": "Methi Thepla",
     "rotlo": "Rotlo",
     "rotla": "Rotlo",
     "rotlu": "Rotlo",
     "bajra rotlo": "Rotlo",
     "bajri rotla": "Rotlo",
+    "bajra rotla": "Rotlo",
     "bajri no rotlo": "Rotlo",
     "bajra roti": "Rotlo",
     "bajre ki roti": "Rotlo",
@@ -158,10 +169,13 @@ INDIAN_FOOD_SYNONYMS: Dict[str, str] = {
     "bhakri": "Bhakri",
     "bhakhri": "Bhakri",
     "bakhri": "Bhakri",
+    "bakhrii": "Bhakri",
     "whole wheat bhakri": "Bhakri",
     "thepla": "Methi Thepla",
     "methi thepla": "Methi Thepla",
     "paratha": "Plain Paratha",
+    "prtha": "Plain Paratha",
+    "parotha": "Plain Paratha",
     "aloo paratha": "Aloo Paratha",
     "paneer paratha": "Paneer Paratha",
     "pneer paratha": "Paneer Paratha",
@@ -173,10 +187,16 @@ INDIAN_FOOD_SYNONYMS: Dict[str, str] = {
     "chai": "Tea With Milk",
     "chay": "Tea With Milk",
     "tea": "Tea With Milk",
+    "tea with milk": "Tea With Milk",
+    "tea milk": "Tea With Milk",
+    "chai with milk": "Tea With Milk",
+    "chai milk": "Tea With Milk",
     "masala chai": "Tea With Milk",
     "masala tea": "Tea With Milk",
     "coffee": "Coffee With Milk",
     "cofee": "Coffee With Milk",
+    "coffee with milk": "Coffee With Milk",
+    "coffee milk": "Coffee With Milk",
     "black coffee": "Black Coffee",
     "black cofee": "Black Coffee",
     "lemon water": "Lemon Water",
@@ -187,8 +207,14 @@ INDIAN_FOOD_SYNONYMS: Dict[str, str] = {
     "preworkout": "Pre Workout",
     "green tea": "Green Tea",
     "chawal": "Cooked White Rice",
+    "chawl": "Cooked White Rice",
     "bhaat": "Cooked White Rice",
+    "bhat": "Cooked White Rice",
     "rice": "Cooked White Rice",
+    "rce": "Cooked White Rice",
+    "brwn rce": "Cooked White Rice",
+    "brown rice": "Cooked White Rice",
+    "jeera rice": "Cooked White Rice",
     "steamed rice": "Cooked White Rice",
     "khichdi": "Moong Dal Khichdi",
     "khichdo": "Moong Dal Khichdi",
@@ -197,12 +223,14 @@ INDIAN_FOOD_SYNONYMS: Dict[str, str] = {
     "upma": "Upma",
     "idli": "Idli",
     "idly": "Idli",
+    "idlii": "Idli",
     "dosa": "Plain Dosa",
     "plain dosa": "Plain Dosa",
     "masala dosa": "Masala Dosa",
 
     # Dairy
     "doodh": "Cow Milk (Toned)",
+    "dhooodh": "Cow Milk (Toned)",
     "dudh": "Cow Milk (Toned)",
     "milk": "Cow Milk (Toned)",
     "cow milk": "Cow Milk (Toned)",
@@ -212,10 +240,15 @@ INDIAN_FOOD_SYNONYMS: Dict[str, str] = {
     "buttermilk": "Spiced Buttermilk (Chaas)",
     "dahi": "Curd (Dahi)",
     "curd": "Curd (Dahi)",
+    "curd rice": "Curd (Dahi)",
+    "dahi bhat": "Curd (Dahi)",
     "yogurt": "Curd (Dahi)",
     "paneer": "Paneer",
     "pneer": "Paneer",
+    "pneeeer": "Paneer",
+    "paneeeer": "Paneer",
     "paneer bhurji": "Paneer Bhurji",
+    "paneeeer bhurjii": "Paneer Bhurji",
     "paneer makhani": "Paneer",
     "paneer tikka": "Paneer Tikka",
     "ghee": "Desi Ghee",
@@ -226,6 +259,9 @@ INDIAN_FOOD_SYNONYMS: Dict[str, str] = {
     # Dals & Pulses
     "dal": "Toor Dal",
     "daal": "Toor Dal",
+    "daaal": "Toor Dal",
+    "dahl": "Toor Dal",
+    "dl": "Toor Dal",
     "toor dal": "Toor Dal",
     "tuver dal": "Toor Dal",
     "yellow dal": "Toor Dal",
@@ -234,17 +270,29 @@ INDIAN_FOOD_SYNONYMS: Dict[str, str] = {
     "mug dal": "Yellow Moong Dal",
     "chana dal": "Chana Dal",
     "kadhi": "Gujarati Kadhi",
+    "kdhi": "Gujarati Kadhi",
     "sambhar": "Sambar",
     "sambar": "Sambar",
+    "smbar": "Sambar",
     "chole": "Chole Chana Masala",
     "chole chana": "Chole Chana Masala",
     "chole masala": "Chole Chana Masala",
     "chana masala": "Chole Chana Masala",
+    "chna masla": "Chole Chana Masala",
+    "chna": "Chole Chana Masala",
+    "chnaa": "Chole Chana Masala",
     "rajma": "Rajma",
+    "rajmah": "Rajma",
+    "rajmah chawl": "Rajma",
+    "rajma curry": "Rajma",
     "kidney bean": "Rajma",
     "kidney beans": "Rajma",
     "chana": "Boiled Chickpeas",
     "sprouts": "Mixed Sprouts",
+    "sprouts salad": "Mixed Sprouts",
+    "papad": "Papad",
+    "nartyal chtny": "Coconut Chutney",
+    "coconut chutney": "Coconut Chutney",
 
     # Fruits & Vegetables
     "banana": "Banana",
@@ -265,8 +313,12 @@ INDIAN_FOOD_SYNONYMS: Dict[str, str] = {
     "watermelon": "Watermelon",
     "tarbooz": "Watermelon",
     "sabzi": "Mixed Vegetable Sabzi",
+    "sabji": "Mixed Vegetable Sabzi",
+    "subji": "Mixed Vegetable Sabzi",
     "shaak": "Mixed Vegetable Sabzi",
     "shak": "Mixed Vegetable Sabzi",
+    "mug nu shak": "Mixed Vegetable Sabzi",
+    "sprouts salad": "Mixed Sprouts",
     "bhindi": "Bhindi Masala",
     "bhindi sabzi": "Bhindi Masala",
     "bhindi masala": "Bhindi Masala",
@@ -294,6 +346,7 @@ INDIAN_FOOD_SYNONYMS: Dict[str, str] = {
     # Non-Veg & Proteins
     "egg": "Boiled Egg",
     "eggs": "Boiled Egg",
+    "egss": "Boiled Egg",
     "anda": "Boiled Egg",
     "ande": "Boiled Egg",
     "boiled egg": "Boiled Egg",
@@ -305,10 +358,16 @@ INDIAN_FOOD_SYNONYMS: Dict[str, str] = {
     "egg white": "Egg White",
     "chicken": "Chicken Breast",
     "chiken": "Chicken Breast",
+    "chkn": "Chicken Breast",
+    "bresst": "Chicken Breast",
+    "chkn bresst": "Chicken Breast",
+    "chikn": "Chicken Breast",
     "chicken breast": "Chicken Breast",
     "chicken tikka": "Chicken Tikka",
     "fish": "Grilled Fish",
     "whey": "Whey Protein Powder",
+    "whye": "Whey Protein Powder",
+    "whye prtein": "Whey Protein Powder",
     "whey protein": "Whey Protein Powder",
     "whey protein powder": "Whey Protein Powder",
     "protein powder": "Whey Protein Powder",
@@ -318,6 +377,8 @@ INDIAN_FOOD_SYNONYMS: Dict[str, str] = {
     "protein shakes": "Protein Shake",
     "protin shake": "Protein Shake",
     "protien shake": "Protein Shake",
+    "protn": "Protein Shake",
+    "prtein": "Protein Shake",
     "shake": "Protein Shake",
     "shakes": "Protein Shake",
     "whey shake": "Protein Shake",
@@ -368,12 +429,17 @@ INDIAN_FOOD_SYNONYMS: Dict[str, str] = {
     "pavbhaji": "Pav Bhaji",
     "alu dosa": "Masala Dosa",
     "aloo dosa": "Masala Dosa",
-    "protein powder": "Whey Protein Powder",
     "chole bhature": "Chole Chana Masala",
     "dahi bhat": "Curd (Dahi)",
     "water": "Water",
     "paani": "Water",
     "pani": "Water",
+    "pni": "Water",
+    "panu": "Water",
+    "apple": "Apple",
+    "aplle": "Apple",
+    "toast": "Toast",
+    "tosst": "Toast",
 
     # Native Gujarati Script
     "રોટલી": "Roti",
@@ -574,6 +640,31 @@ class AgentNLP:
         for pat, repl in decompounds.items():
             norm = re.sub(pat, repl, norm, flags=re.IGNORECASE)
 
+        # Number words normalization (e.g., 'ek rotli', 'be apple', 'tran anda')
+        num_words = {
+            r"\bek\b": "1",
+            r"(?<!\bto\s)(?<!\bwill\s)(?<!\bcan\s)(?<!\bshould\s)(?<!\bmust\s)(?<!\bcould\s)(?<!\bwould\s)(?<!\bmay\s)(?<!\bmight\s)(?<!\blet\s)\bbe\b": "2",
+            r"\btran\b": "3",
+            r"\btraan\b": "3",
+            r"\bteen\b": "3",
+            r"\btin\b": "3",
+            r"\bchaar\b": "4",
+            r"\bchar\b": "4",
+            r"\bpaanch\b": "5",
+            r"\bpanch\b": "5",
+            r"\bchheh\b": "6",
+            r"\bchhe\b": "6",
+            r"\bsaat\b": "7",
+            r"\bsat\b": "7",
+            r"\baath\b": "8",
+            r"\bnau\b": "9",
+            r"\bnav\b": "9",
+            r"\bdus\b": "10",
+            r"\bdas\b": "10",
+        }
+        for pat, repl in num_words.items():
+            norm = re.sub(pat, repl, norm, flags=re.IGNORECASE)
+
         typos = {
             # Conjunctions & prepositions
             r"\bamd\b": "and",
@@ -615,32 +706,72 @@ class AgentNLP:
             r"\bwrkout\b": "workout",
             r"\bexersise\b": "exercise",
             r"\bexcersise\b": "exercise",
+            r"\bexercize\b": "exercise",
+            r"\bexercize\b": "exercise",
+            r"\bexersize\b": "exercise",
+            r"\bexcersize\b": "exercise",
             # Food & supplements
             r"\bprotien\b": "protein",
             r"\bprotin\b": "protein",
+            r"\bprotn\b": "protein",
+            r"\bprtein\b": "protein",
+            r"\bwhye\b": "whey",
             r"\bpowdr\b": "powder",
             r"\bpawder\b": "powder",
             r"\bkhapali\b": "khapli",
+            r"\bkhaply\b": "khapli",
             r"\brti\b": "roti",
+            r"\brwtli\b": "roti",
+            r"\brotlii\b": "roti",
             r"\bpice\b": "piece",
             r"\bpices\b": "pieces",
             r"\bplet\b": "plate",
+            r"\bplt\b": "plate",
             r"\bbwl\b": "bowl",
+            r"\bbwll\b": "bowl",
+            r"\bktori\b": "katori",
+            r"\bvtk\b": "vatki",
             r"\bgls\b": "glass",
             r"\bglaas\b": "glass",
+            r"\bgllass\b": "glass",
             r"\bbotle\b": "bottle",
+            r"\bbtl\b": "bottle",
             r"\bchaye\b": "chai",
             r"\bpneer\b": "paneer",
             r"\bpneeeer\b": "paneer",
+            r"\bpaneeeer\b": "paneer",
             r"\bpanner\b": "paneer",
             r"\bpoh\b": "poha",
             r"\bmakni\b": "makhani",
             r"\beggz\b": "eggs",
+            r"\begss\b": "eggs",
+            r"\baplle\b": "apple",
+            r"\btosst\b": "toast",
             r"\bsamose\b": "samosa",
             r"\bidlee\b": "idli",
+            r"\bidlii\b": "idli",
             r"\bsambher\b": "sambar",
+            r"\bsmbar\b": "sambar",
             r"\bparotha\b": "paratha",
+            r"\bprtha\b": "paratha",
             r"\bdaal\b": "dal",
+            r"\bdaaal\b": "dal",
+            r"\bdahl\b": "dal",
+            r"\bdl\b": "dal",
+            r"\bkdhi\b": "kadhi",
+            r"\bchna\b": "chana",
+            r"\bchnaa\b": "chana",
+            r"\bmasla\b": "masala",
+            r"\bmthii\b": "methi",
+            r"\bbakhrii\b": "bhakhri",
+            r"\bnartyal\b": "nariyal",
+            r"\bchtny\b": "chutney",
+            r"\bdhooodh\b": "doodh",
+            r"\bchkn\b": "chicken",
+            r"\bbresst\b": "breast",
+            r"\bbrwn\b": "brown",
+            r"\brce\b": "rice",
+            r"\bchawl\b": "chawal",
             r"\bbanaana\b": "banana",
             r"\bchiken\b": "chicken",
             r"\blitr\b": "litre",
@@ -648,6 +779,25 @@ class AgentNLP:
             r"\bskoop\b": "scoop",
             r"\bscop\b": "scoop",
             r"\bskup\b": "scoop",
+            r"\bscp\b": "scoop",
+            r"\bpanu\b": "pani",
+            r"\bpni\b": "pani",
+            r"\bpitu\b": "pidhu",
+            r"\bpithi\b": "pidhi",
+            r"\bsqats?\b": "squats",
+            r"\bskwats?\b": "squats",
+            r"\bpusups?\b": "pushups",
+            r"\bpushupz\b": "pushups",
+            r"\bbnk\s*prss\b": "bench press",
+            r"\bbnch\s*prss\b": "bench press",
+            r"\bbnch\b": "bench press",
+            r"\bwlaked\b": "walked",
+            r"\bwlkng\b": "walking",
+            r"\byga\b": "yoga",
+            r"\bcycld\b": "cycled",
+            r"\bswm\b": "swim",
+            r"\bminutss\b": "minutes",
+            r"\bmnts\b": "minutes",
         }
         for pat, repl in typos.items():
             norm = re.sub(pat, repl, norm, flags=re.IGNORECASE)
@@ -673,90 +823,137 @@ class AgentNLP:
             "karyu",   # Gujarati verb: did — NOT a food name
             "thakor",  # Gujarati proper noun / title
         ]
-        words = norm.split(" ")
-        corrected_words = []
-        for w in words:
-            w_clean = re.sub(r"^[^\w]+|[^\w]+$", "", w.lower())
-            if len(w_clean) >= 4 and w_clean not in fuzzy_vocab and not w_clean.isdigit():
-                matches = difflib.get_close_matches(w_clean, fuzzy_vocab, n=1, cutoff=0.82)
-                if matches:
-                    w = re.sub(rf"\b{re.escape(w_clean)}\b", matches[0], w, flags=re.I)
-            corrected_words.append(w)
-        norm = " ".join(corrected_words)
-
-        return norm
-
-    @staticmethod
-    def parse_number_tokens(text: str) -> str:
-        """Replaces written number words (e.g. 'two', 'be', 'ek', 'aadha') with numeric strings while preserving newlines."""
-        lines = text.splitlines(keepends=True)
-        res_lines = []
+        lines = norm.splitlines()
+        repaired_lines = []
         for line in lines:
-            ends_with_newline = line.endswith("\n") or line.endswith("\r")
-            content = line.rstrip("\r\n")
-            tokens = content.split(" ")
-            out = []
-            for i, t in enumerate(tokens):
-                if not t:
-                    out.append(t)
-                    continue
-                cleaned = re.sub(r"[^\w\.]", "", t.lower())
-                prev_token = re.sub(r"[^\w\.]", "", tokens[i-1].lower()) if i > 0 else ""
-                next_token = re.sub(r"[^\w\.]", "", tokens[i+1].lower()) if i + 1 < len(tokens) else ""
-
-                # Guard English verb "do" (e.g. "what did i do today", "how do i", "what to do")
-                if cleaned == "do" and (prev_token in ["i", "you", "we", "they", "to", "did", "how", "what", "can", "will", "would", "could", "should"] or next_token in ["i", "you", "today", "it", "not", "so", "exercise", "workout"]):
-                    out.append(t)
-                    continue
-
-                if cleaned in NUMBER_WORDS:
-                    val = NUMBER_WORDS[cleaned]
-                    out.append(str(int(val) if val.is_integer() else val))
-                else:
-                    out.append(t)
-            res_line = " ".join(out)
-            if ends_with_newline:
-                res_line += "\n"
-            res_lines.append(res_line)
-        return "".join(res_lines)
+            words = line.split(" ")
+            corrected_words = []
+            for w in words:
+                w_clean = re.sub(r"^[^\w]+|[^\w]+$", "", w.lower())
+                if len(w_clean) >= 4 and w_clean not in fuzzy_vocab and not w_clean.isdigit():
+                    matches = difflib.get_close_matches(w_clean, fuzzy_vocab, n=1, cutoff=0.85)
+                    if matches:
+                        prefix = re.match(r"^[^\w]+", w)
+                        suffix = re.search(r"[^\w]+$", w)
+                        p_str = prefix.group(0) if prefix else ""
+                        s_str = suffix.group(0) if suffix else ""
+                        corrected_words.append(p_str + matches[0] + s_str)
+                        continue
+                corrected_words.append(w)
+            repaired_lines.append(" ".join(corrected_words))
+        return "\n".join(repaired_lines)
 
     @staticmethod
     def normalize_text(text: str) -> str:
-        """Full deterministic preprocessing pipeline."""
-        repaired = AgentNLP.repair_missing_spaces_and_typos(text)
-        numbered = AgentNLP.parse_number_tokens(repaired)
-        return numbered
+        return AgentNLP.repair_missing_spaces_and_typos(text)
 
-    @staticmethod
-    def detect_intent(text: str) -> str:
-        """Classifies intent using high-precision multilingual patterns."""
-        norm = AgentNLP.normalize_text(text)
-        lower = norm.lower()
-
-        # 0. Zero quantity check -> GENERAL_CHAT (DO NOT LOG)
-        if re.search(r"\b(?:ate|had|consumed|drank|eaten|have|khadha|khadhi|khadhu|khaya|khayi|pidhu|pidhi)\s+0(?:\.0+)?\b|\b0(?:\.0+)?\s*(?:ml|liter|litre|glass|cup|bottle|serving|bowl|plate|piece|nag|katori|vatki|g|kg|scoop)\b|\b(?:ate|had|drank)\s+zero\b", lower):
+    @classmethod
+    def detect_intent(cls, message: str) -> str:
+        """Detect primary intent using hierarchical rules.
+        
+        Resolution order:
+        1. Contextual continuation phrases -> CREATE_FOOD_LOG
+        2. Explicit summary / query requests -> DAILY_SUMMARY, QUERY_FOOD_LOG, etc.
+        3. Domain nouns (Food, Workout, Hydration, Sleep, Weight)
+        4. Verbs
+        5. Severe fuzzy keywords with numbers / units
+        6. General chat fallback
+        """
+        if not message or not message.strip():
             return "GENERAL_CHAT"
 
-        # 1. Update / Correction intent
-        if any(w in lower for w in [
-            "make it", "change to", "update to", "instead of", "actually", "sudharo",
-            "badlo", "ferfar", "change karo", "update karo", "not 2 but", "galti se",
-            "સુધારો", "બદલો", "ફેરફાર", "બદલ", "बदलो", "अपडेट", "गलती से"
-        ]):
-            return "UPDATE_FOOD_LOG"
+        cleaned_text = cls.repair_missing_spaces_and_typos(message)
+        lower = cleaned_text.lower().strip()
 
-        # 2. Deletion / Removal intent
-        if any(w in lower for w in [
-            "delete", "remove", "cancel", "hatao", "nikalo", "kadhi nakho",
-            "kadho", "delete karo", "remove karo", "cancel karo", "mitado",
-            "કાઢી નાખો", "હટાવો", "કેન્સલ", "हटाओ", "डिलीट", "मिटा दो", "रद्द"
-        ]):
-            return "DELETE_FOOD_LOG"
+        # 1. Contextual continuation phrases
+        is_contextual_continuation = any(w in lower for w in [
+            "sathe", "lidhu", "lidhi", "khadhu", "khadha", "khadhi", "khau chhu", "jamyo", "jami", "jamya",
+            "khatam", "patavyu", "pityu", "patais", "bija", "biji", "sathe sathe", "jode", "bapor na", "savare",
+            "ek biju", "ek biji", "have", "nasta ma", "thodu", "thoda", "thodi", "vadhu", "sath ma",
+            "saath me", "saath", "liye", "liya", "khaya", "khayi", "khaye", "piya", "aur", "ek aur", "dusra",
+            "dusri", "bhi", "khatam kiya", "bhi khaya", "kuch aur", "saath sath", "or bhi",
+            "with", "and also", "had", "ate", "also ate", "also had", "plus", "along with", "one more", "more",
+            "finished", "done with", "took", "drank", "consumed", "some more",
+            "સાથે", "લીધું", "લીધી", "ખાધું", "ખાધા", "ખાધી", "જમ્યો", "જમી", "જમ્યા", "બીજું", "બીજી", "બીજા", "સાથે સાથે", "જોડે", "ખતમ",
+            "साथ", "साथ में", "लिया", "ली", "खाया", "खाई", "खाए", "पिया", "और", "एक और", "दूसरा", "दूसरी", "भी", "खत्म किया", "भी खाया"
+        ])
+        if lower in ["sathe", "saath me", "with", "and", "plus", "aur"]:
+            return "GENERAL_CHAT"
 
-        # 3. Water Intake Query intent (e.g. "Aaj ketlu pani pidhu?", "How much water did I drink today?", "Aaj kitna pani piya?")
+        # 1. Food Suggestions intent
+        is_food_suggestion = any(w in lower for w in [
+            "what should i eat", "what to eat", "what can i eat", "what do i eat",
+            "suggest food", "suggest healthy food", "suggest meal", "suggest dinner", "suggest lunch",
+            "suggest breakfast", "suggest snack", "food suggestion", "meal suggestion", "food suggestions",
+            "meal suggestions", "healthy food suggestion", "healthy meal ideas", "healthy dinner ideas",
+            "healthy breakfast ideas", "healthy lunch ideas", "what to have for dinner", "what to have for breakfast",
+            "what to have for lunch", "what should i have for dinner", "what should i have for lunch",
+            "what should i have for breakfast", "healthy snacks to eat", "what healthy food",
+            "su khavu joiye", "shu khavu joiye", "su khavu", "shu khavu", "su khau", "shu khau", "aaj su khavu",
+            "lunch ma su khau", "dinner ma su khau", "dinner ma su banavu", "savare su khavu", "nasta ma su levu",
+            "khavanu suggest karo", "healthy khavanu suggest karo", "su jamvu", "bapor na su khavu",
+            "kya khana chahiye", "kya khau", "kya khaye", "kya khayein", "lunch me kya khau", "dinner me kya khau",
+            "dinner me kya banau", "khana suggest karo", "kuch healthy batao khane", "nashte me kya khau",
+            "kya khana accha", "healthy khana suggest",
+            # ── Future-day food suggestions (kale/kal/tomorrow + question word) ──
+            "kale su khavu", "kale shu khavu", "kale su khau", "kale su jamvu",
+            "kale mare su khavu", "kale mare su khau", "kal su khana", "kal kya khau",
+            "kal kya khaunga", "tomorrow what to eat", "tomorrow what should i eat",
+            "tomorrow su khavu joiye", "aavti kale su khavu",
+            # ── Current-time / next-meal suggestions ──
+            "have su khavu", "have su khau", "have kya khau", "abhi kya khau",
+            "haju su khavu", "haju su khau",
+            "sanje su khavu", "sanje su khau", "sanje mare su khavu",
+            "ratre su khavu", "raat ma su khavu",
+            "savare su khavu joiye", "nasta ma su le", "breakfast ma su khau",
+            "શું ખાવા જોઈએ", "શું ખાવું", "શું ખાઉં", "ડિનરમાં શું બનાવવું", "લંચમાં શું ખાવું", "નાસ્તામાં શું લેવું", "સ્વસ્થ ખોરાક", "શું જમવું",
+            "क्या खाना चाहिए", "क्या खाऊं", "क्या खाएं", "डिनर में क्या बनाऊं", "लंच में क्या खाऊं", "नाश्ते में क्या लें", "हेल्दी खाना"
+        ])
+        if is_food_suggestion:
+            return "FOOD_SUGGESTION"
+
+        # 2. Workout Suggestions intent
+        is_workout_suggestion = any(w in lower for w in [
+            "suggest exercise", "suggest workout", "suggest an exercise", "suggest a workout",
+            "what exercise should i do", "what workout should i do", "exercise suggestions",
+            "workout suggestions", "give me exercise", "give me workout", "recommend exercise",
+            "recommend workout", "which exercise should i do", "exercise suggest karo",
+            "workout suggest karo", "kai exercise karu", "kai kasrat karu", "kasrat suggest karo",
+            "koi exercise batao", "koi workout batao", "aaj kaunsa workout", "aaje kai kasrat",
+            "kai exercise karvi joiye", "kai kasrat karvi joiye", "suggest workout for",
+            # ── Future-day / today workout suggestions ("mare kale su exercise karvi joiye?") ──
+            "kale su exercise", "kale su exercise karvi", "kale su exercise karu",
+            "kale kai exercise", "kale kai kasrat", "kale su workout",
+            "kale mare su exercise", "kal kya exercise", "kal kaunsa workout",
+            "tomorrow what exercise", "tomorrow what workout", "tomorrow which exercise",
+            "mare kale su exercise karvi joiye", "aavti kale su exercise",
+            "mare aaje su exercise", "mare aaje su exercise karvi", "aaje su exercise karvi",
+            "aaje kai exercise karu", "have su exercise", "have kai exercise karu",
+            "કઈ કસરત કરું", "કસરત સજેસ્ટ", "વર્કઆઉટ સજેસ્ટ", "કોઈ કસરત બતાવો",
+            "कौन सी एक्सरसाइज करूं", "एक्सरसाइज सजेस्ट करो", "वर्कआउट सजेस्ट करो", "कोई एक्सरसाइज बताओ"
+        ])
+        if is_workout_suggestion:
+            return "WORKOUT_SUGGESTION"
+
+        # 3. Fitness & Workout Question / Recommendation Check -> FITNESS_ADVISORY (DO NOT LOG)
+        has_q_word = bool(re.search(r"\b(?:what|how|which|why|give me|suggest|batao|aapo|kya|kaise|kaunse|shu|kem|kaya|kai)\b", lower)) or "?" in lower or any(ch in lower for ch in ["કયા", "શું", "કેમ", "કેવી રીતે", "ફાયદા", "ફાયદો", "क्या", "कैसे", "कौनसे", "फायदे"])
+        is_fitness_advisory = any(w in lower for w in [
+            "benefits of", "benefit of", "fayda", "fayde", "faida", "faide", "લાભ", "ફાયદા", "ફાયદો", "ફायदे", "लाभ",
+            "workout plan", "routine plan", "exercise plan", "beginner workout", "beginner plan", "workout for beginner",
+            "stamina", "endurance", "સ્ટેમિના", "સ્ટિમિના", "दम", "improve my stamina", "improve stamina", "increase stamina",
+            "stamina kem", "stamina kaise", "badhaye", "vadharvu", "target the legs", "target legs", "leg exercise", "leg workout",
+            "exercises for", "exercise for", "exercises target", "which exercises", "which exercise", "kaya exercise",
+            "kaunse exercise", "calories does", "calories burn", "burn calories", "calorie burn", "ketli calories burn",
+            "kitni calories burn", "give me a beginner", "how to improve", "how can i", "how do i improve",
+            "how to build stamina", "best exercise", "exercises target", "legs mate"
+        ]) or (
+            has_q_word and any(bool(re.search(pat, lower)) for pat in WORKOUT_PATTERNS)
+        )
+        if is_fitness_advisory:
+            return "FITNESS_ADVISORY"
+
+        # 4. Query Hydration Log
         is_water_query = any(w in lower for w in [
-            "ketlu pani pidhu", "ketlu pani", "pani ketlu", "aaj ketlu pani", "ketla glass pani",
-            "kitna pani piya", "kitna paani piya", "pani kitna piya", "kitna pani", "kitna paani",
             "how much water did i drink", "how much water today", "how much water have i drank",
             "water intake today", "did i drink enough water", "water status", "how much water is left",
             "how much water left", "water goal reached", "water target", "how many glasses of water",
@@ -770,7 +967,7 @@ class AgentNLP:
         if is_water_query:
             return "QUERY_HYDRATION_LOG"
 
-        # 4. Daily Overall Summary intent (e.g. "Aaj ni summary aap", "What did I do today?", "Aaj ka summary batao", "Today's summary")
+        # 5. Daily Overall Summary intent
         is_daily_summary = any(w in lower for w in [
             "aaj ni summary", "aaj nu summary", "aaj no summary", "aaj summary", "summary aap", "summary aapo",
             "aaj ka summary", "aaj ki summary", "aaj ka hisab", "summary batao", "summary do",
@@ -786,43 +983,26 @@ class AgentNLP:
         if is_daily_summary:
             return "DAILY_SUMMARY"
 
-        # 5. Food Suggestions intent (e.g. "What should I eat for dinner?", "Suggest healthy food", "Su khavu joiye?", "Kya khana chahiye?")
-        is_food_suggestion = any(w in lower for w in [
-            "what should i eat", "what to eat", "what can i eat", "what do i eat",
-            "suggest food", "suggest healthy food", "suggest meal", "suggest dinner", "suggest lunch",
-            "suggest breakfast", "suggest snack", "food suggestion", "meal suggestion", "food suggestions",
-            "meal suggestions", "healthy food suggestion", "healthy meal ideas", "healthy dinner ideas",
-            "healthy breakfast ideas", "healthy lunch ideas", "what to have for dinner", "what to have for breakfast",
-            "what to have for lunch", "what should i have for dinner", "what should i have for lunch",
-            "what should i have for breakfast", "healthy snacks to eat", "what healthy food",
-            "su khavu joiye", "shu khavu joiye", "su khavu", "shu khavu", "su khau", "shu khau", "aaj su khavu",
-            "lunch ma su khau", "dinner ma su khau", "dinner ma su banavu", "savare su khavu", "nasta ma su levu",
-            "khavanu suggest karo", "healthy khavanu suggest karo", "su jamvu", "bapor na su khavu",
-            "kya khana chahiye", "kya khau", "kya khaye", "kya khayein", "lunch me kya khau", "dinner me kya khau",
-            "dinner me kya banau", "khana suggest karo", "kuch healthy batao khane", "nashte me kya khau",
-            "kya khana accha", "healthy khana suggest",
-            "શું ખાવું જોઈએ", "શું ખાવું", "શું ખાઉં", "ડિનરમાં શું બનાવવું", "લંચમાં શું ખાવું", "નાસ્તામાં શું લેવું", "સ્વસ્થ ખોરાક", "શું જમવું",
-            "क्या खाना चाहिए", "क्या खाऊं", "क्या खाएं", "डिनर में क्या बनाऊं", "लंच में क्या खाऊं", "नाश्ते में क्या लें", "हेल्दी खाना"
+        # 6. Daily Nutrition Summary & Queries
+        is_summary = any(w in lower for w in [
+            "total calories", "calories total", "how many calories today", "calorie count",
+            "today's intake", "daily progress", "macro summary", "nutrition summary",
+            "ketli calories", "ketlu khadhu", "aaj nu ketlu thayu", "ketlu baki chhe",
+            "ketli baki chhe", "aaj ni summary", "aaj nu summary",
+            "aaj ka total", "kitni calories", "kitna khaya", "aaj ka kitna hua", "kitna baki hai",
+            "kitni baki hai", "kitna bacha hai",
+            "આજનું ટોટલ", "કેટલી કેલરી", "કેટલું ખાધું", "કેટલું બાકી છે",
+            "आज का टोटल", "कितनी कैलोरी", "कितना खाया", "कितना बाकी है", "कितना बचा है"
         ])
-        if is_food_suggestion:
-            return "FOOD_SUGGESTION"
+        if is_summary:
+            return "QUERY_FOOD_LOG"
 
-        # 6. Workout Suggestions intent (e.g. "Suggest an exercise", "What workout should I do today?", "Aaje kai kasrat karu?", "Koi exercise batao")
-        is_workout_suggestion = any(w in lower for w in [
-            "suggest exercise", "suggest workout", "suggest an exercise", "suggest a workout",
-            "what exercise should i do", "what workout should i do", "exercise suggestions",
-            "workout suggestions", "give me exercise", "give me workout", "recommend exercise",
-            "recommend workout", "which exercise should i do", "exercise suggest karo",
-            "workout suggest karo", "kai exercise karu", "kai kasrat karu", "kasrat suggest karo",
-            "koi exercise batao", "koi workout batao", "aaj kaunsa workout", "aaje kai kasrat",
-            "kai exercise karvi joiye", "kai kasrat karvi joiye", "suggest workout for",
-            "કઈ કસરત કરું", "કસરત સજેસ્ટ", "વર્કઆઉટ સજેસ્ટ", "કોઈ કસરત બતાવો",
-            "कौन सी एक्सरसाइज करूं", "एक्सरसाइज सजेस्ट करो", "वर्कआउट सजेस्ट करो", "कोई एक्सरसाइज बताओ"
+        # 0. Question / Advisory / Negative / Hypothetical / 3rd-party check -> GENERAL_CHAT (DO NOT LOG)
+        is_third_party = any(w in lower for w in [
+            "my friend", "my brother", "my sister", "my mom", "my dad", "my father", "my mother",
+            "my cousin", "my wife", "my husband", "someone else", "my roommate", "maro bhai", "mari ben",
+            "maro dost", "maro mitra", "mera dost", "mera bhai", "meri behen", "dost ne"
         ])
-        if is_workout_suggestion:
-            return "WORKOUT_SUGGESTION"
-
-        # 0. Question / Advisory / Negative / Hypothetical check -> GENERAL_CHAT (DO NOT LOG)
         is_hypothetical = any(w in lower for w in [
             "if i eat", "if i have", "might eat", "will eat", "planning to eat", "planning to have", "planning to",
             "plan to eat", "plan to have", "plan hai", "plane hai", "plane chhe", "plan chhe",
@@ -838,7 +1018,8 @@ class AgentNLP:
             "khadhu nathi", "khadha nathi", "khadhi nathi", "khaya nahi", "khayi nahi", "khaye nahi", "piya nahi",
             "ખાધું નથી", "ખાધા નથી", "ખાધી નથી", "ખાધુ નથી", "પીધું નથી", "લીધું નથી", "લીધી નથી", "કંઈ ખાધું નથી", "કઈ ખાધું નથી", "કંઈ નથી ખાધું",
             "खाया नहीं", "खाई नहीं", "खाए नहीं", "पिया नहीं", "नहीं खाया", "नहीं खाई", "नहीं खाए", "नहीं पिया", "नहीं ली", "नहीं लिया", "कुछ नहीं खाया"
-        ])
+        ]) or bool(re.search(r"\b(?:ate|drank|had|khadhu|pidhu|khaya|piya)\s+0\b|\b0\s*(?:ml|gram|gms|g|glass|bowl|plate|piece|pcs|roti|rotli|basundi|water|pani|paani)\b", lower))
+        
         is_advisory = any(w in lower for w in [
             "how many calories in", "how many calories are in", "how much protein in", "how much protein is in",
             "is it healthy", "is roti healthy", "is healthy", "should i eat",
@@ -853,24 +1034,29 @@ class AgentNLP:
             "forgot what i ate", "what i ate", "remaining", "ketli calories thai", "calories thai"
         ])
 
-        # Fitness & Workout Question / Recommendation Check -> FITNESS_ADVISORY (DO NOT LOG)
-        has_q_word = bool(re.search(r"\b(?:what|how|which|why|give me|suggest|batao|aapo|kya|kaise|kaunse|shu|kem|kaya|kai)\b", lower)) or "?" in lower or any(ch in lower for ch in ["કયા", "શું", "કેમ", "કેવી રીતે", "ફાયદા", "ફાયદો", "क्या", "कैसे", "कौनसे", "फायदे"])
-        is_fitness_advisory = any(w in lower for w in [
-            "benefits of", "benefit of", "fayda", "fayde", "faida", "faide", "લાભ", "ફાયદા", "ફાયદો", "ફायदे", "लाभ",
-            "workout plan", "routine plan", "exercise plan", "beginner workout", "beginner plan", "workout for beginner",
-            "stamina", "endurance", "સ્ટેમિના", "स्टैमिना", "दम", "improve my stamina", "improve stamina", "increase stamina",
-            "stamina kem", "stamina kaise", "badhaye", "vadharvu", "target the legs", "target legs", "leg exercise", "leg workout",
-            "exercises for", "exercise for", "exercises target", "which exercises", "which exercise", "kaya exercise",
-            "kaunse exercise", "calories does", "calories burn", "burn calories", "calorie burn", "ketli calories burn",
-            "kitni calories burn", "give me a beginner", "how to improve", "how can i", "how do i improve",
-            "how to build stamina", "best exercise", "exercises target"
-        ]) or (
-            has_q_word and any(bool(re.search(pat, lower)) for pat in WORKOUT_PATTERNS)
+        # Future planned action (statement, not a question): "kale hu gym karish",
+        # "kale aa khaysh", "tomorrow I will eat...".  These must NOT be logged as
+        # completed.  Suggestion questions were already handled above (they return
+        # FOOD_SUGGESTION / WORKOUT_SUGGESTION), so a message reaching here with a
+        # future conjugation is a planned statement, not a question or suggestion.
+        #
+        # This check runs BEFORE the hypothetical/question gate because phrases like
+        # "will eat" would otherwise be swallowed by is_hypothetical and lost.
+        _FUTURE_CONJUGATIONS = (
+            "khaysh", "khais", "khaish", "khayish", "khaunga", "khaungi", "khayega",
+            "karish", "karis", "karaish", "karunga", "karungi", "karega",
+            "jais", "jaish", "jayish", "jaunga", "jaungi", "jayega",
+            "piysh", "piish", "piyish",
+            "will eat", "will have", "will drink", "will do", "will go to gym",
+            "karvano chhu", "khavano chhu", "javano chhu",
+            "કરીશ", "ખાઈશ", "જઈશ", "પીશ", "करूंगा", "खाऊंगा", "जाऊंगा",
         )
-        if is_fitness_advisory:
-            return "FITNESS_ADVISORY"
+        has_future_conjugation = any(fc in lower for fc in _FUTURE_CONJUGATIONS)
+        if has_future_conjugation and not is_question:
+            # Planned future action → do not log as completed.
+            return "FUTURE_LOG"
 
-        if is_hypothetical or is_negative or is_advisory or is_question:
+        if is_third_party or is_hypothetical or is_negative or is_advisory or is_question:
             return "GENERAL_CHAT"
 
         # 7. Query Food Log
@@ -887,9 +1073,11 @@ class AgentNLP:
             return "QUERY_FOOD_LOG"
 
         # Domain terms detection
-        # NOTE: Use word-boundary matching for eating/drinking verbs to prevent
-        # short tokens like "li" from matching inside words like "khali" (empty).
-        has_explicit_food = any(w in lower for w in FOOD_NOUNS)
+        has_explicit_food = any(w in lower for w in FOOD_NOUNS if w not in ("water", "pani", "paani")) or any(
+            bool(re.search(rf"\b{re.escape(k)}\b", lower))
+            for k, v in INDIAN_FOOD_SYNONYMS.items()
+            if v not in ("Water",)
+        )
         has_eating_verb = any(
             bool(re.search(rf"\b{re.escape(v)}\b", lower)) for v in EATING_VERBS
         )
@@ -899,7 +1087,7 @@ class AgentNLP:
         has_workout = any(bool(re.search(pat, lower)) for pat in WORKOUT_PATTERNS)
         
         # Check water (water or paani in non pani puri context)
-        has_water = (any(w in lower for w in ["water", "paani", "પાણી", "पानी"]) or 
+        has_water = (any(w in lower for w in ["water", "paani", "pani", "pni", "panu", "પાણી", "पानी"]) or 
                      (re.search(r"\bpani\b", lower) and "pani puri" not in lower))
 
         has_weight = any(w in lower for w in [
@@ -913,7 +1101,7 @@ class AgentNLP:
         has_sleep = any(w in lower for w in [
             "sleep", "slept", "suvo", "suito", "suto", "suti", "oongh", "neend", "so gaya", "soya", "bed at", "woke up at",
             "hours sleep", "hour sleep", "hr sleep", "hrs sleep", "hours of sleep", "hour of sleep", "kalak suito", "kalak suto",
-            "ઊંઘ", "સુઈ ગયો", "સુતો", "સુતી", "सोया", "नींद"
+            "ઊંઘ", "સુઈ ગયો", "સુતો", "સુતી", "સોયા", "नींद"
         ])
 
         # Multi-log check (food + workout or food + water)
@@ -934,11 +1122,8 @@ class AgentNLP:
             return "CREATE_SLEEP_LOG"
 
         if has_explicit_food or has_eating_verb or has_drinking_verb:
-            # Container/tiffin guard: sentences about emptying or handling a
-            # lunchbox/tiffin without mentioning an actual food noun are not food
-            # logs — they describe a container action, not consumption.
-            # Only fire when there is NO explicit food noun present.
-            _CONTAINER_WORDS = {"dabbu", "dabba", "tiffin", "lunchbox", "lunch box", "डब्बा"}
+            # Container/tiffin guard
+            _CONTAINER_WORDS = {"dabbu", "dabba", "tiffin", "lunchbox", "lunch box", "ડબ્બો"}
             _CONTAINER_ACTIONS = {
                 "khali", "saaf", "bharo", "lai", "muki", "rakh", "dho", "pack",
                 "empty", "clean", "fill", "खाली", "साफ",
@@ -951,6 +1136,32 @@ class AgentNLP:
             )
             if has_container and has_container_action and not has_explicit_food:
                 return "GENERAL_CHAT"
+            return "CREATE_FOOD_LOG"
+
+        # Fuzzy intent detection for corrupted logging keywords with quantities / units / verbs
+        has_fuzzy_workout = any(
+            bool(re.search(pat, lower)) for pat in [
+                r"\b(?:sqats?|skwats?|pusups?|pushupz|bnk\s*prss|bnch\s*prss|wlaked|wlkng|walkng|waking|yga|cycld|swm)\b",
+                r"\b\d+\s*(?:reps?|sets?|mins?|minutes?|minutss|mnts|km)\b"
+            ]
+        )
+        has_fuzzy_water = bool(re.search(r"\b(?:panu|pni|wtr|watr|watwr)\b", lower))
+        has_fuzzy_food = any(
+            bool(re.search(rf"\b{re.escape(k)}\b", lower))
+            for k in [
+                "chkn", "bresst", "brwn", "rce", "dahl", "daaal", "dl", "rti", "rwtli",
+                "khaply", "chna", "masla", "whye", "prtein", "protn", "dhooodh",
+                "egss", "aplle", "tosst", "smbar", "nartyal", "kdhi", "bakhrii", "mthii"
+            ]
+        ) or bool(re.search(r"\b\d+\s*(?:bowl|bowls|bwl|bwll|katori|ktori|vatki|vtk|plate|plt|plet|glass|gls|gllass|cup|scoop|scp|skup|piece|pcs|pc|pice|gm|gms|g|kg)\b", lower))
+
+        if (has_fuzzy_food and has_fuzzy_workout) or (has_fuzzy_food and has_fuzzy_water):
+            return "CREATE_MULTI_LOG"
+        if has_fuzzy_water and not has_fuzzy_food:
+            return "CREATE_HYDRATION_LOG"
+        if has_fuzzy_workout and not has_fuzzy_food:
+            return "CREATE_ACTIVITY_LOG"
+        if has_fuzzy_food:
             return "CREATE_FOOD_LOG"
 
         return "GENERAL_CHAT"
@@ -1090,8 +1301,8 @@ class AgentNLP:
             lines = [lower]
 
         exercise_map = [
-            (r"\bsquats?\b|સ્ક્વોટ્સ?|સ્કવોટ્સ?|स्क्वैट्स?", "Squats", 5.0, True),
-            (r"\bpush-?ups?\b|પુશઅપ્સ?|पुशअप્સ?|\bદંડ\b", "Push-ups", 4.5, True),
+            (r"\bsquats?\b|\bsqats?\b|\bskwats?\b|સ્ક્વોટ્સ?|સ્કવોટ્સ?|स्क्वैट्स?", "Squats", 5.0, True),
+            (r"\bpush-?ups?\b|\bpusups?\b|\bpushupz?\b|પુશઅપ્સ?|पुशअप્સ?|\bદંડ\b", "Push-ups", 4.5, True),
             (r"\bpull-?ups?\b|પુલઅપ્સ?|पुलअप्स?|ચિનઅપ", "Pull-ups", 5.0, True),
             (r"\blunges?\b|લંજીસ?|લંજ", "Lunges", 4.5, True),
             (r"\bcrunches?\b|sit-?ups?|ક્રંચ|क्रंचेस", "Crunches", 3.8, True),
@@ -1099,8 +1310,10 @@ class AgentNLP:
             (r"\bburpees?\b|બર્પી|बर्पी", "Burpees", 8.0, True),
             (r"\bjump(?:ing)?\s*jacks?\b|જમ્પિંગ\s*જેક", "Jumping Jacks", 8.0, True),
             (r"\bjump\s*rope\b|skipping|દોરડા\s*કૂદવા|रस्सी\s*कूद", "Jump Rope", 10.0, False),
-            (r"\bbench\s*press\b|બેન્ચ\s*પ્રેસ|बेंच\s*प्रेस", "Bench Press", 5.5, True),
+            (r"\bbench\s*press\b|\bbnk\s*prss\b|\bbnch\s*prss\b|\bbnch\b|બેન્ચ\s*પ્રેસ|बेंच\s*प्रेस", "Bench Press", 5.5, True),
             (r"\bdeadlifts?\b|ડેડલિફ્ટ|डेडલિफ्ट", "Deadlift", 6.0, True),
+            (r"\belliptical(?:\s*trainer)?\b", "Elliptical", 6.0, False),
+            (r"\btreadmill\b", "Running", 8.0, False),
             (r"\bback\b|\bપીઠ\b", "Back Workout", 5.5, False),
             (r"\bbiceps?\b|\bબાઈસેપ્સ?\b", "Biceps Workout", 5.5, False),
             (r"\btriceps?\b|\bટ્રાઈસેપ્સ?\b", "Triceps Workout", 5.5, False),
@@ -1150,7 +1363,7 @@ class AgentNLP:
                 line_processed = line_processed.replace(range_info["raw_match"].lower(), " ")
 
             # Split line into clauses
-            clauses = re.split(r"[,;()&+]|\band\b|\bane\b|\baur\b|\bતથા\b|\bઅને\b", line_processed)
+            clauses = re.split(r"[,;()&+]|\b(?:and|ane|aur|ne|nd|n|amd|with|wth|wid|then|pachi|pachhi|sathe|sath me|sath mein|તથા|અને|ને|સાથે|પછી|और|साथ में)\b", line_processed, flags=re.I)
             clauses = [c.strip() for c in clauses if c.strip()]
             if not clauses:
                 clauses = [line_processed]
@@ -1175,7 +1388,7 @@ class AgentNLP:
 
                 # 1. Extract sets if any
                 sets_val = 1
-                m_sets = re.search(r"(\d+)\s*(?:sets?|સેટ|सेट)", clause)
+                m_sets = re.search(r"(\d+)\s*(?:sets?|sts?|st\b|સેટ|सेट)", clause)
                 if m_sets:
                     sets_val = int(m_sets.group(1))
 
@@ -1376,8 +1589,12 @@ class AgentNLP:
             if line_meal != "—":
                 active_meal = line_meal
 
-            # Split message into clauses using separators
-            clauses = re.split(r",| and | ane | aur | અને | અને\s+| અને| aur\s+| और | sath me | sathe | સાથે | સાથે\s+| साथ में | with |\+", line, flags=re.I)
+            # Split message into clauses using separators and Gujarati/English conjunctions
+            clauses = re.split(
+                r"[,;()&+]|\b(?:and|ane|aur|ne|nd|n|amd|with|wth|wid|then|pachi|pachhi|sathe|sath me|sath mein|તથા|અને|ને|સાથે|પછી|और|साथ में)\b",
+                line,
+                flags=re.I
+            )
 
             for clause in clauses:
                 clause = clause.strip().replace("_with_milk", " with milk")
@@ -1532,105 +1749,127 @@ class AgentNLP:
                 if clean:
                     if clean.lower() in ["aa badhu", "badhu", "ye sab", "sab", "log", "all", "today", "aaj", "aaje", "badhu j"]:
                         continue
-                    canonical = None
-                    is_recognized = False
 
-                    # 1. Exact lookup
-                    if clean.lower() in INDIAN_FOOD_SYNONYMS:
-                        canonical = INDIAN_FOOD_SYNONYMS[clean.lower()]
-                        is_recognized = True
+                    # Multi-item sub-segmentation: If clean contains multiple space-separated food items
+                    # (e.g. "roti paneer dal rice"), detect if tokens can be separated into multiple entities
+                    sub_items = [clean]
+                    clean_words = clean.split()
+                    clean_low = clean.lower()
+                    is_compound_phrase = (clean_low in INDIAN_FOOD_SYNONYMS) or any(
+                        re.search(rf"\b{re.escape(k)}\b", clean_low) for k in INDIAN_FOOD_SYNONYMS if " " in k
+                    )
+                    if len(clean_words) >= 2 and not is_compound_phrase:
+                        # Check if all or multiple words are distinct food items
+                        matched_words = []
+                        for cw in clean_words:
+                            cw_low = cw.lower()
+                            if cw_low in INDIAN_FOOD_SYNONYMS:
+                                matched_words.append(cw)
+                            elif cw_low in [f.lower() for f in FOOD_NOUNS]:
+                                matched_words.append(cw)
+                        if len(matched_words) >= 2 and len(matched_words) == len(clean_words):
+                            sub_items = matched_words
 
-                    # 2. Check multi-word phrase keys first (longest first) with strict boundaries
-                    if not canonical:
-                        for food_key in sorted(INDIAN_FOOD_SYNONYMS.keys(), key=len, reverse=True):
-                            if any(ord(c) > 127 for c in food_key):
-                                if food_key == clean or food_key in clean.split() or f" {food_key} " in f" {clean} ":
-                                    canonical = INDIAN_FOOD_SYNONYMS[food_key]
-                                    is_recognized = True
-                                    break
-                            else:
-                                if re.search(rf"\b{re.escape(food_key)}\b", clean, flags=re.I):
-                                    canonical = INDIAN_FOOD_SYNONYMS[food_key]
-                                    is_recognized = True
-                                    break
+                    for sub_clean in sub_items:
+                        canonical = None
+                        is_recognized = False
 
-                    # 3. Check single tokens — but only after trying the full cleaned phrase
-                    #    to avoid losing compound foods like "paneer sabzi" to single-token
-                    #    "sabzi" lookup.
-                    if not canonical:
-                        # 3a. Check if the full clean phrase is itself a synonym key (catches
-                        #     multi-word entries like "paneer tikka", "aloo sabzi" etc.).
-                        full_key = clean.lower()
-                        if full_key in INDIAN_FOOD_SYNONYMS:
-                            canonical = INDIAN_FOOD_SYNONYMS[full_key]
+                        # 1. Exact lookup
+                        if sub_clean.lower() in INDIAN_FOOD_SYNONYMS:
+                            canonical = INDIAN_FOOD_SYNONYMS[sub_clean.lower()]
                             is_recognized = True
 
-                    if not canonical:
-                        tokens = clean.split()
-                        for t in tokens:
-                            if t.lower() in INDIAN_FOOD_SYNONYMS:
-                                canonical = INDIAN_FOOD_SYNONYMS[t.lower()]
-                                is_recognized = True
-                                break
+                        # 2. Check multi-word phrase keys first (longest first) with strict boundaries
+                        if not canonical:
+                            for food_key in sorted(INDIAN_FOOD_SYNONYMS.keys(), key=len, reverse=True):
+                                if any(ord(c) > 127 for c in food_key):
+                                    if food_key == sub_clean or food_key in sub_clean.split() or f" {food_key} " in f" {sub_clean} ":
+                                        canonical = INDIAN_FOOD_SYNONYMS[food_key]
+                                        is_recognized = True
+                                        break
+                                else:
+                                    if re.search(rf"\b{re.escape(food_key)}\b", sub_clean, flags=re.I):
+                                        canonical = INDIAN_FOOD_SYNONYMS[food_key]
+                                        is_recognized = True
+                                        break
 
-                    # 4. Check known FOOD_NOUNS with strict boundaries
-                    if not canonical:
-                        for noun in sorted(FOOD_NOUNS, key=len, reverse=True):
-                            if any(ord(c) > 127 for c in noun):
-                                if noun == clean or noun in clean.split() or f" {noun} " in f" {clean} ":
-                                    canonical = noun.title()
+                        # 3. Check single tokens
+                        if not canonical:
+                            tokens = sub_clean.split()
+                            for t in tokens:
+                                if t.lower() in INDIAN_FOOD_SYNONYMS:
+                                    canonical = INDIAN_FOOD_SYNONYMS[t.lower()]
                                     is_recognized = True
                                     break
-                            else:
-                                if re.search(rf"\b{re.escape(noun)}\b", clean, flags=re.I):
-                                    canonical = noun.title()
+
+                        # 4. Check known FOOD_NOUNS with strict boundaries
+                        if not canonical:
+                            for noun in sorted(FOOD_NOUNS, key=len, reverse=True):
+                                if any(ord(c) > 127 for c in noun):
+                                    if noun == sub_clean or noun in sub_clean.split() or f" {noun} " in f" {sub_clean} ":
+                                        canonical = noun.title()
+                                        is_recognized = True
+                                        break
+                                else:
+                                    if re.search(rf"\b{re.escape(noun)}\b", sub_clean, flags=re.I):
+                                        canonical = noun.title()
+                                        is_recognized = True
+                                        break
+
+                        # 5. Connect to RapidFuzz match_food from food_matcher
+                        if not canonical:
+                            try:
+                                from .food_matcher import match_food
+                                m_res = match_food(sub_clean)
+                                if m_res.status == "matched" and m_res.matched_name:
+                                    canonical = m_res.matched_name
                                     is_recognized = True
-                                    break
+                            except Exception:
+                                pass
 
-                    # If unrecognized, preserve user's exact food name; do NOT invent or guess random foods
-                    if not canonical:
-                        canonical = clean.title()
+                        # If unrecognized, preserve user's exact food name; do NOT invent or guess random foods
+                        if not canonical:
+                            canonical = sub_clean.title()
 
-                    # Context-aware default unit when unit was not specified or quantity was not explicitly given
-                    if not has_explicit_qty or unit == "serving":
-                        c_lower = canonical.lower()
-                        if any(w in c_lower for w in ["powder", "whey", "pre workout", "preworkout"]):
-                            unit = "scoop"
-                        elif any(w in c_lower for w in ["shake", "smoothie"]):
-                            unit = "scoop"
-                        elif any(w in c_lower for w in ["coffee", "tea", "chai"]):
-                            unit = "cup"
-                        elif any(w in c_lower for w in ["milk", "doodh", "dudh", "chaas", "chhas", "lassi", "juice"]):
-                            unit = "glass"
-                        elif any(w in c_lower for w in ["roti", "rotli", "bhakri", "thepla", "egg", "banana", "apple", "chapati", "phulka", "naan", "paratha", "poori"]):
-                            unit = "piece"
-                        elif any(w in c_lower for w in ["dal", "daal", "rice", "chawal", "khichdi", "sabzi", "shaak", "curd", "dahi", "salad"]):
-                            unit = "bowl"
+                        # Context-aware default unit when unit was not specified or quantity was not explicitly given
+                        item_unit = unit
+                        if not has_explicit_qty or item_unit == "serving":
+                            c_lower = canonical.lower()
+                            if any(w in c_lower for w in ["powder", "whey", "pre workout", "preworkout"]):
+                                item_unit = "scoop"
+                            elif any(w in c_lower for w in ["shake", "smoothie"]):
+                                item_unit = "scoop"
+                            elif any(w in c_lower for w in ["coffee", "tea", "chai"]):
+                                item_unit = "cup"
+                            elif any(w in c_lower for w in ["milk", "doodh", "dudh", "chaas", "chhas", "lassi", "juice"]):
+                                item_unit = "glass"
+                            elif any(w in c_lower for w in ["roti", "rotli", "bhakri", "thepla", "egg", "banana", "apple", "chapati", "phulka", "naan", "paratha", "poori", "toast", "papad"]):
+                                item_unit = "piece"
+                            elif any(w in c_lower for w in ["dal", "daal", "rice", "chawal", "khichdi", "sabzi", "shaak", "curd", "dahi", "salad", "kadhi", "sambar", "chole", "rajma"]):
+                                item_unit = "bowl"
 
-                    if not has_explicit_qty:
-                        qty = 1.0
+                        item_qty = qty if has_explicit_qty else 1.0
+                        confidence = 0.95 if is_recognized else 0.3
+                        requires_clarification = not is_recognized
+                        clarification_reason = "UNKNOWN_FOOD" if not is_recognized else None
 
-                    confidence = 0.95 if is_recognized else 0.3
-                    requires_clarification = not is_recognized
-                    clarification_reason = "UNKNOWN_FOOD" if not is_recognized else None
-
-                    results.append({
-                        "food": canonical,
-                        "food_name": canonical,
-                        "quantity": qty,
-                        "unit": unit,
-                        "mealType": item_meal,
-                        "meal_type": item_meal,
-                        "logged_at": item_dt.isoformat(),
-                        "has_explicit_time": item_has_exp_time,
-                        "timeFormatted": TimeService.format_time(item_dt) if item_has_exp_time else "",
-                        "confidence": confidence,
-                        "is_recognized": is_recognized,
-                        "has_explicit_quantity": has_explicit_qty,
-                        "requires_clarification": requires_clarification,
-                        "clarification_reason": clarification_reason,
-                        "raw_text": clause,
-                    })
+                        results.append({
+                            "food": canonical,
+                            "food_name": canonical,
+                            "quantity": item_qty,
+                            "unit": item_unit,
+                            "mealType": item_meal,
+                            "meal_type": item_meal,
+                            "logged_at": item_dt.isoformat(),
+                            "has_explicit_time": item_has_exp_time,
+                            "timeFormatted": TimeService.format_time(item_dt) if item_has_exp_time else "",
+                            "confidence": confidence,
+                            "is_recognized": is_recognized,
+                            "has_explicit_quantity": has_explicit_qty,
+                            "requires_clarification": requires_clarification,
+                            "clarification_reason": clarification_reason,
+                            "raw_text": clause,
+                        })
 
         return results
 
@@ -1705,3 +1944,88 @@ class AgentNLP:
             })
 
         return actions
+
+    @staticmethod
+    def evaluate_extraction_completeness(
+        message: str,
+        extracted_foods: Optional[Any] = None,
+        extracted_acts: Optional[Any] = None,
+        extracted_hyd: Optional[Any] = None,
+        detected_intent: Optional[str] = None,
+    ) -> str:
+        """
+        Calculates extraction completeness and explicit routing decision:
+          - DETERMINISTIC_HIGH_CONFIDENCE
+          - DETERMINISTIC_LOW_CONFIDENCE
+          - FUZZY_FALLBACK_REQUIRED
+          - LLM_REQUIRED
+          - AMBIGUOUS
+        """
+        # Handle flexible argument orders
+        if isinstance(extracted_foods, str) and detected_intent is None:
+            detected_intent = extracted_foods
+            extracted_foods = extracted_acts if isinstance(extracted_acts, list) else None
+            extracted_acts = extracted_hyd if isinstance(extracted_hyd, list) else None
+            extracted_hyd = None
+
+        foods = [f for f in (extracted_foods or []) if isinstance(f, dict)]
+        acts = [a for a in (extracted_acts or []) if isinstance(a, dict)]
+        hyds = [h for h in (extracted_hyd or []) if isinstance(h, dict)]
+        intent = detected_intent or AgentNLP.detect_intent(message)
+
+        # 1. Non-logging queries or advisory -> deterministic high confidence
+        if intent in ("GENERAL_CHAT", "FITNESS_ADVISORY", "FOOD_SUGGESTION", "WORKOUT_SUGGESTION", "DAILY_SUMMARY", "QUERY_FOOD_LOG", "QUERY_HYDRATION_LOG"):
+            return "DETERMINISTIC_HIGH_CONFIDENCE"
+
+        # 2. Simple single measurement logs (Weight, Sleep)
+        if intent == "CREATE_WEIGHT_LOG":
+            return "DETERMINISTIC_HIGH_CONFIDENCE"
+        if intent == "CREATE_SLEEP_LOG":
+            return "DETERMINISTIC_HIGH_CONFIDENCE"
+
+        # 3. Hydration log
+        if intent == "CREATE_HYDRATION_LOG":
+            if hyds and len(hyds) > 0:
+                return "DETERMINISTIC_HIGH_CONFIDENCE"
+            return "FUZZY_FALLBACK_REQUIRED"
+
+        # 4. Activity log
+        if intent == "CREATE_ACTIVITY_LOG":
+            if acts and len(acts) > 0:
+                if any(a.get("activity") and a["activity"] != "Workout" for a in acts):
+                    return "DETERMINISTIC_HIGH_CONFIDENCE"
+                if acts[0].get("activity") == "Workout" and not acts[0].get("requiresClarification"):
+                    return "DETERMINISTIC_HIGH_CONFIDENCE"
+            return "FUZZY_FALLBACK_REQUIRED"
+
+        # 5. Food / Multi logging
+        if intent in ("CREATE_FOOD_LOG", "CREATE_MULTI_LOG"):
+            total_extracted = len(foods) + len(acts) + len(hyds)
+            if total_extracted == 0:
+                return "LLM_REQUIRED"
+
+            # Check for unrecognized / low confidence food items
+            unrecognized_count = sum(1 for f in foods if not f.get("is_recognized", True) or f.get("confidence", 1.0) < 0.8)
+            if unrecognized_count > 0:
+                return "FUZZY_FALLBACK_REQUIRED"
+
+            # Estimate likely clauses/items in raw message
+            raw_clauses = re.split(
+                r"[,;()&+]|\b(?:and|ane|aur|ne|nd|n|amd|with|wth|wid|then|pachi|pachhi|sathe|sath me|sath mein|તથા|અને|ને|સાથે|પછી|और|साथ में)\b|\n+",
+                message,
+                flags=re.I
+            )
+            # Filter out non-item clauses (e.g. greetings, time words, pure numbers)
+            meaningful_clauses = [
+                c.strip() for c in raw_clauses
+                if c.strip() and len(re.sub(r"[^\w\u0A80-\u0AFF\u0900-\u097F]", "", c)) >= 2
+                and not c.strip().lower() in ["aa badhu", "badhu", "ye sab", "sab log", "log kari do", "log kar do", "log this", "please"]
+            ]
+
+            # If meaningful clauses exceed extracted items significantly -> partial extraction
+            if len(meaningful_clauses) > total_extracted + 1:
+                return "FUZZY_FALLBACK_REQUIRED"
+
+            return "DETERMINISTIC_HIGH_CONFIDENCE"
+
+        return "AMBIGUOUS"

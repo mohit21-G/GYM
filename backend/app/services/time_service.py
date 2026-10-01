@@ -58,6 +58,39 @@ class TimeService:
         """Returns the current local calendar date string YYYY-MM-DD in Asia/Kolkata."""
         return cls.get_current_local_datetime(tz_name).strftime("%Y-%m-%d")
 
+    @classmethod
+    def get_message_date_context(
+        cls,
+        text: str,
+        tz_name: Optional[str] = None,
+    ) -> Tuple[str, bool, bool]:
+        """Analyse *text* for relative/absolute date words and return a 3-tuple:
+
+        ``(log_date_str, is_past, is_future)``
+
+        * ``log_date_str``  – YYYY-MM-DD string in Asia/Kolkata for the resolved date.
+        * ``is_past``       – True when the resolved date is strictly before today.
+        * ``is_future``     – True when the resolved date is strictly after today.
+
+        Uses ``parse_date_from_text`` internally so all language variants (English,
+        Hindi, Gujarati, Gujlish including "kale", "kal", future conjugations) are
+        handled in one place.
+
+        Examples::
+
+            "kal maine 2 roti khadhi"  →  (yesterday_str, True, False)
+            "kale karish"              →  (tomorrow_str, False, True)
+            "tomorrow I will eat"      →  (tomorrow_str, False, True)
+            "aaj poha khadha"          →  (today_str, False, False)
+            "2 roti khadhi"            →  (today_str, False, False)
+        """
+        today = cls.get_current_local_datetime(tz_name).date()
+        resolved, _ = cls.parse_date_from_text(text, reference_date=today)
+        log_date_str = resolved.strftime("%Y-%m-%d")
+        is_past = resolved < today
+        is_future = resolved > today
+        return log_date_str, is_past, is_future
+
     @staticmethod
     def normalize_indic_digits(text: str) -> str:
         """Translates Gujarati and Devanagari numerals to standard ASCII digits."""
@@ -109,16 +142,40 @@ class TimeService:
         ]):
             return ref_d - timedelta(days=1), True
 
-        # In Hindi/Hinglish: "kal" can be yesterday or tomorrow.
-        # Check past verbs (khaya, tha, thi, kiya, lidho, lidhu) vs future (khaunga, karunga)
-        if re.search(r"\b(?:kal|કાલ|कल)\b", lower):
-            is_future = any(w in lower for w in ["aavti", "aavti kale", "aane wala", "khaunga", "karunga", "karega", "jaunga", "આવતી", "આવતીકાલે"])
-            if is_future:
+        # ---------- "kale" disambiguation (Latin-script Gujarati) ----------
+        # "kale" is used both for past ("kal maine khaya") and future ("kale karish").
+        # Detect future conjugation markers BEFORE deciding direction.
+        #
+        # Future markers in Gujlish / Gujarati: khaysh, khais, khaish, karish, karis,
+        #   jais, jaish, jayish, piysh, piish, piyish, karish, karunga, karega, jaunga,
+        #   aavti, aavtikale — and Gujarati future suffix -ish / -sh on a verb.
+        _FUTURE_MARKERS = (
+            "khaysh", "khais", "khaish", "khayish",        # khava future
+            "karish", "karis", "karaish", "karayish",       # karva future
+            "jais", "jaish", "jayish", "jaayish",           # java future
+            "piysh", "piish", "piyish", "piyaish",          # pivanu future
+            "karunga", "karunga", "karega", "karengi",       # Hindi future
+            "jaunga", "jaungi", "jayega", "jayegi",          # Hindi future
+            "khaunga", "khaungi", "khayega", "khayegi",      # Hindi future
+            "aavti", "aavtikale", "aane wala", "aane wali",  # tomorrow markers
+            "aavtikale", "aavti kale",
+            "આવતી", "આવતીકાલે", "कल करूंगा", "कल जाऊंगा",
+        )
+
+        if re.search(r"\b(?:kale|kal)\b", lower):
+            if any(fm in lower for fm in _FUTURE_MARKERS):
                 return ref_d + timedelta(days=1), True
             else:
                 return ref_d - timedelta(days=1), True
 
-        # 4. Tomorrow / Aavti kale
+        # ---------- bare "kal" in Devanagari / Gujarati script ----------
+        if re.search(r"\b(?:કાલ|कल)\b", lower):
+            if any(fm in lower for fm in _FUTURE_MARKERS):
+                return ref_d + timedelta(days=1), True
+            else:
+                return ref_d - timedelta(days=1), True
+
+        # 4. Unambiguous tomorrow
         if any(w in lower for w in [
             "tomorrow", "aavti kale", "aavtikale", "આવતીકાલે", "આવતી કાલે", "कल सुबह"
         ]):
