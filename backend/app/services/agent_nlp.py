@@ -133,6 +133,8 @@ INDIAN_FOOD_SYNONYMS: Dict[str, str] = {
     "roti": "Roti",
     "rotis": "Roti",
     "rotliyo": "Roti",
+    "rotlee": "Roti",       # phonetic variant: rotlee sounds like rotli
+    "rotlii": "Roti",       # double-i phonetic variant
     "chapati": "Chapati",
     "chapatis": "Chapati",
     "phulka": "Phulka",
@@ -247,6 +249,7 @@ INDIAN_FOOD_SYNONYMS: Dict[str, str] = {
     # Fruits & Vegetables
     "banana": "Banana",
     "banaana": "Banana",
+    "bananna": "Banana",
     "kela": "Banana",
     "keda": "Banana",
     "kelu": "Banana",
@@ -386,8 +389,10 @@ INDIAN_FOOD_SYNONYMS: Dict[str, str] = {
     "દાળ": "Toor Dal",
     "તુવેર દાળ": "Toor Dal",
     "ભાત": "Cooked White Rice",
+    "ચોખા": "Cooked White Rice",    # alternate Gujarati word for rice
     "ખીચડી": "Moong Dal Khichdi",
     "દૂધ": "Cow Milk (Toned)",
+    "ચા": "Tea With Milk",           # Gujarati script for chai/tea
     "છાશ": "Spiced Buttermilk (Chaas)",
     "દહીં": "Curd (Dahi)",
     "પનીર": "Paneer",
@@ -414,6 +419,7 @@ INDIAN_FOOD_SYNONYMS: Dict[str, str] = {
     "વેડમી": "Puran Poli",
     "ઉપમા": "Upma",
     "પૌંઆ": "Poha",
+    "પૌઆ": "Poha",    # alternate spelling without anusvara
     "પોહા": "Poha",
     "રાજમા": "Rajma",
     "ચણા": "Chole Chana Masala",
@@ -626,6 +632,7 @@ class AgentNLP:
             r"\bchaye\b": "chai",
             r"\bpneer\b": "paneer",
             r"\bpneeeer\b": "paneer",
+            r"\bpanner\b": "paneer",
             r"\bpoh\b": "poha",
             r"\bmakni\b": "makhani",
             r"\beggz\b": "eggs",
@@ -645,9 +652,26 @@ class AgentNLP:
         for pat, repl in typos.items():
             norm = re.sub(pat, repl, norm, flags=re.IGNORECASE)
 
-        # Safe fuzzy correction for remaining typos against core vocabulary
+        # Safe fuzzy correction for remaining typos against core vocabulary.
+        # Words in this list are EXCLUDED from fuzzy correction (they are treated as
+        # correct as-is). This prevents valid Gujlish words like 'rotli', 'chaas',
+        # 'thepla' from being corrupted into their closest English neighbours.
+        # Also protects Gujlish slang that must NOT be misread as food names —
+        # e.g. 'dabbu' (tiffin box) must not become 'khapli'.
         fuzzy_vocab = [
-            "lemon", "water", "coffee", "biceps", "triceps", "walking", "workout", "protein", "powder", "scoop", "glass", "bottle", "roti", "khapli", "milk"
+            "lemon", "water", "coffee", "biceps", "triceps", "walking", "workout", "protein",
+            "powder", "scoop", "glass", "bottle", "roti", "khapli", "milk",
+            # Gujlish food/exercise words — must not be fuzzy-corrected to similar English words
+            "rotli", "chaas", "chhas", "thepla", "bhakri", "khichdi", "bhaat", "khadhi",
+            "lidhu", "lidhi", "khadha", "pidhi", "pidhu", "paneer", "paratha",
+            # Gujlish slang / non-food words that must not be matched to food names
+            "dabbu",   # tiffin box / lunchbox — NOT a food name
+            "dabba",   # same concept, Hinglish spelling
+            "tiffin",  # generic container word
+            "khali",   # Gujarati/Hindi: empty / finished — NOT a food
+            "khalo",   # Gujarati verb: eat (imperative) — NOT a food name
+            "karyu",   # Gujarati verb: did — NOT a food name
+            "thakor",  # Gujarati proper noun / title
         ]
         words = norm.split(" ")
         corrected_words = []
@@ -863,9 +887,15 @@ class AgentNLP:
             return "QUERY_FOOD_LOG"
 
         # Domain terms detection
+        # NOTE: Use word-boundary matching for eating/drinking verbs to prevent
+        # short tokens like "li" from matching inside words like "khali" (empty).
         has_explicit_food = any(w in lower for w in FOOD_NOUNS)
-        has_eating_verb = any(w in lower for w in EATING_VERBS)
-        has_drinking_verb = any(w in lower for w in DRINKING_VERBS)
+        has_eating_verb = any(
+            bool(re.search(rf"\b{re.escape(v)}\b", lower)) for v in EATING_VERBS
+        )
+        has_drinking_verb = any(
+            bool(re.search(rf"\b{re.escape(v)}\b", lower)) for v in DRINKING_VERBS
+        )
         has_workout = any(bool(re.search(pat, lower)) for pat in WORKOUT_PATTERNS)
         
         # Check water (water or paani in non pani puri context)
@@ -904,6 +934,23 @@ class AgentNLP:
             return "CREATE_SLEEP_LOG"
 
         if has_explicit_food or has_eating_verb or has_drinking_verb:
+            # Container/tiffin guard: sentences about emptying or handling a
+            # lunchbox/tiffin without mentioning an actual food noun are not food
+            # logs — they describe a container action, not consumption.
+            # Only fire when there is NO explicit food noun present.
+            _CONTAINER_WORDS = {"dabbu", "dabba", "tiffin", "lunchbox", "lunch box", "डब्बा"}
+            _CONTAINER_ACTIONS = {
+                "khali", "saaf", "bharo", "lai", "muki", "rakh", "dho", "pack",
+                "empty", "clean", "fill", "खाली", "साफ",
+            }
+            has_container = any(
+                bool(re.search(rf"\b{re.escape(cw)}\b", lower)) for cw in _CONTAINER_WORDS
+            )
+            has_container_action = any(
+                bool(re.search(rf"\b{re.escape(ca)}\b", lower)) for ca in _CONTAINER_ACTIONS
+            )
+            if has_container and has_container_action and not has_explicit_food:
+                return "GENERAL_CHAT"
             return "CREATE_FOOD_LOG"
 
         return "GENERAL_CHAT"
@@ -1507,7 +1554,17 @@ class AgentNLP:
                                     is_recognized = True
                                     break
 
-                    # 3. Check single tokens
+                    # 3. Check single tokens — but only after trying the full cleaned phrase
+                    #    to avoid losing compound foods like "paneer sabzi" to single-token
+                    #    "sabzi" lookup.
+                    if not canonical:
+                        # 3a. Check if the full clean phrase is itself a synonym key (catches
+                        #     multi-word entries like "paneer tikka", "aloo sabzi" etc.).
+                        full_key = clean.lower()
+                        if full_key in INDIAN_FOOD_SYNONYMS:
+                            canonical = INDIAN_FOOD_SYNONYMS[full_key]
+                            is_recognized = True
+
                     if not canonical:
                         tokens = clean.split()
                         for t in tokens:

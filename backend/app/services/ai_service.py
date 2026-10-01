@@ -149,6 +149,7 @@ class AIService:
         # Step 1: Detect Intent Deterministically with 99%+ Precision
         detected_intent = AgentNLP.detect_intent(message)
         lang = AgentNLP.detect_language(message)
+        logger.info("process_message: lang=%s intent=%s msg_preview=%.80s", lang, detected_intent, message)
 
         # 1. Non-logging or Query intents: Handle immediately with zero latency and 100% precision
         if detected_intent == "WORKOUT_SUGGESTION" or FitnessAdvisoryService.is_workout_suggestion_query(message):
@@ -304,7 +305,14 @@ class AIService:
                 }
 
         # 4. For Ambiguous messages or Updates/Deletes: Call configured AI provider (Groq / Cloudflare / rule-based)
+        # IMPORTANT: pass SYSTEM_PROMPT (which contains the full JSON schema, intent list, and spelling-correction
+        # table) to Cloudflare/GLM.  FITBOT_SYSTEM_PROMPT is the conversational persona prompt and does NOT
+        # instruct the model to emit structured JSON — using it for intent extraction caused silent parse failures.
         pre_processed = AgentNLP.normalize_text(message)
+        logger.info(
+            "LLM intent extraction: lang=%s intent=%s provider=%s original_len=%d normalized_len=%d",
+            lang, detected_intent, settings.AI_PROVIDER or "auto", len(message), len(pre_processed),
+        )
         result: Optional[Dict[str, Any]] = None
         provider = (settings.AI_PROVIDER or "auto").lower()
 
@@ -317,9 +325,17 @@ class AIService:
                 logger.warning(f"Groq AI failed: {e}")
         elif provider == "cloudflare" and settings.CF_ACCOUNT_ID and settings.CF_API_TOKEN:
             try:
-                res = await AIService._call_cloudflare(pre_processed, conversation_history)
+                # Use SYSTEM_PROMPT (JSON-schema + spelling rules), not FITBOT_SYSTEM_PROMPT
+                res = await AIService._call_cloudflare(
+                    pre_processed, conversation_history, system_prompt=SYSTEM_PROMPT
+                )
                 if res and res.get("intent"):
                     result = res
+                else:
+                    logger.warning(
+                        "Cloudflare returned non-JSON or missing intent; raw result: %s",
+                        str(res)[:200],
+                    )
             except Exception as e:
                 logger.warning(f"Cloudflare AI failed: {e}")
         elif provider == "rule_based":
@@ -327,9 +343,17 @@ class AIService:
         else:  # "auto" (default)
             if settings.CF_ACCOUNT_ID and settings.CF_API_TOKEN:
                 try:
-                    res = await AIService._call_cloudflare(pre_processed, conversation_history)
+                    # Use SYSTEM_PROMPT (JSON-schema + spelling rules), not FITBOT_SYSTEM_PROMPT
+                    res = await AIService._call_cloudflare(
+                        pre_processed, conversation_history, system_prompt=SYSTEM_PROMPT
+                    )
                     if res and res.get("intent"):
                         result = res
+                    else:
+                        logger.warning(
+                            "Cloudflare returned non-JSON or missing intent (auto); trying Groq. raw=%s",
+                            str(res)[:200],
+                        )
                 except Exception as e:
                     logger.warning(f"Cloudflare AI failed: {e}. Falling back to Groq...")
 
@@ -342,6 +366,10 @@ class AIService:
                     logger.warning(f"Groq AI failed: {e}")
 
         if not result or not result.get("intent"):
+            logger.info(
+                "All LLM providers failed or returned no intent — using rule-based fallback. "
+                "message=%.80s", message,
+            )
             result = AIService._rule_based_fallback(message, pre_processed)
 
         return result
@@ -538,7 +566,13 @@ class AIService:
             Parsed dict, or None on failure.
         """
         from .food_matcher import parse_llm_json  # avoid circular import at module level
-        return parse_llm_json(raw)
+        result = parse_llm_json(raw)
+        if result is None:
+            logger.warning(
+                "parse_llm_json returned None — LLM may have produced non-JSON prose. "
+                "raw_preview=%.200s", raw or ""
+            )
+        return result
 
     @staticmethod
     def _rule_based_fallback(original_message: str, pre_processed: str) -> Dict[str, Any]:

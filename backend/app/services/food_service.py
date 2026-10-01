@@ -397,6 +397,10 @@ class FoodService:
         if not synonym_target:
             fuzzy_target = fuzzy_canonical(clean_q)
             if fuzzy_target:
+                _logger.info(
+                    "resolve_food Step1b fuzzy hit: query=%r clean_q=%r -> %r",
+                    food_query, clean_q, fuzzy_target,
+                )
                 if fuzzy_target in CANONICAL_INDIAN_FOOD_PROFILES:
                     return {**CANONICAL_INDIAN_FOOD_PROFILES[fuzzy_target],
                             "is_recognized": True, "requires_clarification": False}
@@ -513,6 +517,10 @@ class FoodService:
                 return {**CANONICAL_INDIAN_FOOD_PROFILES["Boiled Egg"], "is_recognized": True, "requires_clarification": False}
 
             # Generic fallback: UNKNOWN FOOD -> requires confirmation, do NOT invent fake calories or random food
+            _logger.warning(
+                "resolve_food UNKNOWN_FOOD: all steps exhausted for query=%r clean_q=%r",
+                food_query, clean_q,
+            )
             return {
                 "food_id": f"unknown_{uuid.uuid4().hex[:8]}",
                 "food_name": food_query.title().strip(),
