@@ -181,7 +181,7 @@ async def get_session_messages(
             cards = raw_ent.get("groupedFoodCards") or []
             new_cards = []
             for card in cards:
-                entries = card.get("entries", [])
+                entries = card.get("entries") or []
                 new_entries = []
                 for entry in entries:
                     eid = str(entry.get("id", ""))
