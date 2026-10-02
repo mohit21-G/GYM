@@ -147,6 +147,29 @@ For DELETE_FOOD_LOG:
   "replyText": "Removed Banana from today's food logs."
 }
 ```
+
+For CREATE_MULTI_LOG (multiple foods, workouts, and/or water):
+```json
+{
+  "intent": "CREATE_MULTI_LOG",
+  "language": "en",
+  "entities": {
+    "foodItems": [
+      {"food": "Khapli Wheat Rotli", "quantity": 3.0, "unit": "piece"},
+      {"food": "Cow Milk (Toned)", "quantity": 1.0, "unit": "cup"}
+    ],
+    "activities": [
+      {"activity": "Gym workout", "durationMinutes": 60.0},
+      {"activity": "Walking", "durationMinutes": 20.0}
+    ],
+    "hydrationItems": [
+      {"beverageName": "Lemon Water", "waterAmount": 250.0},
+      {"beverageName": "Water", "waterAmount": 1000.0}
+    ]
+  },
+  "replyText": "Logged 2 foods, 2 workouts, and 2 water entries."
+}
+```
 """
 
 class AIService:
@@ -235,11 +258,15 @@ class AIService:
                 "replyText": "Here is your nutrition summary for today."
             }
 
-        # 2. Domain logging intents with high-precision parsers
-        # 2. Extract candidate entities deterministically
-        foods = AgentNLP.extract_food_entities_heuristically(message) if detected_intent in ("CREATE_FOOD_LOG", "CREATE_MULTI_LOG") else []
-        acts = AgentNLP.extract_activity_entities(message) if detected_intent in ("CREATE_ACTIVITY_LOG", "CREATE_MULTI_LOG") else []
-        hyds = AgentNLP.extract_hydration_entities(message) if detected_intent in ("CREATE_HYDRATION_LOG", "CREATE_MULTI_LOG") else []
+        # 2. Extract candidate entities deterministically across all domains
+        foods = AgentNLP.extract_food_entities_heuristically(message)
+        acts = AgentNLP.extract_activity_entities(message)
+        hyds = AgentNLP.extract_hydration_entities(message)
+
+        # Domain multi-signal check: If entities from 2+ distinct domains are present, enforce CREATE_MULTI_LOG
+        domain_count = sum([bool(foods), bool(acts), bool(hyds)])
+        if domain_count >= 2 and detected_intent not in ("QUERY_FOOD_LOG", "QUERY_HYDRATION_LOG", "GENERAL_CHAT"):
+            detected_intent = "CREATE_MULTI_LOG"
 
         # Step 2: Evaluate Extraction Completeness & Confidence Routing
         decision = AgentNLP.evaluate_extraction_completeness(
@@ -382,6 +409,46 @@ class AIService:
                         result = AIService._normalize_llm_result(res, message)
                 except Exception as e:
                     logger.warning(f"Groq AI failed: {e}")
+
+        # CRITICAL SAFETY GUARD: If deterministic extraction found multi-domain logs
+        # or multiple recognized items (total >= 2), but LLM returned a single-domain
+        # intent (e.g. only CREATE_HYDRATION_LOG, dropping food & workout), NEVER allow
+        # the LLM to discard the user's multi-entry logs!
+        total_deterministic = len(foods) + len(acts) + len(hyds)
+        has_multi_deterministic = (
+            (bool(foods) and bool(acts))
+            or (bool(foods) and bool(hyds))
+            or (bool(acts) and bool(hyds))
+            or (total_deterministic >= 2 and detected_intent == "CREATE_MULTI_LOG")
+        )
+
+        llm_intent = (result or {}).get("intent", "")
+        llm_foods = (result or {}).get("entities", {}).get("foodItems", [])
+        llm_acts = (result or {}).get("entities", {}).get("activities", []) or (result or {}).get("entities", {}).get("activityItems", [])
+        llm_hyds = (result or {}).get("entities", {}).get("hydrationItems", []) or (result or {}).get("entities", {}).get("hydration", [])
+        llm_total = len(llm_foods) + len(llm_acts) + (len(llm_hyds) if isinstance(llm_hyds, list) else (1 if (result or {}).get("entities", {}).get("waterAmount") else 0))
+
+        if has_multi_deterministic and (not result or not result.get("intent") or llm_intent != "CREATE_MULTI_LOG" or llm_total < total_deterministic):
+            logger.info(
+                "Multi-log precedence applied (llm_intent=%s llm_items=%d vs deterministic=%d). Preserving all extracted entries.",
+                llm_intent, llm_total, total_deterministic
+            )
+            actions = AgentNLP.extract_structured_actions(message)
+            real_acts = [a for a in acts if a.get("activity") and a["activity"] != "Workout"] or acts
+            return {
+                "intent": "CREATE_MULTI_LOG",
+                "language": lang,
+                "actions": actions,
+                "entities": {
+                    "foodItems": foods,
+                    "activities": real_acts,
+                    "activityItems": real_acts,
+                    "hydrationItems": hyds,
+                    "hydration": hyds,
+                    "waterAmount": sum(h.get("amount_ml", 0) for h in hyds) if hyds else None,
+                },
+                "replyText": f"Logged {len(foods)} food item(s), {len(real_acts)} workout(s), and {len(hyds)} water entry(ies)."
+            }
 
         if not result or not result.get("intent"):
             logger.info(

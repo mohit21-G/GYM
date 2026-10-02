@@ -1159,8 +1159,8 @@ class AgentNLP:
             "ઊંઘ", "સુઈ ગયો", "સુતો", "સુતી", "સોયા", "नींद"
         ])
 
-        # Multi-log check (food + workout or food + water)
-        if (has_explicit_food and has_workout) or (has_explicit_food and has_water):
+        # Multi-log check (food + workout, food + water, or workout + water)
+        if sum([bool(has_explicit_food), bool(has_workout), bool(has_water)]) >= 2:
             return "CREATE_MULTI_LOG"
 
         # Pure domain actions
@@ -1210,7 +1210,7 @@ class AgentNLP:
             ]
         ) or bool(re.search(r"\b\d+\s*(?:bowl|bowls|bwl|bwll|katori|ktori|vatki|vtk|plate|plt|plet|glass|gls|gllass|cup|scoop|scp|skup|piece|pcs|pc|pice|gm|gms|g|kg)\b", lower))
 
-        if (has_fuzzy_food and has_fuzzy_workout) or (has_fuzzy_food and has_fuzzy_water):
+        if sum([bool(has_fuzzy_food), bool(has_fuzzy_workout), bool(has_fuzzy_water)]) >= 2:
             return "CREATE_MULTI_LOG"
         if has_fuzzy_water and not has_fuzzy_food:
             return "CREATE_HYDRATION_LOG"
@@ -2146,17 +2146,29 @@ class AgentNLP:
             if unrecognized_count > 0:
                 return "FUZZY_FALLBACK_REQUIRED"
 
+            # Check if multi-domain items were cleanly extracted with high confidence
+            domain_count = sum([bool(foods), bool(acts), bool(hyds)])
+            if domain_count >= 2 and total_extracted >= 2 and unrecognized_count == 0:
+                return "DETERMINISTIC_HIGH_CONFIDENCE"
+
+            # Common conversational prefixes and section headers to ignore when counting clauses
+            _HEADER_PATTERNS = re.compile(
+                r"^(today|yesterday|tomorrow|aaj|aaje|kal|kale|morning|savar|savare|evening|sanje|afternoon|bapore|night|ratre|subah|shaam|dophar|raat|routine|schedule|summary|here is|my|i did|i had|i ate|done in|logged in|diet|meals?|plan)\b",
+                re.I
+            )
+
             # Estimate likely clauses/items in raw message
             raw_clauses = re.split(
                 r"[,;()&+]|\b(?:and|ane|aur|ne|nd|n|amd|with|wth|wid|then|pachi|pachhi|sathe|sath me|sath mein|તથા|અને|ને|સાથે|પછી|और|साथ में)\b|\n+",
                 message,
                 flags=re.I
             )
-            # Filter out non-item clauses (e.g. greetings, time words, pure numbers)
+            # Filter out non-item clauses (e.g. greetings, time words, pure numbers, headers)
             meaningful_clauses = [
                 c.strip() for c in raw_clauses
                 if c.strip() and len(re.sub(r"[^\w\u0A80-\u0AFF\u0900-\u097F]", "", c)) >= 2
                 and not c.strip().lower() in ["aa badhu", "badhu", "ye sab", "sab log", "log kari do", "log kar do", "log this", "please"]
+                and not (not re.search(r"\d", c) and _HEADER_PATTERNS.search(c.strip()))
             ]
 
             # If meaningful clauses exceed extracted items significantly -> partial extraction
