@@ -409,10 +409,11 @@ class TestMultiWordFuzzyPhrases:
 class TestContextDependentVocabulary:
     """Same word, different meaning depending on surrounding text."""
 
-    def test_shake_as_food_not_exercise(self):
-        """'shake' in food context → Protein Shake."""
+    def test_shake_as_hydration_not_exercise(self):
+        """'protein shake' is a drink -> hydration, not an exercise and not a
+        separate food/calorie item (see test_supplement_hydration_macros.py)."""
         intent = AgentNLP.detect_intent("had 1 protein shake")
-        assert intent == "CREATE_FOOD_LOG"
+        assert intent == "CREATE_HYDRATION_LOG"
 
     def test_workout_word_in_pre_workout(self):
         """'pre workout' must be logged as hydration (not an exercise activity),
@@ -486,8 +487,10 @@ class TestAmbiguousWords:
         assert intent == "CREATE_FOOD_LOG"
 
     def test_shake_alone_context(self):
+        """'protein shake' is always hydration — see
+        test_supplement_hydration_macros.py::TestProteinShakeIsHydration."""
         intent = AgentNLP.detect_intent("protein shake liya")
-        assert intent == "CREATE_FOOD_LOG"
+        assert intent == "CREATE_HYDRATION_LOG"
 
     def test_dal_ambiguity_food_not_verb(self):
         """'dal' must be recognized as food, not verb."""

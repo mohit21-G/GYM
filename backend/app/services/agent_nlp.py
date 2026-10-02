@@ -193,10 +193,12 @@ INDIAN_FOOD_SYNONYMS: Dict[str, str] = {
     "chai milk": "Tea With Milk",
     "masala chai": "Tea With Milk",
     "masala tea": "Tea With Milk",
-    "coffee": "Coffee With Milk",
-    "cofee": "Coffee With Milk",
+    "coffee": "Coffee",
+    "cofee": "Coffee",
     "coffee with milk": "Coffee With Milk",
     "coffee milk": "Coffee With Milk",
+    "milk coffee": "Coffee With Milk",
+    "doodh coffee": "Coffee With Milk",
     "black coffee": "Black Coffee",
     "black cofee": "Black Coffee",
     "lemon water": "Lemon Water",
@@ -1118,14 +1120,30 @@ class AgentNLP:
             return "QUERY_FOOD_LOG"
 
         # Domain terms detection.
-        # "lemon water"/"nimbu pani" (flavored water) and "pre workout"/"preworkout"
-        # are hydration items now, not food — exclude their synonym targets and
-        # literal FOOD_NOUNS entries so they don't register as has_explicit_food
-        # and get double-counted as both food and hydration.
-        _HYDRATION_ONLY_TARGETS = {"Lemon Water", "Coconut Water", "Jeera Water", "Pre Workout"}
-        _HYDRATION_ONLY_LITERALS = {"water", "pani", "paani", "lemon water", "nimbu pani", "pre workout", "preworkout", "pre-workout"}
-        has_explicit_food = any(w in lower for w in FOOD_NOUNS if w not in _HYDRATION_ONLY_LITERALS) or any(
-            bool(re.search(rf"\b{re.escape(k)}\b", lower))
+        # "lemon water"/"nimbu pani" (flavored water), "pre workout"/
+        # "preworkout", and whey/protein powder+shake forms are hydration
+        # items now, not food — exclude their synonym targets and literal
+        # FOOD_NOUNS entries so they don't register as has_explicit_food and
+        # get double-counted as both food and hydration. Bare "protein" is
+        # intentionally left as a food literal (ambiguous standalone word).
+        #
+        # Simple word-exclusion isn't enough here because FOOD_NOUNS also
+        # contains the standalone words "protein" and "shake" individually
+        # (for other phrasing), so a message like "had 1 protein shake" would
+        # still match the bare "shake"/"protein" entries even after excluding
+        # the "protein shake" phrase. Strip the hydration-only phrases out of
+        # the text FIRST, then check what food words remain.
+        _food_check_text = lower
+        for _hydration_phrase in [
+            "whey protein powder", "protein powder", "whey protein shake",
+            "protein shake", "protein drink", "whey shake", "whey",
+            "lemon water", "nimbu pani", "pre workout", "preworkout", "pre-workout",
+        ]:
+            _food_check_text = re.sub(rf"\b{re.escape(_hydration_phrase)}\b", " ", _food_check_text)
+
+        _HYDRATION_ONLY_TARGETS = {"Lemon Water", "Coconut Water", "Jeera Water", "Pre Workout", "Whey Protein Powder", "Protein Shake"}
+        has_explicit_food = any(w in _food_check_text for w in FOOD_NOUNS) or any(
+            bool(re.search(rf"\b{re.escape(k)}\b", _food_check_text))
             for k, v in INDIAN_FOOD_SYNONYMS.items()
             if v not in _HYDRATION_ONLY_TARGETS
         )
@@ -1138,12 +1156,17 @@ class AgentNLP:
         has_workout = any(bool(re.search(pat, lower)) for pat in WORKOUT_PATTERNS)
         
         # Check water (water or paani in non pani puri context).
-        # Pre-workout is also a hydration item even with no "water" word in the
-        # message (e.g. "had 1 scoop pre workout") since it's logged as a 250ml
-        # default hydration entry.
+        # Pre-workout, whey/protein powder, and protein shake/drink are also
+        # hydration items even with no "water" word in the message (e.g. "had
+        # 1 scoop pre workout", "1 scoop whey protein powder", "had 1 protein
+        # shake") since each defaults to a 250ml hydration entry. Bare
+        # "protein" (no powder/shake/drink word) stays food-only and does NOT
+        # trigger has_water.
         has_water = (any(w in lower for w in ["water", "paani", "pani", "pni", "panu", "પાણી", "पानी"]) or 
                      (re.search(r"\bpani\b", lower) and "pani puri" not in lower) or
-                     bool(re.search(r"\bpre[-\s]?workout\b", lower)))
+                     bool(re.search(r"\bpre[-\s]?workout\b", lower)) or
+                     bool(re.search(r"\b(?:whey\s*protein\s*powder|protein\s*powder|whey\s*protein|whey)\b", lower)) or
+                     bool(re.search(r"\b(?:whey\s*protein\s*shake|protein\s*shake|protein\s*drink|whey\s*shake)s?\b", lower)))
 
         has_weight = any(w in lower for w in [
             "weight", "vajan", "kilo", "kilos", "kg", "kilogram",
@@ -1308,6 +1331,12 @@ class AgentNLP:
             # water volume to leak out as a separate plain-water entry.
             _UNIT_ALT = r"ml|litre|liter|liters|litres|l|glass|glasses|cup|cups|bottle"
 
+            # Both Pre Workout AND Whey/Protein Powder are hydration-only in
+            # EVERY scenario — whether or not a water amount/unit is mentioned
+            # in the same clause. If no water is mentioned, default to 250 ml
+            # (same default as a plain water log). This matches the product
+            # requirement: any protein/pre-workout drink or powder is always
+            # tracked as hydration, never as a separate food/calorie item.
             supplement_specs = [
                 # (compiled regex, beverage_name, canonical profile key)
                 (
@@ -1320,13 +1349,43 @@ class AgentNLP:
                     "Pre Workout", "Pre Workout",
                 ),
                 (
+                    # The POWDER forms ("whey protein powder", "protein
+                    # powder", "whey protein", bare "whey") are hydration-only
+                    # — mixed into a liquid, same as pre-workout. Water
+                    # mention is optional (defaults to 250 ml).
                     re.compile(
-                        r"(?:(?P<qty>\d+(?:\.\d+)?)\s*scoops?\s*(?:of\s*)?)?(?:whey\s*protein|protein\s*powder|whey|protein)\b"
-                        rf"\s+with\s+(?P<amt>\d+(?:\.\d+)?)\s*(?P<unit>{_UNIT_ALT})?"
-                        r"\s*(?:water|pani|paani|પાણી|पानी)\b",
+                        r"(?:(?P<qty>\d+(?:\.\d+)?)\s*scoops?\s*(?:of\s*)?)?"
+                        r"(?:whey\s*protein\s*powder|protein\s*powder|whey\s*protein|whey)\b"
+                        # Guard against "whey" alone matching inside "whey
+                        # protein shake" (which must be fully consumed by the
+                        # Protein Shake pattern instead) — check for an
+                        # optional "protein" before the shake/drink word too.
+                        r"(?!\s*(?:protein\s*)?(?:shake|shakes|drink|drinks|smoothie|smoothies))"
+                        rf"(?:\s+with\s+(?P<amt>\d+(?:\.\d+)?)\s*(?P<unit>{_UNIT_ALT})?"
+                        r"(?:\s*(?:water|pani|paani|પાણી|पानी))?)?",
                         re.I,
                     ),
                     "Whey Protein Powder", "Whey Protein Powder",
+                ),
+                (
+                    # Protein shake/drink forms ("protein shake", "protein
+                    # drink", "whey protein shake", bare "shake" in a protein
+                    # context) are ALSO hydration-only — a protein shake is a
+                    # beverage, just like water/lemon water/pre-workout. Bare
+                    # "protein" alone (no shake/drink word) is left ambiguous
+                    # and handled as a normal food item, since it most often
+                    # refers to a dish's protein *content*, not a drink.
+                    # NOTE: "smoothie" is intentionally excluded — a fruit
+                    # smoothie has no canonical nutrition profile and isn't
+                    # protein-specific, so it stays a regular food item.
+                    re.compile(
+                        r"(?:(?P<qty>\d+(?:\.\d+)?)\s*scoops?\s*(?:of\s*)?)?"
+                        r"(?:whey\s*protein\s*shake|protein\s*shake|protein\s*drink|whey\s*shake)s?\b"
+                        rf"(?:\s+with\s+(?P<amt>\d+(?:\.\d+)?)\s*(?P<unit>{_UNIT_ALT})?"
+                        r"(?:\s*(?:water|pani|paani|પાણી|पानी))?)?",
+                        re.I,
+                    ),
+                    "Protein Shake", "Protein Shake",
                 ),
             ]
 
@@ -1724,16 +1783,33 @@ class AgentNLP:
             line = re.sub(r"\b(dal|daal|દાળ|દાલ|दाल)\s+(rice|bhat|chawal|ભાત|ચોખા|चावल)\b", r"\1 and \2", line, flags=re.I)
             line = re.sub(r"\b(roti|rotli|chapati|રોટલી|रोटी)\s+(dal|daal|sabzi|shak|દાળ|શાક|दाल|सब्जी)\b", r"\1 and \2", line, flags=re.I)
             line = re.sub(r"\b(tea|chai|coffee)\s+with\s+milk\b", r"\1_with_milk", line, flags=re.I)
-            # Protein/whey mixed WITH WATER is logged purely as a hydration
-            # entry (see extract_hydration_entities' supplement_specs) and must
-            # NOT also become a separate food item here. Replace the whole
-            # matched span with a sentinel token BEFORE clause-splitting so the
-            # later `with`-split clause ends up being exactly the sentinel,
-            # which the skip-check below recognizes and discards.
+            # Whey/protein POWDER (not shake/drink) is always logged purely as
+            # a hydration entry (see extract_hydration_entities' supplement_
+            # specs), whether or not a water amount is mentioned in the same
+            # clause — mirrors how "pre workout" is always hydration-only.
+            # Replace the whole matched span with a sentinel token BEFORE
+            # clause-splitting so the later `with`-split clause ends up being
+            # exactly the sentinel, which the skip-check below recognizes and
+            # discards. Bare "protein" and "protein shake"/"protein drink"
+            # (pre-made/ready-to-drink products) are intentionally excluded
+            # and remain normal food items.
             line = re.sub(
-                r"\b(?:\d+(?:\.\d+)?\s*scoops?\s*(?:of\s*)?)?(?:whey\s*protein|protein\s*powder|whey|protein)\b"
-                r"\s+with\s+\d+(?:\.\d+)?\s*(?:ml|litre|liter|liters|litres|l|glass|glasses|cup|cups|bottle)?"
-                r"\s*(?:water|pani|paani|પાણી|पानी)\b",
+                r"\b(?:\d+(?:\.\d+)?\s*scoops?\s*(?:of\s*)?)?"
+                r"(?:whey\s*protein\s*powder|protein\s*powder|whey\s*protein|whey)\b"
+                r"(?!\s*(?:protein\s*)?(?:shake|shakes|drink|drinks|smoothie|smoothies))"
+                r"(?:\s+with\s+\d+(?:\.\d+)?\s*(?:ml|litre|liter|liters|litres|l|glass|glasses|cup|cups|bottle)?"
+                r"\s*(?:water|pani|paani|પાણી|पानी))?",
+                " \x00PROTEIN_WATER_SKIP\x00 ",
+                line,
+                flags=re.I,
+            )
+            # Protein SHAKE/DRINK forms are also hydration-only (see above) —
+            # same sentinel treatment so they never double-count as food too.
+            line = re.sub(
+                r"\b(?:\d+(?:\.\d+)?\s*scoops?\s*(?:of\s*)?)?"
+                r"(?:whey\s*protein\s*shake|protein\s*shake|protein\s*drink|whey\s*shake)s?\b"
+                r"(?:\s+with\s+\d+(?:\.\d+)?\s*(?:ml|litre|liter|liters|litres|l|glass|glasses|cup|cups|bottle)?"
+                r"\s*(?:water|pani|paani|પાણી|पानी))?",
                 " \x00PROTEIN_WATER_SKIP\x00 ",
                 line,
                 flags=re.I,

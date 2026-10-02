@@ -303,9 +303,11 @@ class TestContextDependentTerms:
         intent = AgentNLP.detect_intent("did chest workout 45 min")
         assert intent == "CREATE_ACTIVITY_LOG"
 
-    def test_protein_food_context(self):
+    def test_protein_shake_is_hydration_context(self):
+        """'protein shake' is always hydration (a drink), not food — see
+        test_supplement_hydration_macros.py::TestProteinShakeIsHydration."""
         intent = AgentNLP.detect_intent("2 scoops protein shake khadha")
-        assert intent == "CREATE_FOOD_LOG"
+        assert intent == "CREATE_HYDRATION_LOG"
 
     def test_water_query_not_log(self):
         """Asking about water status → query, not new log."""

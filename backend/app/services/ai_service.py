@@ -296,6 +296,21 @@ class AIService:
                 }
 
             if detected_intent == "CREATE_HYDRATION_LOG":
+                # A single message can contain MULTIPLE hydration items (e.g.
+                # "1 scoop protein shake, 1 scoop whey protein powder, 1 scoop
+                # whey protein powder with 300ml water" — three separate
+                # supplement/drink entries). Returning only hyds[0] silently
+                # dropped every entry after the first. When there's more than
+                # one, report them all via hydrationItems (same shape the
+                # CREATE_MULTI_LOG path uses) instead of a single h_ent.
+                if len(hyds) > 1:
+                    total_ml = sum(h.get("amount_ml", 0) for h in hyds)
+                    return {
+                        "intent": "CREATE_HYDRATION_LOG",
+                        "language": lang,
+                        "entities": {"hydrationItems": hyds, "hydration": hyds, "waterAmount": total_ml},
+                        "replyText": f"Logged {len(hyds)} hydration entries ({int(total_ml)} ml total)."
+                    }
                 h_ent = hyds[0] if hyds else AgentNLP.extract_hydration_entity(message)
                 return {
                     "intent": "CREATE_HYDRATION_LOG",
@@ -338,7 +353,13 @@ class AIService:
                 }
 
             if detected_intent == "CREATE_MULTI_LOG":
-                real_acts = [a for a in acts if a.get("activity") and a["activity"] != "Workout"] or acts
+                # extract_activity_entities() always returns at least one fallback
+                # "Workout" entry (requiresClarification=True) when no real
+                # exercise keyword was found in the message. That fallback must
+                # NEVER be silently logged as a completed workout just because
+                # the message also contained food/hydration — only genuine,
+                # recognized activities belong in a multi-log result.
+                real_acts = [a for a in acts if not a.get("requiresClarification")]
                 return {
                     "intent": "CREATE_MULTI_LOG",
                     "language": lang,
@@ -442,7 +463,16 @@ class AIService:
                 llm_intent, llm_total, total_deterministic
             )
             actions = AgentNLP.extract_structured_actions(message)
-            real_acts = [a for a in acts if a.get("activity") and a["activity"] != "Workout"] or acts
+            # extract_activity_entities() always returns at least one fallback
+            # "Workout" entry (requiresClarification=True) when no real
+            # exercise keyword was found in the message. That fallback must
+            # NEVER be silently logged as a completed workout just because
+            # the message also contained food/hydration — only genuine,
+            # recognized activities belong in a multi-log result. (Previously
+            # this filtered on name != "Workout" only, and fell back to the
+            # raw `acts` list when every item got filtered out, which let the
+            # fallback entry slip right back in.)
+            real_acts = [a for a in acts if not a.get("requiresClarification")]
             return {
                 "intent": "CREATE_MULTI_LOG",
                 "language": lang,
@@ -474,7 +504,13 @@ class AIService:
             if foods or acts or hyds:
                 actions = AgentNLP.extract_structured_actions(message)
                 if (foods and acts) or (foods and hyds) or (acts and hyds) or detected_intent == "CREATE_MULTI_LOG":
-                    real_acts = [a for a in acts if a.get("activity") and a["activity"] != "Workout"] or acts
+                    # extract_activity_entities() always returns at least one fallback
+                    # "Workout" entry (requiresClarification=True) when no real
+                    # exercise keyword was found in the message. That fallback must
+                    # NEVER be silently logged as a completed workout just because
+                    # the message also contained food/hydration — only genuine,
+                    # recognized activities belong in a multi-log result.
+                    real_acts = [a for a in acts if not a.get("requiresClarification")]
                     result = {
                         "intent": "CREATE_MULTI_LOG",
                         "language": lang,
@@ -818,7 +854,16 @@ class AIService:
             acts = AgentNLP.extract_activity_entities(original_message)
             hydrations = AgentNLP.extract_hydration_entities(original_message)
             actions = AgentNLP.extract_structured_actions(original_message)
-            real_acts = [a for a in acts if a.get("activity") and a["activity"] != "Workout"] or acts
+            # extract_activity_entities() always returns at least one fallback
+            # "Workout" entry (requiresClarification=True) when no real
+            # exercise keyword was found in the message. That fallback must
+            # NEVER be silently logged as a completed workout just because
+            # the message also contained food/hydration — only genuine,
+            # recognized activities belong in a multi-log result. (Previously
+            # this filtered on name != "Workout" only, and fell back to the
+            # raw `acts` list when every item got filtered out, which let the
+            # fallback entry slip right back in.)
+            real_acts = [a for a in acts if not a.get("requiresClarification")]
             return {
                 "intent": "CREATE_MULTI_LOG",
                 "language": lang,

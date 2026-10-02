@@ -80,22 +80,75 @@ class TestWheyProteinWithWaterNutrition:
         assert hyds[0]["amount_ml"] == 400.0
 
 
-class TestProteinWithoutWaterStaysFood:
-    def test_protein_with_milk_stays_food(self):
-        """Protein mixed with milk (not water) is a normal food item, not
-        hydration — the supplement-with-water rule is water-specific."""
+class TestProteinPowderAlwaysHydration:
+    """Whey/protein POWDER is always hydration — with water, with milk, or
+    with nothing mentioned at all — mirroring how "pre workout" always logs
+    as hydration regardless of whether a water amount is given."""
+
+    def test_protein_with_milk_is_hydration(self):
+        hyds = AgentNLP.extract_hydration_entities("1 scoop whey protein with milk")
+        assert len(hyds) == 1
+        assert hyds[0]["beverage_name"] == "Whey Protein Powder"
+        assert hyds[0]["calories"] == 120.0
+
+    def test_protein_with_milk_not_duplicated_as_food(self):
         foods = AgentNLP.extract_food_entities_heuristically("1 scoop whey protein with milk")
         names = [f["food"] for f in foods]
-        assert any("Protein" in n or "Whey" in n for n in names), f"Expected protein in foods: {names}"
+        assert not any("Protein" in n or "Whey" in n for n in names), f"Protein leaked into foods: {names}"
 
-    def test_protein_without_water_mention_produces_no_hydration_entry(self):
-        hyds = AgentNLP.extract_hydration_entities("1 scoop whey protein with milk")
-        assert hyds == []
+    def test_dry_protein_powder_scoop_is_hydration(self):
+        """'had 1 scoop protein powder' (no liquid mentioned at all) defaults
+        to a 250ml hydration entry, same default as plain water."""
+        hyds = AgentNLP.extract_hydration_entities("had 1 scoop protein powder")
+        assert len(hyds) == 1
+        assert hyds[0]["beverage_name"] == "Whey Protein Powder"
+        assert hyds[0]["amount_ml"] == 250.0
+        assert hyds[0]["calories"] == 120.0
 
-    def test_dry_protein_scoop_stays_food(self):
+    def test_dry_protein_powder_scoop_not_duplicated_as_food(self):
         foods = AgentNLP.extract_food_entities_heuristically("had 1 scoop protein powder")
         names = [f["food"] for f in foods]
-        assert any("Protein" in n or "Whey" in n for n in names)
+        assert not any("Protein" in n or "Whey" in n for n in names), f"Protein leaked into foods: {names}"
+
+    def test_bare_whey_without_water_is_hydration(self):
+        """Bare 'whey' (no 'powder'/'protein' suffix) also defaults to
+        hydration with the standard 250ml serving."""
+        hyds = AgentNLP.extract_hydration_entities("1 scoop whey liya")
+        assert len(hyds) == 1
+        assert hyds[0]["beverage_name"] == "Whey Protein Powder"
+        assert hyds[0]["amount_ml"] == 250.0
+
+
+class TestProteinShakeIsHydration:
+    """Protein shake/drink forms ('protein shake', 'protein drink', 'whey
+    protein shake') are ALSO hydration-only — a protein shake is a drink,
+    same as water/lemon water/pre-workout/protein powder. Only bare
+    'protein' alone (no shake/drink/powder word) stays an ambiguous food
+    item, since it most often refers to a dish's protein content."""
+
+    def test_protein_shake_is_hydration(self):
+        hyds = AgentNLP.extract_hydration_entities("had 1 protein shake")
+        assert len(hyds) == 1
+        assert hyds[0]["beverage_name"] == "Protein Shake"
+        assert hyds[0]["calories"] == 160.0
+        assert hyds[0]["proteinG"] == 25.0
+
+    def test_protein_shake_not_duplicated_as_food(self):
+        foods = AgentNLP.extract_food_entities_heuristically("had 1 protein shake")
+        assert foods == []
+
+    def test_whey_protein_shake_single_entry_no_duplicate(self):
+        """'whey protein shake' must not match BOTH the powder pattern (on
+        'whey') AND the shake pattern — exactly one hydration entry."""
+        hyds = AgentNLP.extract_hydration_entities("1 scoop whey protein shake with milk")
+        assert len(hyds) == 1
+        assert hyds[0]["beverage_name"] == "Protein Shake"
+
+    def test_bare_protein_stays_food(self):
+        intent = AgentNLP.detect_intent("1 scoop protein liya")
+        assert intent == "CREATE_FOOD_LOG"
+        hyds = AgentNLP.extract_hydration_entities("1 scoop protein liya")
+        assert hyds == []
 
 
 class TestFullMorningRoutineWithSupplements:

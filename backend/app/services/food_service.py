@@ -97,6 +97,8 @@ CANONICAL_INDIAN_FOOD_PROFILES: Dict[str, Dict[str, Any]] = {
     "Spiced Buttermilk (Chaas)": {"food_id": "canon_chaas", "food_name": "Spiced Buttermilk (Chaas)", "calories": 40.0, "protein_g": 2.2, "carbs_g": 3.5, "fat_g": 1.5, "fiber_g": 0.0, "unit": "glass"},
     "Tea With Milk": {"food_id": "canon_tea", "food_name": "Tea With Milk", "calories": 65.0, "protein_g": 2.0, "carbs_g": 9.0, "fat_g": 2.5, "fiber_g": 0.0, "unit": "cup"},
     "Green Tea": {"food_id": "canon_green_tea", "food_name": "Green Tea", "calories": 2.0, "protein_g": 0.2, "carbs_g": 0.4, "fat_g": 0.0, "fiber_g": 0.0, "unit": "cup"},
+    "Coffee": {"food_id": "canon_coffee", "food_name": "Coffee", "calories": 40.0, "protein_g": 1.5, "carbs_g": 6.0, "fat_g": 1.2, "fiber_g": 0.0, "unit": "cup"},
+    "Coffee With Milk": {"food_id": "canon_coffee_milk", "food_name": "Coffee With Milk", "calories": 55.0, "protein_g": 2.0, "carbs_g": 7.5, "fat_g": 2.0, "fiber_g": 0.0, "unit": "cup"},
     "Black Coffee": {"food_id": "canon_black_coffee", "food_name": "Black Coffee", "calories": 5.0, "protein_g": 0.3, "carbs_g": 0.5, "fat_g": 0.0, "fiber_g": 0.0, "unit": "cup"},
     "Lemon Water": {"food_id": "canon_lemon_water", "food_name": "Lemon Water", "calories": 15.0, "protein_g": 0.2, "carbs_g": 3.5, "fat_g": 0.1, "fiber_g": 0.2, "unit": "glass"},
     "Pre Workout": {"food_id": "canon_pre_workout", "food_name": "Pre Workout", "calories": 10.0, "protein_g": 0.0, "carbs_g": 2.0, "fat_g": 0.0, "fiber_g": 0.0, "unit": "scoop"},
@@ -466,6 +468,12 @@ class FoodService:
             # Black Coffee
             if re.search(r"\b(?:black\s*coffee|black\s*cofee)\b", search_term, re.I):
                 return {**CANONICAL_INDIAN_FOOD_PROFILES["Black Coffee"], "is_recognized": True, "requires_clarification": False}
+            # Coffee With Milk (explicit "with milk" / "milk coffee")
+            if re.search(r"\b(?:coffee\s*(?:with\s*)?milk|milk\s*coffee|doodh\s*coffee)\b", search_term, re.I):
+                return {**CANONICAL_INDIAN_FOOD_PROFILES["Coffee With Milk"], "is_recognized": True, "requires_clarification": False}
+            # Plain Coffee (bare "coffee" -> normal coffee, NOT tea)
+            if re.search(r"\b(?:coffee|cofee|coffe|cofe)\b", search_term, re.I):
+                return {**CANONICAL_INDIAN_FOOD_PROFILES["Coffee"], "is_recognized": True, "requires_clarification": False}
             # Green Tea
             if re.search(r"\b(?:green\s*tea)\b", search_term, re.I):
                 return {**CANONICAL_INDIAN_FOOD_PROFILES["Green Tea"], "is_recognized": True, "requires_clarification": False}
@@ -476,8 +484,8 @@ class FoodService:
             # Bhakri
             if any(re.search(rf"\b{re.escape(w)}\b", search_term, re.I) for w in ["bhakri", "bhakhri"]):
                 return {**CANONICAL_INDIAN_FOOD_PROFILES["Bhakri"], "is_recognized": True, "requires_clarification": False}
-            # Chai / Tea / Coffee
-            if any(re.search(rf"\b{re.escape(w)}\b", search_term, re.I) for w in ["chai", "chay", "tea", "coffee"]):
+            # Chai / Tea (coffee handled separately above)
+            if any(re.search(rf"\b{re.escape(w)}\b", search_term, re.I) for w in ["chai", "chay", "tea"]):
                 return {**CANONICAL_INDIAN_FOOD_PROFILES["Tea With Milk"], "is_recognized": True, "requires_clarification": False}
             # Rotlo / Bajra
             if any(re.search(rf"\b{re.escape(w)}\b", search_term, re.I) for w in ["rotlo", "rotla", "rotlu", "bajra", "bajri"]):

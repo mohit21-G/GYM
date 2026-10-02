@@ -278,8 +278,15 @@ class ChatService:
         has_food = bool(entities.get("foodItems") or entities.get("food"))
         has_act = bool(entities.get("activities") or entities.get("activityItems") or entities.get("activity"))
         has_water = bool(entities.get("waterAmount") or entities.get("hydration") or entities.get("hydrationItems"))
+        # A single message can carry MULTIPLE hydration items in one domain
+        # (e.g. three separate supplement/drink entries) — route those
+        # through handle_multi_log too, since only it iterates the whole
+        # hydrationItems list; the single-item CREATE_HYDRATION_LOG branch
+        # below only logs one entry.
+        hydration_items_list = entities.get("hydrationItems") or entities.get("hydration") or []
+        has_multi_hydration = isinstance(hydration_items_list, list) and len(hydration_items_list) > 1
 
-        if intent == "CREATE_MULTI_LOG" or (sum([bool(has_food), bool(has_act), bool(has_water)]) >= 2):
+        if intent == "CREATE_MULTI_LOG" or has_multi_hydration or (sum([bool(has_food), bool(has_act), bool(has_water)]) >= 2):
             return await ChatService.handle_multi_log(
                 user_id, session_id, entities, ai_res,
                 user_message=user_message, inferred_meal=inferred_meal,
