@@ -22,11 +22,11 @@ class DashboardService:
         cursor = db.daily_food_logs.find({"user_id": user_id, "log_date": date_str})
         food_logs = await cursor.to_list(length=200)
 
-        cal_consumed = sum(float(l.get("calories", 0.0)) for l in food_logs)
-        p_total = sum(float(l.get("protein_g", 0.0)) for l in food_logs)
-        c_total = sum(float(l.get("carbs_g", 0.0)) for l in food_logs)
-        f_total = sum(float(l.get("fat_g", 0.0)) for l in food_logs)
-        fib_total = sum(float(l.get("fiber_g", 0.0)) for l in food_logs)
+        cal_consumed_food = sum(float(l.get("calories", 0.0)) for l in food_logs)
+        p_total_food = sum(float(l.get("protein_g", 0.0)) for l in food_logs)
+        c_total_food = sum(float(l.get("carbs_g", 0.0)) for l in food_logs)
+        f_total_food = sum(float(l.get("fat_g", 0.0)) for l in food_logs)
+        fib_total_food = sum(float(l.get("fiber_g", 0.0)) for l in food_logs)
 
         # 2. Activity logs
         cursor = db.daily_exercise_logs.find({"user_id": user_id, "log_date": date_str})
@@ -37,6 +37,14 @@ class DashboardService:
         cursor = db.hydration_logs.find({"user_id": user_id, "log_date": date_str})
         water_logs = await cursor.to_list(length=100)
         water_total = sum(float(l.get("amount_ml", 0.0)) for l in water_logs)
+        # Supplement entries (Pre Workout / Whey Protein Powder mixed into
+        # water) carry nutrition that must still count toward daily totals,
+        # even though they live in hydration_logs rather than daily_food_logs.
+        hyd_cal_total = sum(float(l.get("calories", 0.0)) for l in water_logs)
+        hyd_p_total = sum(float(l.get("protein_g", 0.0)) for l in water_logs)
+        hyd_c_total = sum(float(l.get("carbs_g", 0.0)) for l in water_logs)
+        hyd_f_total = sum(float(l.get("fat_g", 0.0)) for l in water_logs)
+        hyd_fib_total = sum(float(l.get("fiber_g", 0.0)) for l in water_logs)
 
         # 4. Sleep logs
         cursor = db.sleep_logs.find({"user_id": user_id, "log_date": date_str})
@@ -49,6 +57,14 @@ class DashboardService:
         weight_docs = await cursor.to_list(length=2)
         current_wt = weight_docs[0].get("weight_kg", profile.get("currentWeightKg", 70.0)) if weight_docs else profile.get("currentWeightKg", 70.0)
         delta_wt = (current_wt - weight_docs[1].get("weight_kg", current_wt)) if len(weight_docs) > 1 else 0.0
+
+        # Combine food-log nutrition with supplement nutrition logged via
+        # hydration entries (Pre Workout / Whey Protein Powder + water).
+        cal_consumed = cal_consumed_food + hyd_cal_total
+        p_total = p_total_food + hyd_p_total
+        c_total = c_total_food + hyd_c_total
+        f_total = f_total_food + hyd_f_total
+        fib_total = fib_total_food + hyd_fib_total
 
         net_cal = round(cal_consumed - cal_burned)
         remaining_cal = max(0.0, target_cal - cal_consumed)

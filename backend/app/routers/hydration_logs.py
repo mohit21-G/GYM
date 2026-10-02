@@ -87,6 +87,7 @@ async def list_hydration_logs(
     items = []
     for d in docs:
         dt = d.get("logged_at") or d.get("created_at") or datetime.now(timezone.utc)
+        h_cal = float(d.get("calories") or 0.0)
         items.append({
             "id": d.get("id") or str(d.get("_id")),
             "amountMl": d.get("amount_ml", 0),
@@ -94,6 +95,12 @@ async def list_hydration_logs(
             "loggedAt": dt.isoformat() if hasattr(dt, "isoformat") else str(dt),
             "source": d.get("source", "MANUAL"),
             "notes": d.get("notes"),
+            "quantity": d.get("quantity"),
+            "calories": h_cal if h_cal > 0 else None,
+            "proteinG": float(d.get("protein_g") or 0.0) if h_cal > 0 else None,
+            "carbsG": float(d.get("carbs_g") or 0.0) if h_cal > 0 else None,
+            "fatG": float(d.get("fat_g") or 0.0) if h_cal > 0 else None,
+            "fiberG": float(d.get("fiber_g") or 0.0) if h_cal > 0 else None,
         })
 
     return {
@@ -115,6 +122,7 @@ async def get_hydration_log(
     if not doc:
         raise HTTPException(status_code=404, detail="Hydration log not found")
     dt = doc.get("logged_at") or doc.get("created_at")
+    h_cal = float(doc.get("calories") or 0.0)
     return {
         "id": doc.get("id") or str(doc.get("_id")),
         "amountMl": doc.get("amount_ml", 0),
@@ -122,6 +130,12 @@ async def get_hydration_log(
         "loggedAt": dt.isoformat() if hasattr(dt, "isoformat") else str(dt),
         "source": doc.get("source", "MANUAL"),
         "notes": doc.get("notes"),
+        "quantity": doc.get("quantity"),
+        "calories": h_cal if h_cal > 0 else None,
+        "proteinG": float(doc.get("protein_g") or 0.0) if h_cal > 0 else None,
+        "carbsG": float(doc.get("carbs_g") or 0.0) if h_cal > 0 else None,
+        "fatG": float(doc.get("fat_g") or 0.0) if h_cal > 0 else None,
+        "fiberG": float(doc.get("fiber_g") or 0.0) if h_cal > 0 else None,
     }
 
 @router.patch("/{id}")
@@ -152,6 +166,35 @@ async def update_hydration_log(
     if dto.notes is not None:
         update_data["notes"] = dto.notes
 
+    # Recalculate supplement nutrition when the quantity (scoop count) or the
+    # beverage name changes to/from a known supplement, mirroring how
+    # PATCH /food-logs/{id} recalculates nutrition from the canonical profile.
+    target_beverage = dto.beverageName if dto.beverageName is not None else (
+        existing.get("beverage_name") or existing.get("notes") or "Water"
+    )
+    SUPPLEMENT_PROFILES = {"Pre Workout", "Whey Protein Powder"}
+    if target_beverage in SUPPLEMENT_PROFILES:
+        from ..services.food_service import CANONICAL_INDIAN_FOOD_PROFILES
+        target_qty = dto.quantity if dto.quantity is not None else float(existing.get("quantity") or 1.0)
+        profile = CANONICAL_INDIAN_FOOD_PROFILES.get(target_beverage, {})
+        update_data["quantity"] = target_qty
+        update_data["calories"] = round(float(profile.get("calories", 0.0)) * target_qty, 1)
+        update_data["protein_g"] = round(float(profile.get("protein_g", 0.0)) * target_qty, 1)
+        update_data["carbs_g"] = round(float(profile.get("carbs_g", 0.0)) * target_qty, 1)
+        update_data["fat_g"] = round(float(profile.get("fat_g", 0.0)) * target_qty, 1)
+        update_data["fiber_g"] = round(float(profile.get("fiber_g", 0.0)) * target_qty, 1)
+    elif dto.beverageName is not None:
+        # Switched away from a supplement to a plain beverage: clear nutrition
+        # so it no longer counts toward daily calorie/macro totals.
+        update_data["quantity"] = None
+        update_data["calories"] = 0.0
+        update_data["protein_g"] = 0.0
+        update_data["carbs_g"] = 0.0
+        update_data["fat_g"] = 0.0
+        update_data["fiber_g"] = 0.0
+    elif dto.quantity is not None:
+        update_data["quantity"] = dto.quantity
+
     if dto.loggedAt is not None:
         try:
             new_dt = datetime.fromisoformat(dto.loggedAt.replace("Z", "+00:00"))
@@ -179,6 +222,7 @@ async def update_hydration_log(
     dashboard_data = await DashboardService.get_today_dashboard(user_id, log_date)
 
     dt = updated.get("logged_at") or updated.get("created_at") or datetime.now(timezone.utc)
+    h_cal = float(updated.get("calories") or 0.0)
     entry_data = {
         "id": stable_log_id,
         "amountMl": updated.get("amount_ml", 0),
@@ -186,6 +230,12 @@ async def update_hydration_log(
         "loggedAt": dt.isoformat() if hasattr(dt, "isoformat") else str(dt),
         "timeFormatted": TimeService.format_time(dt) if hasattr(dt, "isoformat") else "",
         "notes": updated.get("notes"),
+        "quantity": updated.get("quantity"),
+        "calories": h_cal if h_cal > 0 else None,
+        "proteinG": float(updated.get("protein_g") or 0.0) if h_cal > 0 else None,
+        "carbsG": float(updated.get("carbs_g") or 0.0) if h_cal > 0 else None,
+        "fatG": float(updated.get("fat_g") or 0.0) if h_cal > 0 else None,
+        "fiberG": float(updated.get("fiber_g") or 0.0) if h_cal > 0 else None,
     }
 
     return {

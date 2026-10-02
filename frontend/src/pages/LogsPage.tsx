@@ -7,6 +7,7 @@ import {
   Moon,
   Scale,
   Trash2,
+  Pencil,
   Calendar,
   RefreshCw,
   PlusCircle,
@@ -14,6 +15,8 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
+import { EditHydrationLogModal } from '../components/hydration/EditHydrationLogModal';
+import { HydrationEntryItem } from '../components/hydration/DailyHydrationSummary';
 
 type LogType = 'FOOD' | 'ACTIVITY' | 'HYDRATION' | 'SLEEP' | 'WEIGHT';
 
@@ -25,6 +28,7 @@ export const LogsPage: React.FC = () => {
   const [dateFilter, setDateFilter] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [editingHydrationItem, setEditingHydrationItem] = useState<HydrationEntryItem | null>(null);
 
   useEffect(() => {
     fetchLogs();
@@ -58,7 +62,9 @@ export const LogsPage: React.FC = () => {
       const res = await apiClient.get(endpoint, { params });
       const data = res.data;
       setItems(data.items || []);
-      setTotalPages(data.meta?.totalPages || 1);
+      // Backend returns `totalPages` at the top level (not nested under
+      // `meta`) for every list endpoint — see e.g. GET /hydration-logs.
+      setTotalPages(data.totalPages || 1);
     } catch (err: any) {
       setError(
         err.response?.data?.message ||
@@ -78,6 +84,39 @@ export const LogsPage: React.FC = () => {
     } catch (err: any) {
       alert(err.response?.data?.message || 'Failed to delete log entry.');
     }
+  };
+
+  const handleSaveEditedHydration = async (updatedData: {
+    amountMl: number;
+    beverageName: string;
+    quantity?: number;
+    loggedAt?: string;
+  }) => {
+    if (!editingHydrationItem?.id) return;
+    const res = await apiClient.patch(`/hydration-logs/${editingHydrationItem.id}`, {
+      amountMl: updatedData.amountMl,
+      beverageName: updatedData.beverageName,
+      quantity: updatedData.quantity,
+      loggedAt: updatedData.loggedAt,
+    });
+    const updated = res.data?.entry || res.data;
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === editingHydrationItem.id
+          ? {
+              ...item,
+              amountMl: updated.amountMl ?? updatedData.amountMl,
+              beverageName: updated.beverageName ?? updatedData.beverageName,
+              quantity: updated.quantity ?? updatedData.quantity ?? null,
+              calories: updated.calories ?? null,
+              proteinG: updated.proteinG ?? null,
+              carbsG: updated.carbsG ?? null,
+              fatG: updated.fatG ?? null,
+              fiberG: updated.fiberG ?? null,
+            }
+          : item,
+      ),
+    );
   };
 
   return (
@@ -251,7 +290,7 @@ export const LogsPage: React.FC = () => {
                           item.name ||
                           (activeTab === 'HYDRATION' &&
                             (item.beverageName && item.beverageName.toLowerCase() !== 'water'
-                              ? `${item.beverageName} (${item.amountMl} ml)`
+                              ? `${item.quantity ? `${item.quantity} scoop ` : ''}${item.beverageName} (${item.amountMl} ml)`
                               : `${item.amountMl} ml Water`)) ||
                           (activeTab === 'SLEEP' && `${Math.round((item.durationMinutes / 60) * 10) / 10} hrs Sleep`) ||
                           (activeTab === 'WEIGHT' && `${item.weightKg} kg`)}
@@ -261,7 +300,7 @@ export const LogsPage: React.FC = () => {
                       <div className="text-xs text-slate-400 mt-0.5 flex flex-wrap gap-2">
                         <span>{loggedDate}</span>
                         {item.mealType && <span>• {item.mealType}</span>}
-                        {item.quantity && (
+                        {item.quantity && activeTab !== 'HYDRATION' && (
                           <span>
                             • {item.quantity} {item.unit}
                           </span>
@@ -270,13 +309,23 @@ export const LogsPage: React.FC = () => {
                           <span>• {item.durationMinutes} mins</span>
                         )}
                         {item.quality && <span>• Quality: {item.quality}</span>}
+                        {/* Macro breakdown for hydration supplement entries
+                            (Pre Workout / Whey Protein Powder mixed into
+                            water), same data the chat hydration card shows. */}
+                        {activeTab === 'HYDRATION' && item.calories != null && item.calories > 0 && (
+                          <>
+                            {item.proteinG != null && <span>• P: {item.proteinG}g</span>}
+                            {item.carbsG != null && <span>• C: {item.carbsG}g</span>}
+                            {item.fatG != null && <span>• F: {item.fatG}g</span>}
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
 
                   {/* Badges and Delete Action */}
                   <div className="flex items-center space-x-4">
-                    {item.calories !== undefined && (
+                    {item.calories !== undefined && item.calories !== null && (
                       <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                         {item.calories} kcal
                       </span>
@@ -285,6 +334,16 @@ export const LogsPage: React.FC = () => {
                       <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20">
                         -{item.caloriesBurned} kcal
                       </span>
+                    )}
+
+                    {activeTab === 'HYDRATION' && (
+                      <button
+                        onClick={() => setEditingHydrationItem(item)}
+                        className="p-2 text-slate-500 hover:text-cyan-400 hover:bg-cyan-500/10 rounded-lg transition-colors cursor-pointer"
+                        title="Edit entry"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
                     )}
 
                     <button
@@ -326,6 +385,13 @@ export const LogsPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      <EditHydrationLogModal
+        isOpen={Boolean(editingHydrationItem)}
+        entry={editingHydrationItem}
+        onClose={() => setEditingHydrationItem(null)}
+        onSave={handleSaveEditedHydration}
+      />
     </div>
   );
 };

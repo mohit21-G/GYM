@@ -52,10 +52,17 @@ class HydrationService:
                         if is_deleted:
                             continue
                         if updated_entry:
+                            h_cal = float(updated_entry.get("calories") or 0.0)
                             new_list.append({
                                 **e,
                                 "amountMl": int(updated_entry.get("amount_ml", e.get("amountMl", 0))),
                                 "beverageName": updated_entry.get("beverage_name", e.get("beverageName")),
+                                "quantity": updated_entry.get("quantity"),
+                                "calories": h_cal if h_cal > 0 else None,
+                                "proteinG": float(updated_entry.get("protein_g") or 0.0) if h_cal > 0 else None,
+                                "carbsG": float(updated_entry.get("carbs_g") or 0.0) if h_cal > 0 else None,
+                                "fatG": float(updated_entry.get("fat_g") or 0.0) if h_cal > 0 else None,
+                                "fiberG": float(updated_entry.get("fiber_g") or 0.0) if h_cal > 0 else None,
                             })
                         else:
                             new_list.append(e)

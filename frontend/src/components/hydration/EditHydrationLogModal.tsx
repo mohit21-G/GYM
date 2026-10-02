@@ -2,6 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { X, Save, Droplets } from 'lucide-react';
 import { HydrationEntryItem } from './DailyHydrationSummary';
 
+// Supplement beverage names whose nutrition is recalculated server-side from
+// the scoop count (quantity), mirroring food-log nutrition auto-recalc.
+const SUPPLEMENT_BEVERAGES = ['Pre Workout', 'Whey Protein Powder'];
+
 interface EditHydrationLogModalProps {
   isOpen: boolean;
   entry: HydrationEntryItem | null;
@@ -9,6 +13,7 @@ interface EditHydrationLogModalProps {
   onSave: (updatedData: {
     amountMl: number;
     beverageName: string;
+    quantity?: number;
     loggedAt?: string;
   }) => Promise<void>;
 }
@@ -21,6 +26,7 @@ export const EditHydrationLogModal: React.FC<EditHydrationLogModalProps> = ({
 }) => {
   const [amountMl, setAmountMl] = useState<number>(250);
   const [beverageName, setBeverageName] = useState('Water');
+  const [quantity, setQuantity] = useState<number>(1);
   const [timeFormatted, setTimeFormatted] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,12 +35,15 @@ export const EditHydrationLogModal: React.FC<EditHydrationLogModalProps> = ({
     if (entry) {
       setAmountMl(Number(entry.amountMl ?? entry.amount_ml ?? entry.amount ?? 250));
       setBeverageName(entry.beverageName || entry.beverage_name || entry.beverage || 'Water');
+      setQuantity(Number(entry.quantity ?? 1));
       setTimeFormatted(entry.time || entry.timeFormatted || '');
       setError(null);
     }
   }, [entry, isOpen]);
 
   if (!isOpen || !entry) return null;
+
+  const isSupplement = SUPPLEMENT_BEVERAGES.includes(beverageName.trim());
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,6 +62,7 @@ export const EditHydrationLogModal: React.FC<EditHydrationLogModalProps> = ({
       await onSave({
         amountMl: Number(amountMl),
         beverageName: beverageName.trim(),
+        quantity: isSupplement ? Number(quantity) : undefined,
         loggedAt: timeFormatted.trim() ? timeFormatted.trim() : undefined,
       });
       onClose();
@@ -111,20 +121,42 @@ export const EditHydrationLogModal: React.FC<EditHydrationLogModalProps> = ({
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1.5">
-              Amount (ml)
-            </label>
-            <input
-              type="number"
-              step="any"
-              min="1"
-              value={amountMl}
-              onChange={(e) => setAmountMl(parseFloat(e.target.value) || 0)}
-              required
-              className="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all"
-            />
+          <div className={isSupplement ? 'grid grid-cols-2 gap-3' : ''}>
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                Amount (ml)
+              </label>
+              <input
+                type="number"
+                step="any"
+                min="1"
+                value={amountMl}
+                onChange={(e) => setAmountMl(parseFloat(e.target.value) || 0)}
+                required
+                className="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all"
+              />
+            </div>
+            {isSupplement && (
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                  Scoops
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  min="0.5"
+                  value={quantity}
+                  onChange={(e) => setQuantity(parseFloat(e.target.value) || 0)}
+                  className="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all"
+                />
+              </div>
+            )}
           </div>
+          {isSupplement && (
+            <p className="text-[11px] text-slate-500 -mt-2">
+              Nutrition (kcal/protein/carbs/fat) recalculates automatically from the scoop count.
+            </p>
+          )}
 
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1.5 flex items-center justify-between">

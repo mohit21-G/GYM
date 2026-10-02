@@ -524,6 +524,16 @@ class ChatService:
                 elif any(w in u_low for w in ["green tea"]):
                     bev_name = "Green Tea"
 
+            # Supplement entries (Pre Workout / Whey Protein Powder mixed into
+            # water) carry nutrition info computed during extraction. Plain
+            # water/other beverages have none of these.
+            h_cal = float(entities.get("calories") or 0.0)
+            h_p = float(entities.get("proteinG") or 0.0)
+            h_c = float(entities.get("carbsG") or 0.0)
+            h_f = float(entities.get("fatG") or 0.0)
+            h_fib = float(entities.get("fiberG") or 0.0)
+            h_qty = entities.get("quantity")
+
             await db.hydration_logs.insert_one({
                 "id": log_id,
                 "user_id": user_id,
@@ -535,6 +545,12 @@ class ChatService:
                 "logged_at": h_dt_iso,
                 "beverage_name": bev_name,
                 "notes": bev_name,
+                "quantity": h_qty,
+                "calories": h_cal,
+                "protein_g": h_p,
+                "carbs_g": h_c,
+                "fat_g": h_f,
+                "fiber_g": h_fib,
             })
 
             dashboard_data = await DashboardService.get_today_dashboard(user_id, today_str)
@@ -549,11 +565,19 @@ class ChatService:
             # timeline. The running daily total is still shown in the progress bar.
             # "id" is threaded through so the frontend can target this exact
             # hydration_logs document for edit/delete, mirroring food log cards.
+            # Macro fields are only populated for supplement entries (Pre
+            # Workout / Whey Protein Powder) and omitted (None) for plain water.
             card_entries = [{
                 "id": log_id,
                 "time": time_label,
                 "amountMl": int(amount),
                 "beverageName": bev_name,
+                "quantity": h_qty,
+                "calories": h_cal if h_cal > 0 else None,
+                "proteinG": h_p if h_cal > 0 else None,
+                "carbsG": h_c if h_cal > 0 else None,
+                "fatG": h_f if h_cal > 0 else None,
+                "fiberG": h_fib if h_cal > 0 else None,
             }]
 
             if has_target and target_water:
@@ -832,6 +856,16 @@ class ChatService:
                 elif any(w in r_low for w in ["coconut", "nariyal"]):
                     bev_name = "Coconut Water"
 
+            # Supplement entries (Pre Workout / Whey Protein Powder mixed into
+            # water) carry nutrition info computed during extraction. Plain
+            # water/other beverages have none of these.
+            h_qty = h.get("quantity")
+            h_cal = float(h.get("calories") or 0.0)
+            h_p = float(h.get("proteinG") or 0.0)
+            h_c = float(h.get("carbsG") or 0.0)
+            h_f = float(h.get("fatG") or 0.0)
+            h_fib = float(h.get("fiberG") or 0.0)
+
             if db is not None:
                 await db.hydration_logs.insert_one({
                     "id": h_log_id,
@@ -844,6 +878,12 @@ class ChatService:
                     "logged_at": h_dt_iso,
                     "beverage_name": bev_name,
                     "notes": bev_name,
+                    "quantity": h_qty,
+                    "calories": h_cal,
+                    "protein_g": h_p,
+                    "carbs_g": h_c,
+                    "fat_g": h_f,
+                    "fiber_g": h_fib,
                 })
 
             time_sub = h.get("time_formatted") or TimeService.format_time(h_dt)
@@ -853,12 +893,19 @@ class ChatService:
                 "amountMl": int(h_ml),
                 "beverageName": bev_name,
                 "loggedAt": h_dt_iso,
+                "quantity": h_qty,
+                "calories": h_cal if h_cal > 0 else None,
+                "proteinG": h_p if h_cal > 0 else None,
+                "carbsG": h_c if h_cal > 0 else None,
+                "fatG": h_f if h_cal > 0 else None,
+                "fiberG": h_fib if h_cal > 0 else None,
             })
             batch_water_total += h_ml
 
             if bev_name != "Water":
-                summary_lines.append(f"{bev_name} ({int(h_ml)} ml)")
-                hyd_bullets.append(f"• {int(h_ml)} ml {bev_name.lower()} ({time_sub})")
+                cal_suffix = f", {int(h_cal)} kcal" if h_cal > 0 else ""
+                summary_lines.append(f"{bev_name} ({int(h_ml)} ml{cal_suffix})")
+                hyd_bullets.append(f"• {int(h_ml)} ml {bev_name.lower()} ({time_sub}){cal_suffix}")
             else:
                 summary_lines.append(f"Water ({int(h_ml)} ml)")
                 hyd_bullets.append(f"• {int(h_ml)} ml water ({time_sub})")

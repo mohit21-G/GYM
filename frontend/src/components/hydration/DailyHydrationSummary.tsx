@@ -15,6 +15,15 @@ export interface HydrationEntryItem {
   rawText?: string;
   notes?: string;
   loggedAt?: string;
+  /** Scoop count for supplement entries (Pre Workout / Whey Protein Powder). */
+  quantity?: number | null;
+  /** Nutrition carried by supplement entries mixed into water. Omitted/null
+   * for plain water and other beverages with no nutrition value. */
+  calories?: number | null;
+  proteinG?: number | null;
+  carbsG?: number | null;
+  fatG?: number | null;
+  fiberG?: number | null;
 }
 
 export interface DailyHydrationSummaryData {
@@ -107,6 +116,25 @@ export const DailyHydrationSummary: React.FC<DailyHydrationSummaryProps> = ({
   }
   const bevList = Object.entries(bevTotals);
 
+  // Aggregate nutrition carried by supplement entries (Pre Workout / Whey
+  // Protein Powder mixed into water) so the hydration card shows the same
+  // kcal/protein/carbs/fat breakdown a food card would, instead of silently
+  // dropping that information just because it's stored as hydration.
+  const nutritionTotals = entries.reduce(
+    (acc, e) => {
+      if (e.calories && e.calories > 0) {
+        acc.calories += e.calories;
+        acc.proteinG += e.proteinG || 0;
+        acc.carbsG += e.carbsG || 0;
+        acc.fatG += e.fatG || 0;
+        acc.fiberG += e.fiberG || 0;
+      }
+      return acc;
+    },
+    { calories: 0, proteinG: 0, carbsG: 0, fatG: 0, fiberG: 0 },
+  );
+  const hasSupplementNutrition = nutritionTotals.calories > 0;
+
   return (
     <div
       className={`bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 border border-cyan-500/25 rounded-2xl p-4 shadow-lg backdrop-blur-sm w-full ${className}`}
@@ -182,6 +210,34 @@ export const DailyHydrationSummary: React.FC<DailyHydrationSummaryProps> = ({
         </div>
       </div>
 
+      {/* Supplement Nutrition Summary (kcal/protein/carbs/fat from Pre
+          Workout / Whey Protein Powder entries mixed into water) */}
+      {hasSupplementNutrition && (
+        <div className="mt-3 bg-slate-800/60 rounded-xl p-3 border border-slate-700/40">
+          <div className="text-[10px] text-slate-400 font-medium mb-2">
+            Supplement Nutrition (from hydration entries)
+          </div>
+          <div className="grid grid-cols-4 gap-1.5 text-center text-[11px]">
+            <div className="bg-slate-900/60 rounded-lg p-1.5 border border-slate-700/40">
+              <div className="text-slate-400">Calories</div>
+              <div className="text-emerald-400 font-bold mt-0.5">{Math.round(nutritionTotals.calories)}</div>
+            </div>
+            <div className="bg-slate-900/60 rounded-lg p-1.5 border border-slate-700/40">
+              <div className="text-slate-400">Protein</div>
+              <div className="text-blue-400 font-semibold mt-0.5">{Math.round(nutritionTotals.proteinG * 10) / 10}g</div>
+            </div>
+            <div className="bg-slate-900/60 rounded-lg p-1.5 border border-slate-700/40">
+              <div className="text-slate-400">Carbs</div>
+              <div className="text-amber-400 font-semibold mt-0.5">{Math.round(nutritionTotals.carbsG * 10) / 10}g</div>
+            </div>
+            <div className="bg-slate-900/60 rounded-lg p-1.5 border border-slate-700/40">
+              <div className="text-slate-400">Fat</div>
+              <div className="text-rose-400 font-semibold mt-0.5">{Math.round(nutritionTotals.fatG * 10) / 10}g</div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Beverage Breakdown Pills (Matching Nutrition Macro Pills aesthetic) */}
       {bevList.length > 0 && (
         <div
@@ -228,6 +284,10 @@ export const DailyHydrationSummary: React.FC<DailyHydrationSummaryProps> = ({
               const bev = item.beverageName || item.beverage_name || item.beverage || 'Water';
               const rawPortion = item.portion || item.rawText;
               const canEditDelete = Boolean(item.id) && (onEditEntry || onDeleteEntry);
+              // Supplement entries (Pre Workout / Whey Protein Powder) carry
+              // nutrition — show it as a compact macro line, same spirit as
+              // the food-log macro pills.
+              const hasMacros = item.calories != null && item.calories > 0;
 
               return (
                 <div
@@ -236,19 +296,42 @@ export const DailyHydrationSummary: React.FC<DailyHydrationSummaryProps> = ({
                 >
                   <div className="flex items-center space-x-2.5 truncate flex-1">
                     <Droplets className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />
-                    <span className="text-slate-200 font-medium truncate">
-                      {rawPortion ? (
-                        <span>
-                          {rawPortion} {bev !== 'Water' ? `(${bev})` : ''}{' '}
-                          <span className="text-slate-400 font-normal">— {amt} ml</span>
-                        </span>
-                      ) : (
-                        <span>
-                          {bev}{' '}
-                          <span className="text-cyan-400 font-bold">— {amt} ml</span>
-                        </span>
+                    <div className="min-w-0 flex-1">
+                      <span className="text-slate-200 font-medium truncate block">
+                        {rawPortion ? (
+                          <span>
+                            {rawPortion} {bev !== 'Water' ? `(${bev})` : ''}{' '}
+                            <span className="text-slate-400 font-normal">— {amt} ml</span>
+                          </span>
+                        ) : (
+                          <span>
+                            {item.quantity ? `${item.quantity} scoop ` : ''}
+                            {bev}{' '}
+                            <span className="text-cyan-400 font-bold">— {amt} ml</span>
+                          </span>
+                        )}
+                      </span>
+                      {hasMacros && (
+                        <div className="flex items-center space-x-2 text-[10px] text-slate-400 mt-0.5">
+                          <span className="text-emerald-400 font-semibold">{Math.round(item.calories!)} kcal</span>
+                          {item.proteinG != null && (
+                            <span>
+                              P: <span className="text-blue-400 font-semibold">{item.proteinG}g</span>
+                            </span>
+                          )}
+                          {item.carbsG != null && (
+                            <span>
+                              C: <span className="text-amber-400 font-semibold">{item.carbsG}g</span>
+                            </span>
+                          )}
+                          {item.fatG != null && (
+                            <span>
+                              F: <span className="text-rose-400 font-semibold">{item.fatG}g</span>
+                            </span>
+                          )}
+                        </div>
                       )}
-                    </span>
+                    </div>
                   </div>
                   <div className="flex items-center space-x-2 flex-shrink-0 ml-2">
                     {timeStr && (

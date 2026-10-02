@@ -263,8 +263,16 @@ class AIService:
         acts = AgentNLP.extract_activity_entities(message)
         hyds = AgentNLP.extract_hydration_entities(message)
 
+        # extract_activity_entities() always returns at least one fallback
+        # "Workout" entry (requiresClarification=True) when no real exercise
+        # keyword was found in the message, so a food-only message like
+        # "2 roti ane dal khadhi" would otherwise be misclassified as
+        # multi-domain. Only count activities as a genuine signal when they
+        # don't need clarification (i.e. a real exercise was actually found).
+        genuine_acts = [a for a in acts if not a.get("requiresClarification")]
+
         # Domain multi-signal check: If entities from 2+ distinct domains are present, enforce CREATE_MULTI_LOG
-        domain_count = sum([bool(foods), bool(acts), bool(hyds)])
+        domain_count = sum([bool(foods), bool(genuine_acts), bool(hyds)])
         if domain_count >= 2 and detected_intent not in ("QUERY_FOOD_LOG", "QUERY_HYDRATION_LOG", "GENERAL_CHAT"):
             detected_intent = "CREATE_MULTI_LOG"
 
@@ -414,11 +422,11 @@ class AIService:
         # or multiple recognized items (total >= 2), but LLM returned a single-domain
         # intent (e.g. only CREATE_HYDRATION_LOG, dropping food & workout), NEVER allow
         # the LLM to discard the user's multi-entry logs!
-        total_deterministic = len(foods) + len(acts) + len(hyds)
+        total_deterministic = len(foods) + len(genuine_acts) + len(hyds)
         has_multi_deterministic = (
-            (bool(foods) and bool(acts))
+            (bool(foods) and bool(genuine_acts))
             or (bool(foods) and bool(hyds))
-            or (bool(acts) and bool(hyds))
+            or (bool(genuine_acts) and bool(hyds))
             or (total_deterministic >= 2 and detected_intent == "CREATE_MULTI_LOG")
         )
 

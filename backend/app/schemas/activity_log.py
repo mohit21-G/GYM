@@ -47,8 +47,16 @@ class UpdateActivityLogDto(BaseModel):
     loggedAt: Optional[str] = None
 
 class UpdateHydrationLogDto(BaseModel):
-    """All-optional patch DTO for editing an existing hydration log entry."""
+    """All-optional patch DTO for editing an existing hydration log entry.
+
+    `quantity` is the scoop count for supplement entries (Pre Workout / Whey
+    Protein Powder mixed into water). When provided (or when beverageName is
+    changed to/from a supplement name), nutrition (calories/protein/carbs/fat/
+    fiber) is automatically recalculated from the canonical profile, the same
+    way PATCH /food-logs/{id} recalculates nutrition on edit.
+    """
     amountMl: Optional[float] = None
     beverageName: Optional[str] = None
+    quantity: Optional[float] = None
     notes: Optional[str] = None
     loggedAt: Optional[str] = None

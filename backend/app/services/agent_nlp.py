@@ -1270,58 +1270,105 @@ class AgentNLP:
             line_dt, has_line_time = TimeService.extract_time_from_text(time_input, reference_time=local_now)
             effective_dt = line_dt if has_line_time else local_now
 
-            # ── Pre-workout special-case ────────────────────────────────────
-            # A pre-workout scoop is always a hydration entry (it's mixed into
-            # water), never a separate food/calorie item. Handle it BEFORE the
-            # generic "with"-splitting below, so "1 scoop pre-workout with
-            # 300 ml water" becomes exactly ONE entry of 300 ml — not a
-            # separate plain-water entry for the "300 ml water" fragment.
-            # If no water volume is mentioned at all ("had 1 scoop pre
-            # workout"), default to 250 ml per the standard serving size.
+            # ── Supplement (scoop) + water special-case ─────────────────────
+            # Pre-workout and whey/protein-powder scoops mixed into water are
+            # logged as a SINGLE hydration entry carrying BOTH the water
+            # volume AND the supplement's nutrition (kcal/protein/carbs/fat/
+            # fiber) — never as a separate food item plus a generic "Water"
+            # entry. Handle this BEFORE the generic "with"-splitting below, so
+            # "1 scoop pre-workout with 300 ml water" becomes exactly ONE
+            # entry of 300 ml — not a separate plain-water entry.
+            #
+            # Pre-workout: the water mention is OPTIONAL (defaults to 250 ml
+            # if omitted, e.g. "had 1 scoop pre workout").
+            # Whey/protein powder: the water mention is REQUIRED here — if no
+            # water is mentioned, protein stays a normal food item (handled by
+            # extract_food_entities_heuristically), since protein is just as
+            # often eaten dry / with milk / as a shake.
             line_for_clauses = line
+            from .food_service import CANONICAL_INDIAN_FOOD_PROFILES  # lazy import avoids circular import
+
+            def _supplement_water_ml(amt_str, unit_str):
+                unit_str = (unit_str or "").lower()
+                amt_val = float(amt_str)
+                if unit_str in ("l", "litre", "liter", "liters", "litres"):
+                    return amt_val * 1000.0
+                if unit_str in ("glass", "glasses"):
+                    return amt_val * 250.0
+                if unit_str in ("cup", "cups"):
+                    return amt_val * 200.0
+                if unit_str == "bottle":
+                    return amt_val * 750.0
+                return amt_val  # bare "ml" or unitless number
+
             # NOTE: longer unit alternatives MUST come before shorter ones in the
             # alternation ("litre" before "l", "ml" before "l") — regex tries
             # alternatives left-to-right, so "l" would otherwise match the first
             # letter of "litre" and leave "itre water" unconsumed, causing the
             # water volume to leak out as a separate plain-water entry.
-            pw_regex = re.compile(
-                r"(?:\d+(?:\.\d+)?\s*scoops?\s*(?:of\s*)?)?pre[-\s]?workout\b"
-                r"(?:\s+with\s+(\d+(?:\.\d+)?)\s*(ml|litre|liter|liters|litres|l|glass|glasses|cup|cups|bottle)?"
-                r"(?:\s*(?:water|pani|paani|પાણી|पानी))?)?",
-                re.I,
-            )
-            for pw_m in pw_regex.finditer(line):
-                amt_str, unit_str = pw_m.group(1), (pw_m.group(2) or "").lower()
-                if amt_str:
-                    amt_val = float(amt_str)
-                    if unit_str in ("l", "litre", "liter", "liters", "litres"):
-                        pw_amount = amt_val * 1000.0
-                    elif unit_str in ("glass", "glasses"):
-                        pw_amount = amt_val * 250.0
-                    elif unit_str in ("cup", "cups"):
-                        pw_amount = amt_val * 200.0
-                    elif unit_str == "bottle":
-                        pw_amount = amt_val * 750.0
-                    else:
-                        pw_amount = amt_val  # bare "ml" or unitless number
-                else:
-                    pw_amount = 250.0  # default serving when no water volume given
+            _UNIT_ALT = r"ml|litre|liter|liters|litres|l|glass|glasses|cup|cups|bottle"
 
-                results.append({
-                    "beverage_name": "Pre Workout",
-                    "beverageName": "Pre Workout",
-                    "waterAmount": pw_amount,
-                    "amountMl": pw_amount,
-                    "amount_ml": pw_amount,
-                    "unit": "ml",
-                    "logged_at": effective_dt.isoformat(),
-                    "has_explicit_time": has_line_time,
-                    "time_formatted": TimeService.format_time(effective_dt) if has_line_time else "",
-                    "raw_text": pw_m.group(0).strip(),
-                })
-                # Remove the matched span so the generic clause loop below never
-                # re-processes the same "...ml water" fragment as plain water.
-                line_for_clauses = line_for_clauses.replace(pw_m.group(0), " ", 1)
+            supplement_specs = [
+                # (compiled regex, beverage_name, canonical profile key)
+                (
+                    re.compile(
+                        r"(?:(?P<qty>\d+(?:\.\d+)?)\s*scoops?\s*(?:of\s*)?)?pre[-\s]?workout\b"
+                        rf"(?:\s+with\s+(?P<amt>\d+(?:\.\d+)?)\s*(?P<unit>{_UNIT_ALT})?"
+                        r"(?:\s*(?:water|pani|paani|પાણી|पानी))?)?",
+                        re.I,
+                    ),
+                    "Pre Workout", "Pre Workout",
+                ),
+                (
+                    re.compile(
+                        r"(?:(?P<qty>\d+(?:\.\d+)?)\s*scoops?\s*(?:of\s*)?)?(?:whey\s*protein|protein\s*powder|whey|protein)\b"
+                        rf"\s+with\s+(?P<amt>\d+(?:\.\d+)?)\s*(?P<unit>{_UNIT_ALT})?"
+                        r"\s*(?:water|pani|paani|પાણી|पानी)\b",
+                        re.I,
+                    ),
+                    "Whey Protein Powder", "Whey Protein Powder",
+                ),
+            ]
+
+            for pattern, bev_name, profile_key in supplement_specs:
+                for sm in pattern.finditer(line):
+                    gd = sm.groupdict()
+                    qty = float(gd.get("qty") or 1.0)
+                    if gd.get("amt"):
+                        sup_amount = _supplement_water_ml(gd["amt"], gd.get("unit"))
+                    else:
+                        sup_amount = 250.0  # default serving when no water volume given (pre-workout only)
+
+                    profile = CANONICAL_INDIAN_FOOD_PROFILES.get(profile_key, {})
+                    sup_cal = round(float(profile.get("calories", 0.0)) * qty, 1)
+                    sup_p = round(float(profile.get("protein_g", 0.0)) * qty, 1)
+                    sup_c = round(float(profile.get("carbs_g", 0.0)) * qty, 1)
+                    sup_f = round(float(profile.get("fat_g", 0.0)) * qty, 1)
+                    sup_fib = round(float(profile.get("fiber_g", 0.0)) * qty, 1)
+
+                    results.append({
+                        "beverage_name": bev_name,
+                        "beverageName": bev_name,
+                        "waterAmount": sup_amount,
+                        "amountMl": sup_amount,
+                        "amount_ml": sup_amount,
+                        "unit": "ml",
+                        "quantity": qty,
+                        "scoopUnit": "scoop",
+                        "calories": sup_cal,
+                        "proteinG": sup_p,
+                        "carbsG": sup_c,
+                        "fatG": sup_f,
+                        "fiberG": sup_fib,
+                        "logged_at": effective_dt.isoformat(),
+                        "has_explicit_time": has_line_time,
+                        "time_formatted": TimeService.format_time(effective_dt) if has_line_time else "",
+                        "raw_text": sm.group(0).strip(),
+                    })
+                    # Remove the matched span so the generic clause loop below
+                    # never re-processes the same "...ml water" fragment as
+                    # plain water.
+                    line_for_clauses = line_for_clauses.replace(sm.group(0), " ", 1)
             # ──────────────────────────────────────────────────────────────
 
             clauses = re.split(r",| and | ane | aur | અને | और | with | along with | sathe | સાથે | ساتھ میں | साथ में |\+", line_for_clauses, flags=re.I)
@@ -1677,6 +1724,20 @@ class AgentNLP:
             line = re.sub(r"\b(dal|daal|દાળ|દાલ|दाल)\s+(rice|bhat|chawal|ભાત|ચોખા|चावल)\b", r"\1 and \2", line, flags=re.I)
             line = re.sub(r"\b(roti|rotli|chapati|રોટલી|रोटी)\s+(dal|daal|sabzi|shak|દાળ|શાક|दाल|सब्जी)\b", r"\1 and \2", line, flags=re.I)
             line = re.sub(r"\b(tea|chai|coffee)\s+with\s+milk\b", r"\1_with_milk", line, flags=re.I)
+            # Protein/whey mixed WITH WATER is logged purely as a hydration
+            # entry (see extract_hydration_entities' supplement_specs) and must
+            # NOT also become a separate food item here. Replace the whole
+            # matched span with a sentinel token BEFORE clause-splitting so the
+            # later `with`-split clause ends up being exactly the sentinel,
+            # which the skip-check below recognizes and discards.
+            line = re.sub(
+                r"\b(?:\d+(?:\.\d+)?\s*scoops?\s*(?:of\s*)?)?(?:whey\s*protein|protein\s*powder|whey|protein)\b"
+                r"\s+with\s+\d+(?:\.\d+)?\s*(?:ml|litre|liter|liters|litres|l|glass|glasses|cup|cups|bottle)?"
+                r"\s*(?:water|pani|paani|પાણી|पानी)\b",
+                " \x00PROTEIN_WATER_SKIP\x00 ",
+                line,
+                flags=re.I,
+            )
             
             l_low = line.lower()
             if any(w in l_low for w in ["morning", "savar", "savare", "saware", "subah", "સવાર", "સવારે", "सुबह"]):
@@ -1764,13 +1825,23 @@ class AgentNLP:
                 if is_pre_workout:
                     continue
 
+                # Whey/protein powder mixed WITH WATER is also tracked as a
+                # single hydration entry carrying the supplement's nutrition
+                # (flagged by the line-level pre-pass below, which marks the
+                # exact clause span with a sentinel so we never double-count
+                # it as a separate food item). Protein eaten WITHOUT water
+                # (dry scoop, with milk, as a pre-made shake, etc.) is left
+                # untouched here and stays a normal food item.
+                if clause.strip() == "\x00PROTEIN_WATER_SKIP\x00":
+                    continue
+
                 # Skip exercise, muscle groups, or sleep
                 is_activity_or_sleep = (
                     any(bool(re.search(pat, c_low)) for pat in [
                         r"\b(?:walk|walked|walking|run|running|ran|gym|cycling|swimming|yoga|badminton|cricket)\b",
                         r"\b(?:kasrat|vyayam|cardio|stretching|aerobics|hiit)\b",
                         r"(?<!pre[-\s])\bworkout\b",
-                        r"\b(?:biceps?|triceps?|delts?|quads?|hamstrings?|glutes?|calves|abs|core)\b",
+                        r"\b(?:biceps?|triceps?|delts?|quads?|hamstrings?|glutes?|calves|abs|core|chest|shoulders?|lats?|forearms?)\b",
                         r"\bback\b(?!\s+(?:tea|coffee))",
                         r"\b(?:bench\s*press|push-?ups?|pull-?ups?|squats?|deadlifts?|crunches?|planks?|lunges?|burpees?)\b",
                         r"\b(?:sleep|slept|oongh|neend|suto|suvo)\b",

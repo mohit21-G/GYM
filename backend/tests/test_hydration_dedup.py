@@ -146,10 +146,20 @@ class TestFullMorningRoutineMessage:
 
     def test_hydration_entry_count_is_exactly_four(self):
         """Lemon water (250), pre-workout (300), 1 litre water (1000),
-        protein-powder's 400ml water (400) = 4 hydration entries.
-        (Black coffee stays a food item, not hydration.)"""
+        whey-protein-powder's 400ml water (400) = 4 hydration entries.
+        (Black coffee stays a food item, not hydration. Protein+water is now
+        ONE combined hydration entry carrying both water and macros, not a
+        separate food item plus a separate plain-water entry.)"""
         hyds = AgentNLP.extract_hydration_entities(self.MSG)
         assert len(hyds) == 4, f"Expected 4 hydration entries, got {len(hyds)}: {hyds}"
+
+    def test_whey_protein_entry_carries_macros(self):
+        hyds = AgentNLP.extract_hydration_entities(self.MSG)
+        whey = [h for h in hyds if h["beverage_name"] == "Whey Protein Powder"]
+        assert len(whey) == 1
+        assert whey[0]["amount_ml"] == 400.0
+        assert whey[0]["calories"] == 120.0
+        assert whey[0]["proteinG"] == 24.0
 
     def test_real_foods_still_present(self):
         foods = AgentNLP.extract_food_entities_heuristically(self.MSG)
@@ -157,7 +167,9 @@ class TestFullMorningRoutineMessage:
         assert any("Coffee" in n for n in names)
         assert any("Rotli" in n or "Roti" in n for n in names)
         assert any("Milk" in n for n in names)
-        assert any("Protein" in n for n in names)
+        # NOTE: "1 scoop protein powder with 400 ml water" is now a hydration
+        # entry (Whey Protein Powder + water, see
+        # TestProteinWithWaterIsHydrationOnly below) and must NOT appear here.
 
     def test_activities_still_present(self):
         acts = AgentNLP.extract_activity_entities(self.MSG)

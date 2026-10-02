@@ -543,6 +543,7 @@ export const ChatPage: React.FC = () => {
   const handleSaveEditedHydrationLog = async (updatedData: {
     amountMl: number;
     beverageName: string;
+    quantity?: number;
     loggedAt?: string;
   }) => {
     if (!editingHydrationEntry?.id) return;
@@ -550,6 +551,7 @@ export const ChatPage: React.FC = () => {
     const res = await apiClient.patch(`/hydration-logs/${editingHydrationEntry.id}`, {
       amountMl: updatedData.amountMl,
       beverageName: updatedData.beverageName,
+      quantity: updatedData.quantity,
       loggedAt: updatedData.loggedAt,
     });
     const updatedEntry = res.data?.entry || res.data;
@@ -563,6 +565,12 @@ export const ChatPage: React.FC = () => {
             ...e,
             amountMl: updatedEntry.amountMl ?? updatedData.amountMl,
             beverageName: updatedEntry.beverageName ?? updatedData.beverageName,
+            quantity: updatedEntry.quantity ?? updatedData.quantity ?? null,
+            calories: updatedEntry.calories ?? null,
+            proteinG: updatedEntry.proteinG ?? null,
+            carbsG: updatedEntry.carbsG ?? null,
+            fatG: updatedEntry.fatG ?? null,
+            fiberG: updatedEntry.fiberG ?? null,
             time: updatedEntry.timeFormatted || e.time,
           }),
         );
