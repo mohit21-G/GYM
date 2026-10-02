@@ -164,6 +164,12 @@ async def get_session_messages(
     cursor = db.conversation_messages.find({"session_id": session_id}).sort("created_at", 1)
     messages = await cursor.to_list(length=500)
 
+    # Cache the daily grouped-food summary per calendar date so we don't issue a
+    # fresh DB aggregation for every food-card message. Most messages in a
+    # session share the same date, so this collapses many identical queries
+    # into one per date (big win on a cloud MongoDB).
+    _daily_summary_cache: Dict[str, Any] = {}
+
     results = []
     for m in messages:
         raw_ent = m.get("raw_entities")
@@ -244,8 +250,10 @@ async def get_session_messages(
                     msg_date = c_dt.astimezone(TimeService.get_timezone()).strftime("%Y-%m-%d")
                 except Exception:
                     pass
-            daily_sum_res = await FoodService.get_daily_grouped_food_cards(user_id, msg_date)
-            raw_ent["dailyNutritionSummary"] = daily_sum_res["dailyNutritionSummary"].model_dump()
+            if msg_date not in _daily_summary_cache:
+                daily_sum_res = await FoodService.get_daily_grouped_food_cards(user_id, msg_date)
+                _daily_summary_cache[msg_date] = daily_sum_res["dailyNutritionSummary"].model_dump()
+            raw_ent["dailyNutritionSummary"] = _daily_summary_cache[msg_date]
 
         if isinstance(raw_ent, dict):
             raw_ent_str = json.dumps(raw_ent)

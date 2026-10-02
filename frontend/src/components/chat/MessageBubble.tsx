@@ -3,6 +3,8 @@ import { Bot, User } from 'lucide-react';
 import { format } from 'date-fns';
 import { StructuredCard } from './Cards';
 import { FoodLogEntryData } from '../food/FoodLogEntry';
+import { HydrationEntryItem } from '../hydration/DailyHydrationSummary';
+import { ActivityEntryData } from '../activity/EditActivityLogModal';
 
 export interface ChatMessageItem {
   id?: string;
@@ -18,6 +20,10 @@ interface MessageBubbleProps {
   onSelectOption?: (text: string) => void;
   onEditFoodLog?: (entry: FoodLogEntryData) => void;
   onDeleteFoodLog?: (entry: FoodLogEntryData) => void;
+  onEditHydrationLog?: (entry: HydrationEntryItem) => void;
+  onDeleteHydrationLog?: (entry: HydrationEntryItem) => void;
+  onEditActivityLog?: (entry: ActivityEntryData) => void;
+  onDeleteActivityLog?: (entry: ActivityEntryData) => void;
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({
@@ -25,6 +31,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   onSelectOption,
   onEditFoodLog,
   onDeleteFoodLog,
+  onEditHydrationLog,
+  onDeleteHydrationLog,
+  onEditActivityLog,
+  onDeleteActivityLog,
 }) => {
   const isUser = msg.sender === 'USER';
   const timestamp = msg.createdAt ? format(new Date(msg.createdAt), 'h:mm a') : '';
@@ -151,6 +161,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             onSelectOption={onSelectOption}
             onEditEntry={onEditFoodLog}
             onDeleteEntry={onDeleteFoodLog}
+            onEditHydrationEntry={onEditHydrationLog}
+            onDeleteHydrationEntry={onDeleteHydrationLog}
+            onEditActivityEntry={onEditActivityLog}
+            onDeleteActivityEntry={onDeleteActivityLog}
           />
         )}
 

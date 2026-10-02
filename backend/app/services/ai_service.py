@@ -388,16 +388,55 @@ class AIService:
                 "All LLM providers failed or returned no intent — using deterministic/rule-based fallback. "
                 "message=%.80s", message,
             )
-            # If deterministic foods were found, use them
-            if foods:
+            # If deterministic foods/activities/hydration were found upstream
+            # (foods/acts/hyds, computed before the LLM call), use ALL of them.
+            # Previously this branch only checked `foods` and built a plain
+            # CREATE_FOOD_LOG, which silently dropped any activities or
+            # hydration items that had already been correctly extracted —
+            # e.g. a multi-item routine message would lose its workout and
+            # water entries whenever the LLM call failed or returned invalid
+            # JSON, even though the deterministic parsers had found them fine.
+            if foods or acts or hyds:
                 actions = AgentNLP.extract_structured_actions(message)
-                result = {
-                    "intent": "CREATE_FOOD_LOG",
-                    "language": lang,
-                    "actions": actions,
-                    "entities": {"foodItems": foods},
-                    "replyText": f"Logged {len(foods)} food item(s)."
-                }
+                if (foods and acts) or (foods and hyds) or (acts and hyds) or detected_intent == "CREATE_MULTI_LOG":
+                    real_acts = [a for a in acts if a.get("activity") and a["activity"] != "Workout"] or acts
+                    result = {
+                        "intent": "CREATE_MULTI_LOG",
+                        "language": lang,
+                        "actions": actions,
+                        "entities": {
+                            "foodItems": foods,
+                            "activities": real_acts,
+                            "activityItems": real_acts,
+                            "hydrationItems": hyds,
+                            "hydration": hyds,
+                            "waterAmount": sum(h.get("amount_ml", 0) for h in hyds) if hyds else None,
+                        },
+                        "replyText": f"Logged {len(foods)} food item(s), {len(real_acts)} workout(s), and {len(hyds)} water entry(ies)."
+                    }
+                elif foods:
+                    result = {
+                        "intent": "CREATE_FOOD_LOG",
+                        "language": lang,
+                        "actions": actions,
+                        "entities": {"foodItems": foods},
+                        "replyText": f"Logged {len(foods)} food item(s)."
+                    }
+                elif acts:
+                    result = {
+                        "intent": "CREATE_ACTIVITY_LOG",
+                        "language": lang,
+                        "actions": actions,
+                        "entities": {"activities": acts, "activityItems": acts},
+                        "replyText": f"Logged {len(acts)} workout item(s)."
+                    }
+                else:
+                    result = {
+                        "intent": "CREATE_HYDRATION_LOG",
+                        "language": lang,
+                        "entities": hyds[0] if len(hyds) == 1 else {"hydrationItems": hyds, "hydration": hyds},
+                        "replyText": f"Logged {len(hyds)} water entry(ies)."
+                    }
             else:
                 result = AIService._rule_based_fallback(message, message)
 

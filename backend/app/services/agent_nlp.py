@@ -865,6 +865,51 @@ class AgentNLP:
         cleaned_text = cls.repair_missing_spaces_and_typos(message)
         lower = cleaned_text.lower().strip()
 
+        # 0. LOGGING-PRIORITY GUARD (runs before any query/summary classification)
+        # ---------------------------------------------------------------------
+        # A multi-item logging message (often multi-line, e.g. a morning routine
+        # with timestamps) can accidentally contain words like "water" plus a
+        # weak query fragment, which previously misrouted the whole message to
+        # QUERY_HYDRATION_LOG and dropped every logged item.
+        #
+        # If the message clearly contains logged DATA — several quantity+unit
+        # tokens, or multiple timestamped entries — and it is NOT phrased as a
+        # question, treat it as a creation/multi log, never a query.
+        if "?" not in lower:
+            # Count "<number> <unit/food>" style tokens (e.g. "400 ml", "3 roti",
+            # "1 scoop", "1 glass", "1 cup", "1 litre").
+            qty_unit_hits = len(re.findall(
+                r"\d+(?:\.\d+)?\s*(?:ml|l|litre|liter|g|kg|glass|glasses|cup|cups|bowl|bowls|katori|vatki|"
+                r"scoop|scoops|plate|plates|piece|pieces|roti|rotli|rotis|slice|slices|spoon|tbsp|tsp|"
+                r"min|mins|minute|minutes)\b",
+                lower,
+            ))
+            # Count clock timestamps like "6:45", "7:00 am", "10:00 am".
+            time_hits = len(re.findall(r"\b\d{1,2}:\d{2}\b", lower))
+            # Does it have an eating/drinking/activity signal?
+            has_log_verb = (
+                any(v in lower for v in EATING_VERBS)
+                or any(v in lower for v in DRINKING_VERBS)
+                or any(re.search(p, lower) for p in WORKOUT_PATTERNS)
+                or bool(re.search(r"\b(ate|had|drank|did|logged|took|ran|walked|ran|workout|gym)\b", lower))
+            )
+            # Strong logging evidence: 2+ measured items, OR 2+ timestamps, OR a
+            # measured item together with a log verb.
+            if qty_unit_hits >= 2 or time_hits >= 2 or (qty_unit_hits >= 1 and has_log_verb):
+                has_food = bool(cls.extract_food_entities_heuristically(message))
+                has_act = any(re.search(p, lower) for p in WORKOUT_PATTERNS)
+                has_water = bool(re.search(r"\b\d+(?:\.\d+)?\s*(?:ml|l|litre|liter|glass|glasses)\b", lower)) and \
+                    ("water" in lower or "pani" in lower or "paani" in lower)
+                signal_count = sum([bool(has_food), bool(has_act), bool(has_water)])
+                if signal_count >= 2:
+                    return "CREATE_MULTI_LOG"
+                if has_act and not has_food:
+                    return "CREATE_ACTIVITY_LOG"
+                if has_water and not has_food:
+                    return "CREATE_HYDRATION_LOG"
+                if has_food:
+                    return "CREATE_FOOD_LOG"
+
         # 1. Contextual continuation phrases
         is_contextual_continuation = any(w in lower for w in [
             "sathe", "lidhu", "lidhi", "khadhu", "khadha", "khadhi", "khau chhu", "jamyo", "jami", "jamya",
@@ -962,7 +1007,7 @@ class AgentNLP:
             "कितना पानी पिया", "पानी कितना पिया", "कितना पानी बाकी"
         ]) or (
             ("water" in lower or "pani" in lower or "paani" in lower or "પાણી" in lower or "पानी" in lower) and
-            any(w in lower for w in ["how much", "status", "goal", "target", "ketlu", "kitna", "baki", "left", "reach", "did i", "ketla"])
+            any(w in lower for w in ["how much", "status", "goal", "target", "ketlu", "kitna", "baki", "left so far", "reach", "did i drink", "did i have", "ketla glass"])
         )
         if is_water_query:
             return "QUERY_HYDRATION_LOG"
@@ -1072,11 +1117,17 @@ class AgentNLP:
         ]):
             return "QUERY_FOOD_LOG"
 
-        # Domain terms detection
-        has_explicit_food = any(w in lower for w in FOOD_NOUNS if w not in ("water", "pani", "paani")) or any(
+        # Domain terms detection.
+        # "lemon water"/"nimbu pani" (flavored water) and "pre workout"/"preworkout"
+        # are hydration items now, not food — exclude their synonym targets and
+        # literal FOOD_NOUNS entries so they don't register as has_explicit_food
+        # and get double-counted as both food and hydration.
+        _HYDRATION_ONLY_TARGETS = {"Lemon Water", "Coconut Water", "Jeera Water", "Pre Workout"}
+        _HYDRATION_ONLY_LITERALS = {"water", "pani", "paani", "lemon water", "nimbu pani", "pre workout", "preworkout", "pre-workout"}
+        has_explicit_food = any(w in lower for w in FOOD_NOUNS if w not in _HYDRATION_ONLY_LITERALS) or any(
             bool(re.search(rf"\b{re.escape(k)}\b", lower))
             for k, v in INDIAN_FOOD_SYNONYMS.items()
-            if v not in ("Water",)
+            if v not in _HYDRATION_ONLY_TARGETS
         )
         has_eating_verb = any(
             bool(re.search(rf"\b{re.escape(v)}\b", lower)) for v in EATING_VERBS
@@ -1086,9 +1137,13 @@ class AgentNLP:
         )
         has_workout = any(bool(re.search(pat, lower)) for pat in WORKOUT_PATTERNS)
         
-        # Check water (water or paani in non pani puri context)
+        # Check water (water or paani in non pani puri context).
+        # Pre-workout is also a hydration item even with no "water" word in the
+        # message (e.g. "had 1 scoop pre workout") since it's logged as a 250ml
+        # default hydration entry.
         has_water = (any(w in lower for w in ["water", "paani", "pani", "pni", "panu", "પાણી", "पानी"]) or 
-                     (re.search(r"\bpani\b", lower) and "pani puri" not in lower))
+                     (re.search(r"\bpani\b", lower) and "pani puri" not in lower) or
+                     bool(re.search(r"\bpre[-\s]?workout\b", lower)))
 
         has_weight = any(w in lower for w in [
             "weight", "vajan", "kilo", "kilos", "kg", "kilogram",
@@ -1183,7 +1238,9 @@ class AgentNLP:
         Extracts all hydration items from text with their specific amounts and explicit times.
         Supports:
         - "400ml water", "1 ltr water", "300ml water"
-        - "lemon water 1 glass" (filtered out since it's a beverage handled as food)
+        - "lemon water", "1 glass lemon water" (flavored water -> hydration only)
+        - "1 scoop pre-workout with 300ml water" -> single 300ml "Pre Workout" entry
+        - "1 scoop pre workout" (no water mentioned) -> defaults to 250ml "Pre Workout"
         """
         norm = AgentNLP.normalize_text(text)
         lower = norm.lower()
@@ -1213,7 +1270,61 @@ class AgentNLP:
             line_dt, has_line_time = TimeService.extract_time_from_text(time_input, reference_time=local_now)
             effective_dt = line_dt if has_line_time else local_now
 
-            clauses = re.split(r",| and | ane | aur | અને | और | with | along with | sathe | સાથે | ساتھ میں | साथ में |\+", line, flags=re.I)
+            # ── Pre-workout special-case ────────────────────────────────────
+            # A pre-workout scoop is always a hydration entry (it's mixed into
+            # water), never a separate food/calorie item. Handle it BEFORE the
+            # generic "with"-splitting below, so "1 scoop pre-workout with
+            # 300 ml water" becomes exactly ONE entry of 300 ml — not a
+            # separate plain-water entry for the "300 ml water" fragment.
+            # If no water volume is mentioned at all ("had 1 scoop pre
+            # workout"), default to 250 ml per the standard serving size.
+            line_for_clauses = line
+            # NOTE: longer unit alternatives MUST come before shorter ones in the
+            # alternation ("litre" before "l", "ml" before "l") — regex tries
+            # alternatives left-to-right, so "l" would otherwise match the first
+            # letter of "litre" and leave "itre water" unconsumed, causing the
+            # water volume to leak out as a separate plain-water entry.
+            pw_regex = re.compile(
+                r"(?:\d+(?:\.\d+)?\s*scoops?\s*(?:of\s*)?)?pre[-\s]?workout\b"
+                r"(?:\s+with\s+(\d+(?:\.\d+)?)\s*(ml|litre|liter|liters|litres|l|glass|glasses|cup|cups|bottle)?"
+                r"(?:\s*(?:water|pani|paani|પાણી|पानी))?)?",
+                re.I,
+            )
+            for pw_m in pw_regex.finditer(line):
+                amt_str, unit_str = pw_m.group(1), (pw_m.group(2) or "").lower()
+                if amt_str:
+                    amt_val = float(amt_str)
+                    if unit_str in ("l", "litre", "liter", "liters", "litres"):
+                        pw_amount = amt_val * 1000.0
+                    elif unit_str in ("glass", "glasses"):
+                        pw_amount = amt_val * 250.0
+                    elif unit_str in ("cup", "cups"):
+                        pw_amount = amt_val * 200.0
+                    elif unit_str == "bottle":
+                        pw_amount = amt_val * 750.0
+                    else:
+                        pw_amount = amt_val  # bare "ml" or unitless number
+                else:
+                    pw_amount = 250.0  # default serving when no water volume given
+
+                results.append({
+                    "beverage_name": "Pre Workout",
+                    "beverageName": "Pre Workout",
+                    "waterAmount": pw_amount,
+                    "amountMl": pw_amount,
+                    "amount_ml": pw_amount,
+                    "unit": "ml",
+                    "logged_at": effective_dt.isoformat(),
+                    "has_explicit_time": has_line_time,
+                    "time_formatted": TimeService.format_time(effective_dt) if has_line_time else "",
+                    "raw_text": pw_m.group(0).strip(),
+                })
+                # Remove the matched span so the generic clause loop below never
+                # re-processes the same "...ml water" fragment as plain water.
+                line_for_clauses = line_for_clauses.replace(pw_m.group(0), " ", 1)
+            # ──────────────────────────────────────────────────────────────
+
+            clauses = re.split(r",| and | ane | aur | અને | और | with | along with | sathe | સાથે | ساتھ میں | साथ में |\+", line_for_clauses, flags=re.I)
             for clause in clauses:
                 c = clause.strip()
                 if not c:
@@ -1619,34 +1730,53 @@ class AgentNLP:
                 if is_meta:
                     continue
 
-                is_culinary_water = any(w in c_low for w in [
-                    "lemon water", "nimbu pani", "nimbu paani", "leembu pani",
-                    "coconut water", "nariyal pani", "nariyal paani", "jeera water", "jeera pani",
-                    "detox water", "pani puri", "water melon", "watermelon",
-                    "પાણીપુરી", "પાણી પૂરી", "લીંબુ પાણી", "નીંબુ પાની", "પાની પુરી", "पानी पुरी"
+                # Foods that merely CONTAIN the word "water"/"pani" but are not
+                # water at all (pani puri, watermelon) must still be treated as food.
+                is_food_despite_water_word = any(w in c_low for w in [
+                    "pani puri", "water melon", "watermelon",
+                    "પાણીપુરી", "પાણી પૂરી", "પાની પુરી", "पानी पुरी"
+                ])
+
+                # Flavored "waters" (lemon/coconut/jeera/detox) are tracked purely
+                # as hydration — extract_hydration_entities() captures them with
+                # the correct amount/beverage name. Logging them here too would
+                # double-count the same drink as both a food card and a hydration
+                # entry (the duplicate-lemon-water bug).
+                is_flavored_water = any(w in c_low for w in [
+                    "lemon water", "lamon water", "nimbu pani", "nimbu paani", "leembu pani", "limbu pani",
+                    "coconut water", "nariyal pani", "nariyal paani",
+                    "jeera water", "jeera pani", "detox water",
+                    "લીંબુ પાણી", "નીંબુ પાની", "નાળિયેર પાણી", "નારિયલ પાની", "જીરું પાણી",
                 ])
 
                 # Skip pure water clauses
-                is_pure_water = (any(w in c_low for w in ["pani", "water", "watwr", "paani", "પાણી", "પાની", "पानी"]) and not is_culinary_water)
-                if is_pure_water:
+                is_pure_water = (
+                    any(w in c_low for w in ["pani", "water", "watwr", "paani", "પાણી", "પાની", "पानी"])
+                    and not is_food_despite_water_word
+                )
+                if is_pure_water or is_flavored_water:
                     continue
 
-                # Skip exercise, muscle groups, or sleep (protect pre workout / pre-workout as food!)
+                # Pre-workout supplement: tracked as hydration (scoop mixed into
+                # water), never as a separate food/calorie entry. Skip it here;
+                # extract_hydration_entities() creates the "Pre Workout" entry.
                 is_pre_workout = bool(re.search(r"\bpre[-\s]?workout\b", c_low))
-                is_activity_or_sleep = False
-                if not is_pre_workout:
-                    is_activity_or_sleep = (
-                        any(bool(re.search(pat, c_low)) for pat in [
-                            r"\b(?:walk|walked|walking|run|running|ran|gym|cycling|swimming|yoga|badminton|cricket)\b",
-                            r"\b(?:kasrat|vyayam|cardio|stretching|aerobics|hiit)\b",
-                            r"(?<!pre[-\s])\bworkout\b",
-                            r"\b(?:biceps?|triceps?|delts?|quads?|hamstrings?|glutes?|calves|abs|core)\b",
-                            r"\bback\b(?!\s+(?:tea|coffee))",
-                            r"\b(?:bench\s*press|push-?ups?|pull-?ups?|squats?|deadlifts?|crunches?|planks?|lunges?|burpees?)\b",
-                            r"\b(?:sleep|slept|oongh|neend|suto|suvo)\b",
-                        ])
-                        or any(w in c_low for w in ["કસરત", "વ્યાયામ", "ચાલ", "દોડ", "યોગ", "ઊંઘ", "નીંદ", "સોયા", "सोया"])
-                    )
+                if is_pre_workout:
+                    continue
+
+                # Skip exercise, muscle groups, or sleep
+                is_activity_or_sleep = (
+                    any(bool(re.search(pat, c_low)) for pat in [
+                        r"\b(?:walk|walked|walking|run|running|ran|gym|cycling|swimming|yoga|badminton|cricket)\b",
+                        r"\b(?:kasrat|vyayam|cardio|stretching|aerobics|hiit)\b",
+                        r"(?<!pre[-\s])\bworkout\b",
+                        r"\b(?:biceps?|triceps?|delts?|quads?|hamstrings?|glutes?|calves|abs|core)\b",
+                        r"\bback\b(?!\s+(?:tea|coffee))",
+                        r"\b(?:bench\s*press|push-?ups?|pull-?ups?|squats?|deadlifts?|crunches?|planks?|lunges?|burpees?)\b",
+                        r"\b(?:sleep|slept|oongh|neend|suto|suvo)\b",
+                    ])
+                    or any(w in c_low for w in ["કસરત", "વ્યાયામ", "ચાલ", "દોડ", "યોગ", "ઊંઘ", "નીંદ", "સોયા", "सोया"])
+                )
 
                 if is_activity_or_sleep:
                     continue
@@ -1747,7 +1877,14 @@ class AgentNLP:
                 clean = re.sub(r"\s+", " ", clean).strip()
 
                 if clean:
-                    if clean.lower() in ["aa badhu", "badhu", "ye sab", "sab", "log", "all", "today", "aaj", "aaje", "badhu j"]:
+                    if clean.lower() in [
+                        "aa badhu", "badhu", "ye sab", "sab", "log", "all", "today", "aaj", "aaje", "badhu j",
+                        # Common non-food filler/verb leftovers that must never
+                        # become a food entity (e.g. "Today I did in morning").
+                        "did", "do", "done", "doing", "karyu", "karya", "kari", "kर्या",
+                        "i", "me", "my", "was", "is", "am", "the", "a", "an", "to", "then",
+                        "morning", "afternoon", "evening", "night", "day", "time",
+                    ]:
                         continue
 
                     # Multi-item sub-segmentation: If clean contains multiple space-separated food items

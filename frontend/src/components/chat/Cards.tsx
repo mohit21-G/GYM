@@ -11,11 +11,14 @@ import {
   Minus,
   Sparkles,
   HelpCircle,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 import { FoodLogList } from '../food/FoodLogList';
 import { FoodLogCard } from '../food/FoodLogCard';
 import { FoodLogEntryData } from '../food/FoodLogEntry';
-import { DailyHydrationSummary } from '../hydration/DailyHydrationSummary';
+import { DailyHydrationSummary, HydrationEntryItem } from '../hydration/DailyHydrationSummary';
+import { ActivityEntryData } from '../activity/EditActivityLogModal';
 
 interface CardProps {
   cardType?: string;
@@ -23,6 +26,10 @@ interface CardProps {
   onSelectOption?: (text: string) => void;
   onEditEntry?: (entry: FoodLogEntryData) => void;
   onDeleteEntry?: (entry: FoodLogEntryData) => void;
+  onEditHydrationEntry?: (entry: HydrationEntryItem) => void;
+  onDeleteHydrationEntry?: (entry: HydrationEntryItem) => void;
+  onEditActivityEntry?: (entry: ActivityEntryData) => void;
+  onDeleteActivityEntry?: (entry: ActivityEntryData) => void;
 }
 
 export const StructuredCard: React.FC<CardProps> = ({
@@ -31,6 +38,10 @@ export const StructuredCard: React.FC<CardProps> = ({
   onSelectOption,
   onEditEntry,
   onDeleteEntry,
+  onEditHydrationEntry,
+  onDeleteHydrationEntry,
+  onEditActivityEntry,
+  onDeleteActivityEntry,
 }) => {
   if (!data) return null;
 
@@ -59,6 +70,10 @@ export const StructuredCard: React.FC<CardProps> = ({
                 onSelectOption={onSelectOption}
                 onEditEntry={onEditEntry}
                 onDeleteEntry={onDeleteEntry}
+                onEditHydrationEntry={onEditHydrationEntry}
+                onDeleteHydrationEntry={onDeleteHydrationEntry}
+                onEditActivityEntry={onEditActivityEntry}
+                onDeleteActivityEntry={onDeleteActivityEntry}
               />
             ))}
           </div>
@@ -113,6 +128,12 @@ export const StructuredCard: React.FC<CardProps> = ({
             cardType={item.type ? 'LOG_RESULT' : cardType}
             data={item}
             onSelectOption={onSelectOption}
+            onEditEntry={onEditEntry}
+            onDeleteEntry={onDeleteEntry}
+            onEditHydrationEntry={onEditHydrationEntry}
+            onDeleteHydrationEntry={onDeleteHydrationEntry}
+            onEditActivityEntry={onEditActivityEntry}
+            onDeleteActivityEntry={onDeleteActivityEntry}
           />
         ))}
       </div>
@@ -195,6 +216,7 @@ export const StructuredCard: React.FC<CardProps> = ({
     const duration = calculation?.durationMinutes ?? activity?.durationMinutes ?? data?.durationMinutes ?? 0;
     const burned = calculation?.caloriesBurned ?? activity?.caloriesBurned ?? data?.caloriesBurned ?? (data.metric ? data.metric : 0);
     const burnedDisplay = typeof burned === 'string' ? burned : `${burned} kcal`;
+    const canEditDelete = Boolean(data.id) && (onEditActivityEntry || onDeleteActivityEntry);
     return (
       <div className="mt-3 bg-slate-900/90 border border-amber-500/30 rounded-xl p-4 shadow-lg backdrop-blur-sm w-full">
         <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-3">
@@ -202,9 +224,41 @@ export const StructuredCard: React.FC<CardProps> = ({
             <Flame className="w-4 h-4" />
             <span>Activity Logged: {activityName}</span>
           </div>
-          <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-medium">
-            {data.subtitle || `MET ${met}`}
-          </span>
+          <div className="flex items-center space-x-2">
+            <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-medium">
+              {data.subtitle || `MET ${met}`}
+            </span>
+            {canEditDelete && (
+              <div className="flex items-center space-x-1 pl-1.5 border-l border-slate-800">
+                {onEditActivityEntry && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEditActivityEntry(data as ActivityEntryData);
+                    }}
+                    className="p-1 rounded text-slate-400 hover:text-amber-400 hover:bg-slate-800 transition-colors"
+                    title="Edit activity log"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                )}
+                {onDeleteActivityEntry && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteActivityEntry(data as ActivityEntryData);
+                    }}
+                    className="p-1 rounded text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-colors"
+                    title="Delete activity log"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3 text-xs">
@@ -229,7 +283,11 @@ export const StructuredCard: React.FC<CardProps> = ({
   if (cardType === 'LOG_RESULT' && (data.type === 'HYDRATION' || data.totalMl !== undefined || data.dailySummary?.totalMl !== undefined)) {
     return (
       <div className="mt-3 w-full">
-        <DailyHydrationSummary data={data} />
+        <DailyHydrationSummary
+          data={data}
+          onEditEntry={onEditHydrationEntry}
+          onDeleteEntry={onDeleteHydrationEntry}
+        />
       </div>
     );
   }

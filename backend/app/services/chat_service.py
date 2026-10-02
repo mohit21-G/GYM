@@ -547,7 +547,10 @@ class ChatService:
 
             # Show ONLY the entry just logged in this message — not the whole day's
             # timeline. The running daily total is still shown in the progress bar.
+            # "id" is threaded through so the frontend can target this exact
+            # hydration_logs document for edit/delete, mirroring food log cards.
             card_entries = [{
+                "id": log_id,
                 "time": time_label,
                 "amountMl": int(amount),
                 "beverageName": bev_name,
@@ -845,6 +848,7 @@ class ChatService:
 
             time_sub = h.get("time_formatted") or TimeService.format_time(h_dt)
             hyd_entries.append({
+                "id": h_log_id,
                 "time": time_sub,
                 "amountMl": int(h_ml),
                 "beverageName": bev_name,

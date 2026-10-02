@@ -1,5 +1,5 @@
 import React from 'react';
-import { Droplets, GlassWater, Clock, Sparkles } from 'lucide-react';
+import { Droplets, GlassWater, Clock, Pencil, Trash2 } from 'lucide-react';
 
 export interface HydrationEntryItem {
   id?: string;
@@ -42,11 +42,15 @@ export interface DailyHydrationSummaryData {
 interface DailyHydrationSummaryProps {
   data: DailyHydrationSummaryData;
   className?: string;
+  onEditEntry?: (entry: HydrationEntryItem) => void;
+  onDeleteEntry?: (entry: HydrationEntryItem) => void;
 }
 
 export const DailyHydrationSummary: React.FC<DailyHydrationSummaryProps> = ({
   data,
   className = '',
+  onEditEntry,
+  onDeleteEntry,
 }) => {
   if (!data) return null;
 
@@ -223,10 +227,11 @@ export const DailyHydrationSummary: React.FC<DailyHydrationSummaryProps> = ({
               const amt = item.amountMl ?? item.amount_ml ?? item.amount ?? 0;
               const bev = item.beverageName || item.beverage_name || item.beverage || 'Water';
               const rawPortion = item.portion || item.rawText;
+              const canEditDelete = Boolean(item.id) && (onEditEntry || onDeleteEntry);
 
               return (
                 <div
-                  key={idx}
+                  key={item.id || idx}
                   className="flex items-center justify-between bg-slate-800/40 hover:bg-slate-800/60 rounded-xl px-3 py-2 border border-slate-700/30 transition-colors text-xs"
                 >
                   <div className="flex items-center space-x-2.5 truncate flex-1">
@@ -245,12 +250,44 @@ export const DailyHydrationSummary: React.FC<DailyHydrationSummaryProps> = ({
                       )}
                     </span>
                   </div>
-                  {timeStr && (
-                    <div className="flex items-center space-x-1 text-[10px] text-slate-400 font-medium flex-shrink-0 ml-2">
-                      <Clock className="w-3 h-3 text-slate-500" />
-                      <span>{timeStr}</span>
-                    </div>
-                  )}
+                  <div className="flex items-center space-x-2 flex-shrink-0 ml-2">
+                    {timeStr && (
+                      <div className="flex items-center space-x-1 text-[10px] text-slate-400 font-medium">
+                        <Clock className="w-3 h-3 text-slate-500" />
+                        <span>{timeStr}</span>
+                      </div>
+                    )}
+                    {canEditDelete && (
+                      <div className="flex items-center space-x-1 pl-1.5 border-l border-slate-700/50">
+                        {onEditEntry && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEditEntry(item);
+                            }}
+                            className="p-1 rounded text-slate-400 hover:text-cyan-400 hover:bg-slate-800 transition-colors"
+                            title="Edit hydration log"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {onDeleteEntry && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDeleteEntry(item);
+                            }}
+                            className="p-1 rounded text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-colors"
+                            title="Delete hydration log"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             })}

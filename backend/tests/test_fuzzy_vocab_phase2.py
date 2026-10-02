@@ -283,10 +283,11 @@ class TestMultiTokenFuzzyPhrases:
 class TestContextDependentTerms:
     """Same surface form, different meaning depending on context."""
 
-    def test_pre_workout_is_food(self):
-        """'pre workout' in food context must log as food, not activity."""
+    def test_pre_workout_is_hydration(self):
+        """'pre workout' is a hydration item (mixed into water), not an exercise
+        activity and not a separate food/calorie entry."""
         intent = AgentNLP.detect_intent("had 1 scoop pre workout")
-        assert intent == "CREATE_FOOD_LOG"
+        assert intent == "CREATE_HYDRATION_LOG"
 
     def test_plain_workout_is_activity(self):
         intent = AgentNLP.detect_intent("30 min workout done")

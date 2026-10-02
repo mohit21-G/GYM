@@ -33,3 +33,22 @@ class CreateHydrationLogDto(BaseModel):
     notes: Optional[str] = None
     source: Optional[str] = "MANUAL"
     loggedAt: Optional[str] = None
+
+class UpdateActivityLogDto(BaseModel):
+    """All-optional patch DTO for editing an existing activity/workout log.
+    Mirrors UpdateFoodLogDto in food_log.py so the frontend edit flow for
+    activity cards matches the food-log edit pattern."""
+    activity: Optional[str] = None
+    durationMinutes: Optional[float] = None
+    reps: Optional[int] = None
+    sets: Optional[int] = None
+    intensity: Optional[str] = None
+    notes: Optional[str] = None
+    loggedAt: Optional[str] = None
+
+class UpdateHydrationLogDto(BaseModel):
+    """All-optional patch DTO for editing an existing hydration log entry."""
+    amountMl: Optional[float] = None
+    beverageName: Optional[str] = None
+    notes: Optional[str] = None
+    loggedAt: Optional[str] = None

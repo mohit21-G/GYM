@@ -199,10 +199,19 @@ class ActivityService:
             calculations.append(calc_data)
 
             cards.append({
+                "id": log_id,
                 "type": "ACTIVITY",
                 "title": display_name,
                 "subtitle": f"{metric_str} · MET {met}",
                 "metric": f"{int(burned)} kcal burned",
+                "durationMinutes": duration_val,
+                "reps": reps,
+                "sets": sets if reps else None,
+                "caloriesBurned": burned,
+                "metValue": met,
+                "intensity": act.get("intensity", "MEDIUM"),
+                "loggedAt": act_iso,
+                "timeFormatted": time_formatted,
             })
 
         bullets_text = "\n".join(bullet_lines)
@@ -229,3 +238,82 @@ class ActivityService:
             "cards": cards,
             "replyText": reply_text,
         }
+
+    @staticmethod
+    async def sync_activity_log_to_conversation_messages(
+        user_id: str,
+        log_id: str,
+        updated_entry: Optional[Dict[str, Any]] = None,
+        is_deleted: bool = False,
+    ) -> None:
+        """Update or remove an activity card inside any persisted chat message
+        that embedded it, so session reload reflects the current DB state.
+
+        Activity cards are embedded either as a single dict (data.type ==
+        "ACTIVITY") or inside a list at raw_ent["cards"] (multi-log shape).
+        """
+        db = get_db()
+        cursor = db.conversation_messages.find({"raw_entities": {"$ne": None}})
+        messages = await cursor.to_list(length=500)
+
+        for m in messages:
+            raw_ent = m.get("raw_entities")
+            if not isinstance(raw_ent, dict):
+                continue
+
+            modified = False
+
+            def _rebuild_card(card: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+                nonlocal modified
+                if str(card.get("id") or "") != str(log_id):
+                    return card
+                modified = True
+                if is_deleted:
+                    return None
+                if not updated_entry:
+                    return card
+                duration_val = updated_entry.get("duration_minutes", card.get("durationMinutes"))
+                reps = updated_entry.get("reps", card.get("reps"))
+                sets = updated_entry.get("sets", card.get("sets"))
+                burned = updated_entry.get("calories_burned", card.get("caloriesBurned"))
+                met = updated_entry.get("met_value", card.get("metValue"))
+                name = updated_entry.get("exercise_name", card.get("title"))
+                if reps:
+                    metric_str = f"{sets} sets × {int(reps)} reps" if sets and int(sets) > 1 else f"{int(reps)} reps"
+                else:
+                    metric_str = f"{int(duration_val or 0)} minutes"
+                return {
+                    **card,
+                    "title": name,
+                    "subtitle": f"{metric_str} · MET {met}",
+                    "metric": f"{int(burned or 0)} kcal burned",
+                    "durationMinutes": duration_val,
+                    "reps": reps,
+                    "sets": sets,
+                    "caloriesBurned": burned,
+                    "metValue": met,
+                }
+
+            cards = raw_ent.get("cards")
+            if isinstance(cards, list):
+                new_cards = []
+                for card in cards:
+                    if not isinstance(card, dict) or card.get("type") != "ACTIVITY":
+                        new_cards.append(card)
+                        continue
+                    rebuilt = _rebuild_card(card)
+                    if rebuilt is not None:
+                        new_cards.append(rebuilt)
+                if modified:
+                    raw_ent["cards"] = new_cards
+
+            if isinstance(raw_ent.get("data"), dict) and raw_ent["data"].get("type") == "ACTIVITY":
+                rebuilt = _rebuild_card(raw_ent["data"])
+                if rebuilt is not None:
+                    raw_ent["data"] = rebuilt
+
+            if modified:
+                await db.conversation_messages.update_one(
+                    {"id": m["id"]},
+                    {"$set": {"raw_entities": raw_ent}},
+                )

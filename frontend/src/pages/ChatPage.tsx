@@ -4,6 +4,9 @@ import { MessageBubble, ChatMessageItem } from '../components/chat/MessageBubble
 import { TypingIndicator } from '../components/chat/TypingIndicator';
 import { EditFoodLogModal } from '../components/food/EditFoodLogModal';
 import { FoodLogEntryData } from '../components/food/FoodLogEntry';
+import { EditHydrationLogModal } from '../components/hydration/EditHydrationLogModal';
+import { HydrationEntryItem } from '../components/hydration/DailyHydrationSummary';
+import { EditActivityLogModal, ActivityEntryData } from '../components/activity/EditActivityLogModal';
 import {
   Send,
   Sparkles,
@@ -75,8 +78,11 @@ export const ChatPage: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [sessionSwitching, setSessionSwitching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingEntry, setEditingEntry] = useState<FoodLogEntryData | null>(null);
+  const [editingHydrationEntry, setEditingHydrationEntry] = useState<HydrationEntryItem | null>(null);
+  const [editingActivityEntry, setEditingActivityEntry] = useState<ActivityEntryData | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -157,12 +163,20 @@ export const ChatPage: React.FC = () => {
       };
     });
 
-  /** Load messages for a specific session and switch the active session. */
+  /** Load messages for a specific session and switch the active session.
+   *
+   * `sessionSwitching` is set for the duration of the fetch so the render
+   * logic can show a spinner instead of the "New Chat" starter-suggestions
+   * empty state. Without this flag, clearing `messages` to `[]` before the
+   * fetch resolves makes an *existing* conversation flash the brand-new-chat
+   * placeholder for ~1-2s on every session switch, which is confusing because
+   * it looks like the conversation was wiped. */
   const loadSession = useCallback(async (sessionId: string) => {
     // Immediately clear messages so we never show a previous session's data
     setMessages([]);
     setCurrentSessionId(sessionId);
     setError(null);
+    setSessionSwitching(true);
     try {
       const res = await apiClient.get(`/chat/sessions/${sessionId}/messages`);
       const raw = Array.isArray(res.data)
@@ -171,6 +185,8 @@ export const ChatPage: React.FC = () => {
       setMessages(parseMessages(raw));
     } catch (err) {
       console.error('loadSession error', err);
+    } finally {
+      setSessionSwitching(false);
     }
   }, []);
 
@@ -185,15 +201,20 @@ export const ChatPage: React.FC = () => {
       try {
         setInitialLoading(true);
 
-        // 1. Load the sidebar session list
-        const listRes = await apiClient.get('/chat/sessions');
+        // 1 + 2. Load the sidebar session list AND today's session in parallel.
+        // These two calls are independent, so running them concurrently removes
+        // one full network round-trip from the initial load (noticeable on a
+        // cloud MongoDB where each request carries real latency).
+        const [listRes, todayRes] = await Promise.all([
+          apiClient.get('/chat/sessions'),
+          apiClient.get('/chat/today'),
+        ]);
+
         const list: SessionItem[] = Array.isArray(listRes.data)
           ? listRes.data
           : listRes.data?.items ?? listRes.data?.data ?? [];
         setSessions(list);
 
-        // 2. Ensure today's session exists and open it
-        const todayRes = await apiClient.get('/chat/today');
         const todaySessionId: string = todayRes.data.id;
         const todayTitle: string = todayRes.data.title;
         currentDayRef.current = getTodayIST();
@@ -479,6 +500,187 @@ export const ChatPage: React.FC = () => {
     }
   };
 
+  // ── edit / delete hydration log ─────────────────────────────────────────────
+  // Hydration entries live either directly at `cardData.entries` (single
+  // CREATE_HYDRATION_LOG card) or inside `cardData.cards[i].entries` for a
+  // HYDRATION-type card embedded in a multi-log response. This helper rewrites
+  // every entries array in a message's cardData that contains a matching id.
+
+  const patchHydrationEntriesInCardData = (
+    cardData: any,
+    entryId: string,
+    updater: (entry: any) => any | null,
+  ) => {
+    if (!cardData) return cardData;
+
+    const applyToList = (list: any[]) =>
+      list
+        .map((e: any) => (e.id === entryId ? updater(e) : e))
+        .filter((e: any) => e !== null);
+
+    let changed = false;
+    let next = cardData;
+
+    if (Array.isArray(cardData.entries) && cardData.entries.some((e: any) => e.id === entryId)) {
+      changed = true;
+      next = { ...next, entries: applyToList(cardData.entries) };
+    }
+
+    if (Array.isArray(cardData.cards)) {
+      const newCards = cardData.cards.map((card: any) => {
+        if (card?.type === 'HYDRATION' && Array.isArray(card.entries) && card.entries.some((e: any) => e.id === entryId)) {
+          changed = true;
+          return { ...card, entries: applyToList(card.entries) };
+        }
+        return card;
+      });
+      if (changed) next = { ...next, cards: newCards };
+    }
+
+    return changed ? next : cardData;
+  };
+
+  const handleSaveEditedHydrationLog = async (updatedData: {
+    amountMl: number;
+    beverageName: string;
+    loggedAt?: string;
+  }) => {
+    if (!editingHydrationEntry?.id) return;
+
+    const res = await apiClient.patch(`/hydration-logs/${editingHydrationEntry.id}`, {
+      amountMl: updatedData.amountMl,
+      beverageName: updatedData.beverageName,
+      loggedAt: updatedData.loggedAt,
+    });
+    const updatedEntry = res.data?.entry || res.data;
+
+    setMessages((prevMessages) =>
+      prevMessages.map((msg) => {
+        const newCardData = patchHydrationEntriesInCardData(
+          msg.cardData,
+          editingHydrationEntry.id!,
+          (e) => ({
+            ...e,
+            amountMl: updatedEntry.amountMl ?? updatedData.amountMl,
+            beverageName: updatedEntry.beverageName ?? updatedData.beverageName,
+            time: updatedEntry.timeFormatted || e.time,
+          }),
+        );
+        if (newCardData === msg.cardData) return msg;
+        return { ...msg, cardData: newCardData };
+      }),
+    );
+  };
+
+  const handleDeleteHydrationLog = async (entry: HydrationEntryItem) => {
+    if (!entry.id) return;
+    if (!window.confirm('Are you sure you want to delete this hydration entry?')) return;
+
+    try {
+      await apiClient.delete(`/hydration-logs/${entry.id}`);
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) => {
+          const newCardData = patchHydrationEntriesInCardData(msg.cardData, entry.id!, () => null);
+          if (newCardData === msg.cardData) return msg;
+          return { ...msg, cardData: newCardData };
+        }),
+      );
+    } catch (err: any) {
+      console.error('Error deleting hydration log:', err);
+      alert(err.response?.data?.detail || 'Failed to delete hydration log. Please try again.');
+    }
+  };
+
+  // ── edit / delete activity log ──────────────────────────────────────────────
+  // Activity cards carry their own `id` directly on the card object (no nested
+  // entries array), either as `cardData` itself (type === 'ACTIVITY') or as an
+  // item inside `cardData.cards`.
+
+  const patchActivityCardInCardData = (
+    cardData: any,
+    entryId: string,
+    updater: (card: any) => any | null,
+  ) => {
+    if (!cardData) return cardData;
+    let changed = false;
+    let next = cardData;
+
+    if (cardData.type === 'ACTIVITY' && cardData.id === entryId) {
+      const rebuilt = updater(cardData);
+      return rebuilt ?? cardData;
+    }
+
+    if (Array.isArray(cardData.cards)) {
+      const newCards = cardData.cards
+        .map((card: any) => {
+          if (card?.type === 'ACTIVITY' && card.id === entryId) {
+            changed = true;
+            return updater(card);
+          }
+          return card;
+        })
+        .filter((c: any) => c !== null);
+      if (changed) next = { ...next, cards: newCards };
+    }
+
+    return changed ? next : cardData;
+  };
+
+  const handleSaveEditedActivityLog = async (updatedData: {
+    activity: string;
+    durationMinutes?: number;
+    reps?: number;
+    sets?: number;
+    intensity?: string;
+  }) => {
+    if (!editingActivityEntry?.id) return;
+
+    const res = await apiClient.patch(`/activity-logs/${editingActivityEntry.id}`, updatedData);
+    const updatedEntry = res.data?.entry || res.data;
+
+    setMessages((prevMessages) =>
+      prevMessages.map((msg) => {
+        const newCardData = patchActivityCardInCardData(
+          msg.cardData,
+          editingActivityEntry.id!,
+          (card) => ({
+            ...card,
+            title: updatedEntry.activityName || updatedEntry.activity || card.title,
+            subtitle: `${updatedEntry.durationMinutes ? `${updatedEntry.durationMinutes} min` : card.subtitle} · MET ${updatedEntry.metValue ?? card.metValue}`,
+            metric: `${Math.round(updatedEntry.caloriesBurned ?? card.caloriesBurned ?? 0)} kcal burned`,
+            durationMinutes: updatedEntry.durationMinutes,
+            reps: updatedEntry.reps,
+            sets: updatedEntry.sets,
+            caloriesBurned: updatedEntry.caloriesBurned,
+            metValue: updatedEntry.metValue,
+            intensity: updatedEntry.intensity,
+          }),
+        );
+        if (newCardData === msg.cardData) return msg;
+        return { ...msg, cardData: newCardData };
+      }),
+    );
+  };
+
+  const handleDeleteActivityLog = async (entry: ActivityEntryData) => {
+    if (!entry.id) return;
+    if (!window.confirm('Are you sure you want to delete this activity log?')) return;
+
+    try {
+      await apiClient.delete(`/activity-logs/${entry.id}`);
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) => {
+          const newCardData = patchActivityCardInCardData(msg.cardData, entry.id, () => null);
+          if (newCardData === msg.cardData) return msg;
+          return { ...msg, cardData: newCardData };
+        }),
+      );
+    } catch (err: any) {
+      console.error('Error deleting activity log:', err);
+      alert(err.response?.data?.detail || 'Failed to delete activity log. Please try again.');
+    }
+  };
+
   // ── send message ───────────────────────────────────────────────────────────
 
   const handleSendMessage = async (textToSend?: string) => {
@@ -760,11 +962,11 @@ export const ChatPage: React.FC = () => {
             </div>
           )}
 
-          {initialLoading ? (
+          {initialLoading || sessionSwitching ? (
             <div className="h-full flex items-center justify-center">
               <div className="flex items-center space-x-2 text-slate-400 text-sm">
                 <RefreshCw className="w-4 h-4 animate-spin text-emerald-400" />
-                <span>Loading assistant...</span>
+                <span>{initialLoading ? 'Loading assistant...' : 'Loading conversation...'}</span>
               </div>
             </div>
           ) : messages.length === 0 ? (
@@ -812,6 +1014,10 @@ export const ChatPage: React.FC = () => {
                   onSelectOption={(text) => handleSendMessage(text)}
                   onEditFoodLog={(entry) => setEditingEntry(entry)}
                   onDeleteFoodLog={handleDeleteFoodLog}
+                  onEditHydrationLog={(entry) => setEditingHydrationEntry(entry)}
+                  onDeleteHydrationLog={handleDeleteHydrationLog}
+                  onEditActivityLog={(entry) => setEditingActivityEntry(entry)}
+                  onDeleteActivityLog={handleDeleteActivityLog}
                 />
               ))}
               {loading && <TypingIndicator />}
@@ -859,6 +1065,20 @@ export const ChatPage: React.FC = () => {
         entry={editingEntry}
         onClose={() => setEditingEntry(null)}
         onSave={handleSaveEditedLog}
+      />
+
+      <EditHydrationLogModal
+        isOpen={Boolean(editingHydrationEntry)}
+        entry={editingHydrationEntry}
+        onClose={() => setEditingHydrationEntry(null)}
+        onSave={handleSaveEditedHydrationLog}
+      />
+
+      <EditActivityLogModal
+        isOpen={Boolean(editingActivityEntry)}
+        entry={editingActivityEntry}
+        onClose={() => setEditingActivityEntry(null)}
+        onSave={handleSaveEditedActivityLog}
       />
     </div>
   );

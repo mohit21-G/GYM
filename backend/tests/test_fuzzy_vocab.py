@@ -415,9 +415,10 @@ class TestContextDependentVocabulary:
         assert intent == "CREATE_FOOD_LOG"
 
     def test_workout_word_in_pre_workout(self):
-        """'pre workout' should be logged as food (supplement), not activity."""
+        """'pre workout' must be logged as hydration (not an exercise activity),
+        since a pre-workout scoop is mixed into water and tracked as hydration."""
         intent = AgentNLP.detect_intent("had 1 scoop pre workout")
-        assert intent == "CREATE_FOOD_LOG"
+        assert intent == "CREATE_HYDRATION_LOG"
 
     def test_back_tea_not_workout(self):
         """'back' in 'black tea' should NOT trigger gym back-workout."""

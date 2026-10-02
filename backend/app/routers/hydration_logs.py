@@ -3,10 +3,26 @@ from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from ..database import get_db
-from ..schemas.activity_log import CreateHydrationLogDto
+from ..schemas.activity_log import CreateHydrationLogDto, UpdateHydrationLogDto
 from ..services.auth_service import get_current_user
+from ..services.hydration_service import HydrationService
+from ..services.dashboard_service import DashboardService
+from ..services.time_service import TimeService
 
 router = APIRouter(prefix="/hydration-logs", tags=["Hydration Logs"])
+
+
+def _ownership_query(id: str, user_id: str) -> Dict[str, Any]:
+    """Build a query matching either the custom 'id' field or a valid Mongo
+    ObjectId for '_id', mirroring the pattern used in food_logs.py so legacy
+    documents without a custom id are still editable/deletable."""
+    from bson import ObjectId
+    query: Dict[str, Any] = {"user_id": user_id}
+    if ObjectId.is_valid(id):
+        query["$or"] = [{"id": id}, {"_id": ObjectId(id)}]
+    else:
+        query["id"] = id
+    return query
 
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_hydration_log(
@@ -95,16 +111,89 @@ async def get_hydration_log(
 ):
     db = get_db()
     user_id = current_user.get("id") or str(current_user.get("_id"))
-    doc = await db.hydration_logs.find_one({"id": id, "user_id": user_id})
+    doc = await db.hydration_logs.find_one(_ownership_query(id, user_id))
     if not doc:
         raise HTTPException(status_code=404, detail="Hydration log not found")
     dt = doc.get("logged_at") or doc.get("created_at")
     return {
         "id": doc.get("id") or str(doc.get("_id")),
         "amountMl": doc.get("amount_ml", 0),
+        "beverageName": doc.get("beverage_name") or doc.get("notes") or "Water",
         "loggedAt": dt.isoformat() if hasattr(dt, "isoformat") else str(dt),
         "source": doc.get("source", "MANUAL"),
         "notes": doc.get("notes"),
+    }
+
+@router.patch("/{id}")
+async def update_hydration_log(
+    id: str,
+    dto: UpdateHydrationLogDto,
+    current_user: dict = Depends(get_current_user),
+):
+    """Edit an existing hydration entry (amount, beverage name, or time).
+    Mirrors PATCH /food-logs/{id}: recomputes the daily hydration summary and
+    keeps persisted chat history in sync via HydrationService."""
+    db = get_db()
+    user_id = current_user.get("id") or str(current_user.get("_id"))
+    query = _ownership_query(id, user_id)
+
+    existing = await db.hydration_logs.find_one(query)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Hydration log not found")
+
+    update_data: Dict[str, Any] = {"updated_at": datetime.now(timezone.utc)}
+    if dto.amountMl is not None:
+        if dto.amountMl <= 0:
+            raise HTTPException(status_code=422, detail="amountMl must be greater than 0")
+        update_data["amount_ml"] = float(dto.amountMl)
+    if dto.beverageName is not None:
+        update_data["beverage_name"] = dto.beverageName
+        update_data["notes"] = dto.beverageName
+    if dto.notes is not None:
+        update_data["notes"] = dto.notes
+
+    if dto.loggedAt is not None:
+        try:
+            new_dt = datetime.fromisoformat(dto.loggedAt.replace("Z", "+00:00"))
+        except Exception:
+            local_now = TimeService.get_current_local_datetime()
+            new_dt, has_t = TimeService.extract_time_from_text(dto.loggedAt, reference_time=local_now)
+            if not has_t:
+                new_dt = None
+        if new_dt is not None:
+            update_data["logged_at"] = new_dt
+            update_data["log_date"] = new_dt.strftime("%Y-%m-%d")
+
+    await db.hydration_logs.update_one(query, {"$set": update_data})
+    updated = await db.hydration_logs.find_one(query)
+
+    stable_log_id = updated.get("id") or str(id)
+    await HydrationService.sync_hydration_log_to_conversation_messages(
+        user_id=user_id,
+        log_id=stable_log_id,
+        updated_entry=updated,
+        is_deleted=False,
+    )
+
+    log_date = updated.get("log_date") or TimeService.get_current_local_date_str()
+    dashboard_data = await DashboardService.get_today_dashboard(user_id, log_date)
+
+    dt = updated.get("logged_at") or updated.get("created_at") or datetime.now(timezone.utc)
+    entry_data = {
+        "id": stable_log_id,
+        "amountMl": updated.get("amount_ml", 0),
+        "beverageName": updated.get("beverage_name") or updated.get("notes") or "Water",
+        "loggedAt": dt.isoformat() if hasattr(dt, "isoformat") else str(dt),
+        "timeFormatted": TimeService.format_time(dt) if hasattr(dt, "isoformat") else "",
+        "notes": updated.get("notes"),
+    }
+
+    return {
+        "success": True,
+        "entry": entry_data,
+        "dashboard": dashboard_data,
+        "hydration": dashboard_data.get("hydration"),
+        **entry_data,
     }
 
 @router.delete("/{id}")
@@ -114,7 +203,31 @@ async def delete_hydration_log(
 ):
     db = get_db()
     user_id = current_user.get("id") or str(current_user.get("_id"))
-    res = await db.hydration_logs.delete_one({"id": id, "user_id": user_id})
+    query = _ownership_query(id, user_id)
+
+    existing = await db.hydration_logs.find_one(query)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Hydration log not found")
+
+    target_log_id = existing.get("id") or str(existing.get("_id") or id)
+    target_date = existing.get("log_date") or TimeService.get_current_local_date_str()
+
+    res = await db.hydration_logs.delete_one(query)
     if res.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Hydration log not found")
-    return {"deleted": True, "id": id}
+
+    await HydrationService.sync_hydration_log_to_conversation_messages(
+        user_id=user_id,
+        log_id=target_log_id,
+        is_deleted=True,
+    )
+
+    dashboard_data = await DashboardService.get_today_dashboard(user_id, target_date)
+
+    return {
+        "success": True,
+        "deleted": True,
+        "id": id,
+        "dashboard": dashboard_data,
+        "hydration": dashboard_data.get("hydration"),
+    }
